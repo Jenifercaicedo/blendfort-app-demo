@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@theme {
+  --color-blendfort-fondo: #f5f6f3;
+  --color-blendfort-naranja: #fbb016;
+}
