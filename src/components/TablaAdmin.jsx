@@ -80,13 +80,13 @@ const TablaAdmin = ({ egresos, onEdit, onDelete, onSelect, editandoId, totalFilt
                         </span>
                       </button>
 
-                      {/* ✅ aquí reemplazamos residente por creadoPor */}
+                      {/* aquí reemplazamos residente por creadoPor */}
                       <div className="mt-1 flex items-center gap-2 flex-wrap">
                         <span className="text-[7px] md:text-[8px] font-bold opacity-30 uppercase tracking-wider">
                           {creador}
                         </span>
 
-                        {/* ✅ chip rol si existe */}
+                        {/* chip rol si existe */}
                         {rol ? (
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[6px] md:text-[7px] font-black uppercase tracking-widest border ${

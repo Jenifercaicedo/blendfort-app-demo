@@ -151,7 +151,7 @@ const AdminDashboard = () => {
   }, [proyectos, egresos]);
 
   const opcionesResidentes = useMemo(() => {
-    // ✅ mejor: sacar desde proyectos + egresos (para auditoría)
+    //  mejor: sacar desde proyectos + egresos (para auditoría)
     const fromProy = (proyectos || [])
       .flatMap((p) => {
         const r1 = p?.residente ? [p.residente] : [];
@@ -569,7 +569,7 @@ const AdminDashboard = () => {
         nuevoEgreso={nuevoEgreso}
         setNuevoEgreso={setNuevoEgreso}
         opcionesProyectos={opcionesProyectos}
-        opcionesCategorias={["MANTENIMIENTO", "LIMPIEZA", "SEGURIDAD", "SERVICIOS", "MANO DE OBRA"]}
+        opcionesCategorias={["FERRETERIA", "MAQUINARIA", "PAPELERIA", "TRAMITES", "TRANSPORTE", "ASERRADERO", "MANO DE OBRA"]}
       />
 
       {/* MODALES DE CONFIRMACIÓN */}

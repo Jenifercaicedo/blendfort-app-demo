@@ -134,9 +134,9 @@ const ResidentDashboard = () => {
   const [nuevoEgreso, setNuevoEgreso] = useState(initialForm);
 
   const opcionesCategorias = useMemo(
-    () => ["MANTENIMIENTO", "LIMPIEZA", "SEGURIDAD", "SUMINISTROS", "OTROS", "MANO DE OBRA"],
-    []
-  );
+  () => ["FERRETERIA", "MAQUINARIA", "PAPELERIA", "TRAMITES", "TRANSPORTE", "ASERRADERO", "MANO DE OBRA"],
+  []
+);
 
   /* ===========================
      Egresos visibles
@@ -326,7 +326,7 @@ const ResidentDashboard = () => {
               </h1>
             </div>
 
-            {/* ✅ Proyecto activo como CustomSelect */}
+            {/* Proyecto activo como CustomSelect */}
             {multiProyecto && (
               <div className="w-full max-w-sm">
                 <CustomSelect
@@ -450,7 +450,7 @@ const ResidentDashboard = () => {
           {showFiltros && (
             <div className="p-5 md:p-6 border-b border-black/5 animate-in fade-in zoom-in duration-300">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* ✅ CATEGORÍA como CustomSelect */}
+                {/*  CATEGORÍA como CustomSelect */}
                 <CustomSelect
                   label="Categoría"
                   options={["TODAS...", ...(opcionesCategorias || [])]}
@@ -463,7 +463,7 @@ const ResidentDashboard = () => {
                   allowCustom={false}
                 />
 
-                {/* ✅ FECHA se queda como input (tal como pediste) */}
+                {/*  FECHA se queda como input (tal como pediste) */}
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
                     Fecha

@@ -22,7 +22,7 @@ const ModalEgreso = ({
 }) => {
   const { usuario, nombreUsuario, getProyectosAsignados } = useAppContext();
 
-  // ✅ return después de hooks (para no romper Rules of Hooks)
+  // return después de hooks (para no romper Rules of Hooks)
   // (pero aquí podemos hacer la lógica antes y retornar luego)
   const esResidente = String(usuario || "").toLowerCase() === "residente";
 
@@ -34,7 +34,7 @@ const ModalEgreso = ({
       .filter((c) => c !== "MANO DE OBRA");
   }, [opcionesCategorias]);
 
-  // ✅ proyectos permitidos para residente (PASO 2)
+  //  proyectos permitidos para residente (PASO 2)
   const proyectosAsignados = useMemo(() => {
     if (!esResidente) return [];
     return (getProyectosAsignados?.(nombreUsuario) || []).map(norm).filter(Boolean);
@@ -43,7 +43,7 @@ const ModalEgreso = ({
   const multiProyectoResidente = esResidente && proyectosAsignados.length > 1;
   const proyectoFijoResidente = esResidente && proyectosAsignados.length === 1 ? proyectosAsignados[0] : "";
 
-  // ✅ opciones finales de proyecto que se muestran en el select
+  // opciones finales de proyecto que se muestran en el select
   const opcionesProyectoFinal = useMemo(() => {
     if (esResidente) return proyectosAsignados;
     // admin: usa lo que viene por props
@@ -59,7 +59,7 @@ const ModalEgreso = ({
       setNuevoEgreso((prev) => ({ ...prev, estado: "PENDIENTE" }));
     }
 
-    // ✅ Residente: fijar/proteger proyecto
+    //  Residente: fijar/proteger proyecto
     if (esResidente) {
       setNuevoEgreso((prev) => {
         const pActual = norm(prev?.proyecto);
@@ -118,7 +118,7 @@ const ModalEgreso = ({
         <form onSubmit={onSave} className="p-12 pt-8 space-y-8">
           {/* SECCIÓN 1: IDENTIFICACIÓN */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* ✅ PROYECTO: Admin siempre; Residente solo si multi */}
+            {/*  PROYECTO: Admin siempre; Residente solo si multi */}
             {(!esResidente || multiProyectoResidente) ? (
               <CustomSelect
                 label="Proyecto"

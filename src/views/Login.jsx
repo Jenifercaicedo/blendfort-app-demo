@@ -10,7 +10,7 @@ const normalize = (s) =>
     .trim();
 
 const Login = () => {
-  // ✅ helpers del context (PASO 2 estable)
+  // helpers del context (PASO 2 estable)
   const { login, personal, puedeIngresarComoResidente, getProyectosAsignados } = useAppContext();
 
   const [paso, setPaso] = useState("seleccion");
@@ -98,7 +98,7 @@ const Login = () => {
       return;
     }
 
-    // 3) Asignación a proyecto (✅ ÚNICA fuente de verdad: AppContext)
+    // 3) Asignación a proyecto ( ÚNICA fuente de verdad: AppContext)
     const okAsignado = Boolean(puedeIngresarComoResidente?.(nombreInput));
 
     // Debug opcional (puedes dejarlo 1 día y luego borrarlo)
@@ -110,7 +110,7 @@ const Login = () => {
       return;
     }
 
-    // ✅ OK
+    // OK
     login("residente", nombreInput);
   };
 

@@ -66,7 +66,7 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                       </div>
                     </td>
 
-                    {/* ✅ CLICK PARA ABRIR DETALLE */}
+                    {/* CLICK PARA ABRIR DETALLE */}
                     <td className="px-4 md:px-8 py-3.5 md:py-5">
                       <button
                         type="button"

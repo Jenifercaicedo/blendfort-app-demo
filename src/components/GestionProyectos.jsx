@@ -18,7 +18,7 @@ const money = (n) => {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// ✅ Regla: Mano de Obra solo suma si está PAGADO/COMPLETADO
+// Regla: Mano de Obra solo suma si está PAGADO/COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normU(e?.categoria);
   const est = normU(e?.estado || "PENDIENTE");
@@ -37,7 +37,7 @@ const GestionProyectos = ({
   onBack,
   onNew,
 }) => {
-  // ✅ Hooks SIEMPRE arriba
+  // Hooks SIEMPRE arriba
   const [proyectoActivoIndex, setProyectoActivoIndex] = useState(0);
 
   const opcionesProyectos = useMemo(
@@ -45,7 +45,7 @@ const GestionProyectos = ({
     [proyectos]
   );
 
-  // ✅ proyecto activo seguro (nunca revienta si cambia la lista)
+  // proyecto activo seguro (nunca revienta si cambia la lista)
   const safeIndex = useMemo(() => {
     if (!proyectos?.length) return 0;
     return Math.min(Math.max(0, proyectoActivoIndex), proyectos.length - 1);
@@ -53,7 +53,7 @@ const GestionProyectos = ({
 
   const proy = proyectos?.[safeIndex] || null;
 
-  // ✅ gasto acumulado por proyecto (CON regla MO)
+  // gasto acumulado por proyecto (CON regla MO)
   const gastoReal = useMemo(() => {
     const nombre = proy?.nombre;
     if (!nombre) return 0;

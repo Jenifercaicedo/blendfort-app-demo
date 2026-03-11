@@ -51,9 +51,9 @@ const EgresoDetalleResidenteModal = ({ egreso, onClose, onEdit, onDelete }) => {
       role="dialog"
       aria-modal="true"
     >
-      {/* ✅ Aire / centrado real + responsive */}
+      {/* Aire / centrado real + responsive */}
       <div className="min-h-[100vh] w-full flex items-center justify-center p-3 sm:p-4 md:p-6">
-        {/* ✅ Card con max-height y scroll interno */}
+        {/* Card con max-height y scroll interno */}
         <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-black/5 max-h-[calc(100vh-24px)] sm:max-h-[calc(100vh-32px)] flex flex-col">
           {/* Header (fijo) */}
           <div className="bg-black text-white relative px-7 sm:px-8 pt-9 sm:pt-10 pb-7 sm:pb-8">
@@ -120,7 +120,7 @@ const EgresoDetalleResidenteModal = ({ egreso, onClose, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* ✅ Body scrolleable */}
+          {/* Body scrolleable */}
           <div className="flex-1 overflow-y-auto p-7 sm:p-8 space-y-6">
             {/* Resumen */}
             <div className="bg-blendfort-fondo rounded-[2.5rem] border border-black/5 p-6">

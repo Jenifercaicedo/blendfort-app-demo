@@ -55,7 +55,7 @@ const ManoObraDetalleModal = ({
   onPagarSemana,
   onEditReporte,
 }) => {
-  // ✅ Hooks SIEMPRE corren (valores seguros aunque no haya detalle)
+  // Hooks SIEMPRE corren (valores seguros aunque no haya detalle)
   const nombreEmpleado = String(detalle?.nombre || "").toUpperCase();
   const baseRows = Array.isArray(detalle?.rows) ? detalle.rows : [];
 
@@ -101,7 +101,7 @@ const ManoObraDetalleModal = ({
     if (!show) return;
     const last = rows[rows.length - 1];
     setDiaSeleccionado(last?.id ? String(last.id) : "");
-  }, [show, nombreEmpleado, rows.length]); // ✅ más seguro
+  }, [show, nombreEmpleado, rows.length]); //  más seguro
 
   const rowSeleccionado = useMemo(() => {
     const idN = Number(diaSeleccionado);
@@ -112,7 +112,7 @@ const ManoObraDetalleModal = ({
   const labelSeleccionado =
     opcionesDias.find((x) => String(x.id) === String(diaSeleccionado))?.label || "";
 
-  // ✅ El return condicional va DESPUÉS de hooks
+  // El return condicional va DESPUÉS de hooks
   if (!show || !detalle) return null;
 
   return (

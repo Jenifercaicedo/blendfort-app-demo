@@ -9,7 +9,7 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-// ✅ Regla única: Mano de Obra solo cuenta si PAGADO/COMPLETADO
+// Regla única: Mano de Obra solo cuenta si PAGADO/COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normalize(e?.categoria);
   const est = normalize(e?.estado || "PENDIENTE");
@@ -43,7 +43,7 @@ const InformeEgresos = ({
     [filtroProyecto, filtroResidente, filtroFecha]
   );
 
-  // ✅ Total contable: excluye MO pendiente
+  // Total contable: excluye MO pendiente
   const totalContable = useMemo(() => {
     return (egresos || []).reduce((acc, curr) => {
       if (!shouldCountInTotals(curr)) return acc;
@@ -51,7 +51,7 @@ const InformeEgresos = ({
     }, 0);
   }, [egresos]);
 
-  // ✅ Detecta si hay Mano de Obra pendiente en el scope filtrado (para UI)
+  //  Detecta si hay Mano de Obra pendiente en el scope filtrado (para UI)
   const hayManoObraPendiente = useMemo(() => {
     return (egresos || []).some((e) => {
       const cat = normalize(e?.categoria);
@@ -129,7 +129,7 @@ const InformeEgresos = ({
                   Balance y Control de Egresos
                 </p>
 
-                {/* ✅ Aviso opcional (muy útil) */}
+                {/* Aviso opcional (muy útil) */}
                 {hayManoObraPendiente && (
                   <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -208,7 +208,7 @@ const InformeEgresos = ({
               onDelete={setIdAEliminar}
               onSelect={setEgresoSeleccionado}
               editandoId={editandoId}
-              // ✅ pasamos el total contable para que si la tabla lo usa, sea consistente
+              // pasamos el total contable para que si la tabla lo usa, sea consistente
               totalFiltrado={totalContable}
             />
           </div>

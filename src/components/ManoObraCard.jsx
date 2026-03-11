@@ -53,13 +53,13 @@ const ManoObraCard = ({ onBack }) => {
     proyectos,
     usuario,
     nombreUsuario,
-    actor, // ✅ nuevo: consistente con tu AppContext
+    actor, 
 
     // si existen en tu AppContext
     updateEgreso,
   } = useAppContext();
 
-  // ✅ registradoPor consistente
+  //  registradoPor consistente
   const registradoPor =
     actor?.display || (usuario === "admin" ? "ADMINISTRACIÓN" : (nombreUsuario || "RESIDENTE"));
 
@@ -70,7 +70,7 @@ const ManoObraCard = ({ onBack }) => {
 
   const [proyectoActivo, setProyectoActivo] = useState(opcionesProyectos[0] || "");
 
-  // ✅ FIX: si proyectos cambian/cargan después, asegurar proyectoActivo válido
+  // FIX: si proyectos cambian/cargan después, asegurar proyectoActivo válido
   useEffect(() => {
     setProyectoActivo((prev) => {
       if (prev && opcionesProyectos.includes(prev)) return prev;
@@ -102,7 +102,7 @@ const ManoObraCard = ({ onBack }) => {
         return;
       }
 
-      // ✅ fallback: actualizar solo lo necesario (estado) y sin JSON.stringify
+      // fallback: actualizar solo lo necesario (estado) y sin JSON.stringify
       if (typeof updateEgreso === "function") {
         const prev = egresos || [];
         const next = updater(prev);
