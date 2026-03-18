@@ -10,8 +10,13 @@ const normalize = (s) =>
     .trim();
 
 const Login = () => {
-  // helpers del context (PASO 2 estable)
-  const { login, personal, puedeIngresarComoResidente, getProyectosAsignados } = useAppContext();
+  const {
+    loginAdmin,
+    loginResidente,
+    personal,
+    puedeIngresarComoResidente,
+    authLoading,
+  } = useAppContext();
 
   const [paso, setPaso] = useState("seleccion");
   const [nombre, setNombre] = useState("");
@@ -19,6 +24,7 @@ const Login = () => {
 
   const [error, setError] = useState({ show: false, msg: "" });
   const [verPassword, setVerPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const rolesPermitidos = useMemo(
     () =>
@@ -71,57 +77,76 @@ const Login = () => {
     resetError();
   };
 
-  const accesoResidente = (e) => {
+  const accesoResidente = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
-    const nombreInput = String(nombre || "").trim();
-    const passOk = password === "Blendfort2026";
+    try {
+      const nombreInput = String(nombre || "").trim();
+      const passOk = password === "Blendfort2026";
 
-    if (!nombreInput || !passOk) {
-      setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
-      return;
+      if (!nombreInput || !passOk) {
+        setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
+        return;
+      }
+
+      const nombreN = normalize(nombreInput);
+
+      const emp = (personal || []).find((p) => normalize(p?.nombre) === nombreN);
+      if (!emp) {
+        setError({ show: true, msg: "NO ESTÁS REGISTRADO EN GESTIÓN PERSONAL" });
+        return;
+      }
+
+      const rol = String(emp?.rol || "").toUpperCase().trim();
+      if (!rolesPermitidos.has(rol)) {
+        setError({ show: true, msg: "TU ROL NO TIENE ACCESO A RESIDENTE" });
+        return;
+      }
+
+      const okAsignado = Boolean(puedeIngresarComoResidente?.(nombreInput));
+      if (!okAsignado) {
+        setError({ show: true, msg: "NO TIENES PROYECTO ASIGNADO" });
+        return;
+      }
+
+      await loginResidente(nombreInput);
+    } catch (err) {
+      console.error("Error login residente:", err);
+      setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
+    } finally {
+      setSubmitting(false);
     }
-
-    const nombreN = normalize(nombreInput);
-
-    // 1) Debe existir en Gestión Personal
-    const emp = (personal || []).find((p) => normalize(p?.nombre) === nombreN);
-    if (!emp) {
-      setError({ show: true, msg: "NO ESTÁS REGISTRADO EN GESTIÓN PERSONAL" });
-      return;
-    }
-
-    // 2) Rol permitido (NO depende de tipo oficina/campo)
-    const rol = String(emp?.rol || "").toUpperCase().trim();
-    if (!rolesPermitidos.has(rol)) {
-      setError({ show: true, msg: "TU ROL NO TIENE ACCESO A RESIDENTE" });
-      return;
-    }
-
-    // 3) Asignación a proyecto ( ÚNICA fuente de verdad: AppContext)
-    const okAsignado = Boolean(puedeIngresarComoResidente?.(nombreInput));
-
-    // Debug opcional (puedes dejarlo 1 día y luego borrarlo)
-    // console.log("LOGIN DEBUG -> nombre:", nombreInput);
-    // console.log("LOGIN DEBUG -> asignados:", getProyectosAsignados?.(nombreInput));
-
-    if (!okAsignado) {
-      setError({ show: true, msg: "NO TIENES PROYECTO ASIGNADO" });
-      return;
-    }
-
-    // OK
-    login("residente", nombreInput);
   };
 
-  const accesoAdmin = (e) => {
+  const accesoAdmin = async (e) => {
     e.preventDefault();
-    if (password === "Blendfortadmin") {
-      login("admin", "Administrador");
-    } else {
-      setError({ show: true, msg: "CONTRASEÑA INCORRECTA" });
+    setSubmitting(true);
+
+    try {
+      if (password !== "Blendfortadmin") {
+        setError({ show: true, msg: "CONTRASEÑA INCORRECTA" });
+        return;
+      }
+
+      await loginAdmin();
+    } catch (err) {
+      console.error("Error login admin:", err);
+      setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-blendfort-fondo flex items-center justify-center p-6">
+        <div className="bg-white w-full max-w-md rounded-3xl p-10 shadow-2xl text-center border border-black/5">
+          <p className="font-black uppercase tracking-widest opacity-50">Cargando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-blendfort-fondo flex flex-col items-center justify-center p-6 text-black">
@@ -134,36 +159,34 @@ const Login = () => {
         <p className="font-medium mb-10 opacity-60">Control de Egresos</p>
 
         {paso === "seleccion" && (
-  <div className="space-y-5 animate-in fade-in duration-300">
-    <button
-      onClick={() => {
-        setPaso("form_residente");
-        setError({ show: false, msg: "" });
-        setVerPassword(false);
-        setPassword("");
-      }}
-      className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-blendfort-naranja transition-all duration-300 hover:bg-blendfort-naranja hover:text-white active:scale-95 shadow-sm uppercase"
-    >
-      {/* Mobile: RESIDENTE | Desktop: ENTRAR COMO RESIDENTE */}
-      <span className="lg:hidden">RESIDENTE</span>
-      <span className="hidden lg:inline">ENTRAR COMO RESIDENTE</span>
-    </button>
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <button
+              onClick={() => {
+                setPaso("form_residente");
+                setError({ show: false, msg: "" });
+                setVerPassword(false);
+                setPassword("");
+              }}
+              className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-blendfort-naranja transition-all duration-300 hover:bg-blendfort-naranja hover:text-white active:scale-95 shadow-sm uppercase"
+            >
+              <span className="lg:hidden">RESIDENTE</span>
+              <span className="hidden lg:inline">ENTRAR COMO RESIDENTE</span>
+            </button>
 
-    <button
-      onClick={() => {
-        setPaso("form_admin");
-        setError({ show: false, msg: "" });
-        setVerPassword(false);
-        setPassword("");
-      }}
-      className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white active:scale-95 shadow-sm uppercase"
-    >
-      {/* Mobile: ADMINISTRADOR | Desktop: ENTRAR COMO ADMINISTRADOR */}
-      <span className="lg:hidden">ADMINISTRADOR</span>
-      <span className="hidden lg:inline">ENTRAR COMO ADMINISTRADOR</span>
-    </button>
-  </div>
-)}
+            <button
+              onClick={() => {
+                setPaso("form_admin");
+                setError({ show: false, msg: "" });
+                setVerPassword(false);
+                setPassword("");
+              }}
+              className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white active:scale-95 shadow-sm uppercase"
+            >
+              <span className="lg:hidden">ADMINISTRADOR</span>
+              <span className="hidden lg:inline">ENTRAR COMO ADMINISTRADOR</span>
+            </button>
+          </div>
+        )}
 
         {paso === "form_residente" && (
           <form onSubmit={accesoResidente} className="space-y-4 text-left animate-in slide-in-from-right duration-300">
@@ -214,9 +237,10 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full bg-blendfort-naranja text-white py-4 rounded-xl font-black text-lg shadow-md hover:brightness-105 transition-all uppercase mt-2"
+              disabled={submitting}
+              className="w-full bg-blendfort-naranja text-white py-4 rounded-xl font-black text-lg shadow-md hover:brightness-105 transition-all uppercase mt-2 disabled:opacity-60"
             >
-              ACCEDER
+              {submitting ? "INGRESANDO..." : "ACCEDER"}
             </button>
 
             <button
@@ -268,9 +292,10 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-4 rounded-xl font-black text-lg shadow-md hover:opacity-80 transition-all uppercase mt-2"
+              disabled={submitting}
+              className="w-full bg-black text-white py-4 rounded-xl font-black text-lg shadow-md hover:opacity-80 transition-all uppercase mt-2 disabled:opacity-60"
             >
-              ACCEDER
+              {submitting ? "INGRESANDO..." : "ACCEDER"}
             </button>
 
             <button

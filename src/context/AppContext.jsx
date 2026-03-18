@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 const AppContext = createContext();
 
 /* ===========================
-   Helpers (contrato estable)
+   Helpers
 =========================== */
 const norm = (s) =>
   String(s || "")
@@ -20,10 +20,32 @@ const safeNum = (n) => {
 
 const ensureISODate = (d) => String(d || "").slice(0, 10);
 
+const slugifyName = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, ".");
+
+const buildResidentEmail = (nombre) => {
+  const slug = slugifyName(nombre);
+  return `${slug}@blendfortdemo.com`;
+};
+
+const ADMIN_EMAIL = "admin@blendfortdemo.com";
+const ADMIN_PASSWORD = "Blendfortadmin";
+const RESIDENTE_PASSWORD = "Blendfort2026";
+
+/* ===========================
+   Context Provider
+=========================== */
 export const AppProvider = ({ children }) => {
-  // SESIÓN
-  const [usuario, setUsuario] = useState(null);
+  // SESIÓN APP
+  const [usuario, setUsuario] = useState(null); // "admin" | "residente" | null
   const [nombreUsuario, setNombreUsuario] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
 
   // DATOS GLOBALES
   const [egresos, setEgresos] = useState([]);
@@ -35,17 +57,130 @@ export const AppProvider = ({ children }) => {
   const [loadingPersonal, setLoadingPersonal] = useState(true);
 
   /* ===========================
-     Sesión
+     Sesión Supabase + sesión app
   =========================== */
-  const login = (tipo, nombre = "") => {
+  const saveAppSession = (tipo, nombre = "") => {
     const t = String(tipo || "").toLowerCase().trim();
+    const n = String(nombre || "").trim();
+
     setUsuario(t);
-    setNombreUsuario(nombre);
+    setNombreUsuario(n);
+
+    localStorage.setItem(
+      "blendfort_app_session",
+      JSON.stringify({
+        usuario: t,
+        nombreUsuario: n,
+      })
+    );
   };
 
-  const logout = () => {
+  const clearAppSession = () => {
     setUsuario(null);
     setNombreUsuario("");
+    localStorage.removeItem("blendfort_app_session");
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        const session = data?.session;
+        const savedAppSession = localStorage.getItem("blendfort_app_session");
+
+        if (session && savedAppSession) {
+          const parsed = JSON.parse(savedAppSession);
+          if (mounted) {
+            setUsuario(parsed?.usuario || null);
+            setNombreUsuario(parsed?.nombreUsuario || "");
+          }
+        } else if (!session) {
+          localStorage.removeItem("blendfort_app_session");
+          if (mounted) {
+            setUsuario(null);
+            setNombreUsuario("");
+          }
+        }
+      } catch (error) {
+        console.error("Error inicializando auth:", error);
+      } finally {
+        if (mounted) setAuthLoading(false);
+      }
+    };
+
+    initAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        clearAppSession();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  /* ===========================
+     Login con Supabase Auth
+  =========================== */
+  const loginAdmin = async () => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  saveAppSession("admin", "Administrador");
+  return data;
+};
+
+  const loginResidente = async (nombre) => {
+  const nombreLimpio = String(nombre || "").trim();
+  const email = buildResidentEmail(nombreLimpio);
+
+  // 1) Asegurar usuario Auth desde función server-side
+  const ensureRes = await fetch("/api/ensure-resident-auth", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ nombre: nombreLimpio }),
+  });
+
+  const ensureJson = await ensureRes.json();
+
+  if (!ensureRes.ok) {
+    throw new Error(ensureJson?.error || "No se pudo preparar el acceso del residente");
+  }
+
+  // 2) Login normal con Supabase Auth
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: RESIDENTE_PASSWORD,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  saveAppSession("residente", nombreLimpio);
+  return data;
+};
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    clearAppSession();
   };
 
   const actor = useMemo(() => {
@@ -511,7 +646,9 @@ export const AppProvider = ({ children }) => {
       value={{
         usuario,
         nombreUsuario,
-        login,
+        authLoading,
+        loginAdmin,
+        loginResidente,
         logout,
         actor,
 
