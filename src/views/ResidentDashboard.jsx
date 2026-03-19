@@ -1,4 +1,3 @@
-// ResidentDashboard.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import logo from "../assets/blendfort-logo-largo.png";
 import { useAppContext } from "../context/AppContext";
@@ -19,6 +18,21 @@ const normalize = (s) =>
 
 const iso10 = (d) => String(d || "").slice(0, 10);
 
+const money = (n) =>
+  `$ ${Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+const estadoCajaTone = (estado) => {
+  const e = normalize(estado);
+  if (e === "DISPONIBLE") return "text-green-700 bg-green-50 border-green-100";
+  if (e === "POR AGOTARSE") return "text-amber-700 bg-amber-50 border-amber-100";
+  if (e === "AGOTADA") return "text-red-700 bg-red-50 border-red-100";
+  if (e === "EXCEDIDA") return "text-red-800 bg-red-100 border-red-200";
+  return "text-black/55 bg-black/[0.03] border-black/10";
+};
+
 const ResidentDashboard = () => {
   const {
     nombreUsuario,
@@ -29,8 +43,8 @@ const ResidentDashboard = () => {
     addEgreso,
     updateEgreso,
     deleteEgreso,
+    getResumenCajaChica,
 
-    //  si existen en context los usamos, si no, usamos fallback local
     canEditEgreso,
     canDeleteEgreso,
   } = useAppContext();
@@ -59,23 +73,22 @@ const ResidentDashboard = () => {
   const multiProyecto = proyectosAsignados.length > 1;
 
   /* ===========================
-     Fallback de permisos (NO rompe)
-     - residente solo edita/elimina lo que él creó
+     Fallback de permisos
   =========================== */
   const canEditLocal = useMemo(() => {
-  return (reg) => {
-    const me = normalize(nombreUsuario);
+    return (reg) => {
+      const me = normalize(nombreUsuario);
 
-    const creadoPorRol = normalize(reg?.creadoPorRol || reg?.creado_por_rol);
-    if (creadoPorRol === "ADMIN") return false;
+      const creadoPorRol = normalize(reg?.creadoPorRol || reg?.creado_por_rol);
+      if (creadoPorRol === "ADMIN") return false;
 
-    const creadoPor = normalize(reg?.creadoPor || reg?.creado_por);
-    if (creadoPor) return creadoPor === me;
+      const creadoPor = normalize(reg?.creadoPor || reg?.creado_por);
+      if (creadoPor) return creadoPor === me;
 
-    const residente = normalize(reg?.residente);
-    return residente === me;
-  };
-}, [nombreUsuario]);
+      const residente = normalize(reg?.residente);
+      return residente === me;
+    };
+  }, [nombreUsuario]);
 
   const canEdit = (reg) =>
     typeof canEditEgreso === "function" ? canEditEgreso(reg) : canEditLocal(reg);
@@ -134,9 +147,9 @@ const ResidentDashboard = () => {
   const [nuevoEgreso, setNuevoEgreso] = useState(initialForm);
 
   const opcionesCategorias = useMemo(
-  () => ["FERRETERIA", "MAQUINARIA", "PAPELERIA", "TRAMITES", "TRANSPORTE", "ASERRADERO", "MANO DE OBRA"],
-  []
-);
+    () => ["FERRETERIA", "MAQUINARIA", "PAPELERIA", "TRAMITES", "TRANSPORTE", "ASERRADERO", "MANO DE OBRA"],
+    []
+  );
 
   /* ===========================
      Egresos visibles
@@ -166,7 +179,7 @@ const ResidentDashboard = () => {
     });
   }, [registrosScope, filtroCategoria, filtroFecha]);
 
-  // TOTAL (solo suma MANO DE OBRA si está PAGADO/COMPLETADO)
+  // TOTAL proyecto (solo suma MANO DE OBRA si está PAGADO/COMPLETADO)
   const totalMes = useMemo(() => {
     return (registrosScope || []).reduce((acc, curr) => {
       const cat = normalize(curr?.categoria);
@@ -180,6 +193,33 @@ const ResidentDashboard = () => {
       return acc + (Number(curr?.valor) || 0);
     }, 0);
   }, [registrosScope]);
+
+  /* ===========================
+     Resumen Caja Chica
+  =========================== */
+  const resumenCajaChica = useMemo(() => {
+    if (!proyectoActivo || typeof getResumenCajaChica !== "function") {
+      return {
+        existe: false,
+        montoActualAsignado: 0,
+        gastadoActual: 0,
+        saldoActual: 0,
+        estado: "SIN FONDO",
+        fechaUltimoDesembolso: "",
+      };
+    }
+
+    return (
+      getResumenCajaChica(proyectoActivo) || {
+        existe: false,
+        montoActualAsignado: 0,
+        gastadoActual: 0,
+        saldoActual: 0,
+        estado: "SIN FONDO",
+        fechaUltimoDesembolso: "",
+      }
+    );
+  }, [getResumenCajaChica, proyectoActivo]);
 
   /* ===========================
      Acciones
@@ -197,7 +237,6 @@ const ResidentDashboard = () => {
     setShowModalNuevo(true);
   };
 
-  // wrapper seguro (no deja editar si no puede)
   const onEditSafe = (reg) => {
     if (!canEdit(reg)) {
       mostrarExito("NO PUEDES EDITAR REGISTROS QUE NO CREASTE");
@@ -220,92 +259,98 @@ const ResidentDashboard = () => {
   };
 
   const handleGuardar = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    const proyectoFinal = normalize(
-      multiProyecto
-        ? (nuevoEgreso.proyecto || proyectoActivo || proyectosAsignados[0] || "")
-        : (proyectoActivo || proyectosAsignados[0] || "")
-    );
+    try {
+      const proyectoFinal = normalize(
+        multiProyecto
+          ? (nuevoEgreso.proyecto || proyectoActivo || proyectosAsignados[0] || "")
+          : (proyectoActivo || proyectosAsignados[0] || "")
+      );
 
-    const payload = {
-      ...nuevoEgreso,
-      proyecto: proyectoFinal,
-      residente: normalize(nombreUsuario),
-      fecha: iso10(nuevoEgreso.fecha),
-      categoria: normalize(nuevoEgreso.categoria),
-      lugar: String(nuevoEgreso.lugar || "").toUpperCase(),
-      concepto: String(nuevoEgreso.concepto || "").toUpperCase(),
-      detalles: String(nuevoEgreso.detalles || "").toUpperCase(),
-      metodoPago: normalize(nuevoEgreso.metodoPago),
-      pagadoPor: String(nuevoEgreso.pagadoPor || "ADMINISTRACIÓN").toUpperCase(),
-      estado: normalize(nuevoEgreso.estado || "PENDIENTE"),
-      valor: Number(nuevoEgreso.valor) || 0,
-      tieneFactura: Boolean(nuevoEgreso.tieneFactura),
-      tipoRegistro: "EGRESO",
-    };
+      const categoriaFinal = normalize(nuevoEgreso.categoria);
 
-    if (editandoId) {
-      await updateEgreso(editandoId, payload);
-      mostrarExito("EGRESO ACTUALIZADO");
-    } else {
-      await addEgreso(payload);
-      mostrarExito("EGRESO REGISTRADO");
+      // Mano de obra no descuenta caja chica
+      const fuenteFondosFinal =
+        categoriaFinal === "MANO DE OBRA" ? "GENERAL" : "CAJA_CHICA";
+
+      const payload = {
+        ...nuevoEgreso,
+        proyecto: proyectoFinal,
+        residente: normalize(nombreUsuario),
+        fecha: iso10(nuevoEgreso.fecha),
+        categoria: categoriaFinal,
+        lugar: String(nuevoEgreso.lugar || "").toUpperCase(),
+        concepto: String(nuevoEgreso.concepto || "").toUpperCase(),
+        detalles: String(nuevoEgreso.detalles || "").toUpperCase(),
+        metodoPago: normalize(nuevoEgreso.metodoPago),
+        pagadoPor: String(nuevoEgreso.pagadoPor || "ADMINISTRACIÓN").toUpperCase(),
+        estado: normalize(nuevoEgreso.estado || "PENDIENTE"),
+        valor: Number(nuevoEgreso.valor) || 0,
+        tieneFactura: Boolean(nuevoEgreso.tieneFactura),
+        tipoRegistro: "EGRESO",
+        fuenteFondos: fuenteFondosFinal,
+      };
+
+      if (editandoId) {
+        await updateEgreso(editandoId, payload);
+        mostrarExito("EGRESO ACTUALIZADO");
+      } else {
+        await addEgreso(payload);
+        mostrarExito("EGRESO REGISTRADO");
+      }
+
+      setShowModalNuevo(false);
+    } catch (error) {
+      console.error("Error guardando egreso residente:", error);
+      mostrarExito("NO SE PUDO GUARDAR EL EGRESO");
     }
+  };
 
-    setShowModalNuevo(false);
-  } catch (error) {
-    console.error("Error guardando egreso residente:", error);
-    mostrarExito("NO SE PUDO GUARDAR EL EGRESO");
-  }
-};
-
-  //  eliminar seguro: valida permisos antes de abrir confirmación
   const onDeleteSafe = (id) => {
-  const reg = (registrosFiltrados || []).find((x) => String(x.id) === String(id));
+    const reg = (registrosFiltrados || []).find((x) => String(x.id) === String(id));
 
-  if (reg && !canDelete(reg)) {
-    mostrarExito("NO PUEDES ELIMINAR REGISTROS QUE NO CREASTE");
-    return;
-  }
-
-  setIdAEliminar(id);
-};
-
-  const eliminarRegistro = async () => {
-  try {
-    const egresoTarget = (egresos || []).find((x) => String(x.id) === String(idAEliminar));
-
-    if (!canDelete(egresoTarget)) {
-      setIdAEliminar(null);
+    if (reg && !canDelete(reg)) {
       mostrarExito("NO PUEDES ELIMINAR REGISTROS QUE NO CREASTE");
       return;
     }
 
-    await deleteEgreso(idAEliminar);
-    setIdAEliminar(null);
-    mostrarExito("EGRESO ELIMINADO");
-  } catch (error) {
-    console.error("Error eliminando egreso residente:", error);
-    mostrarExito("NO SE PUDO ELIMINAR EL EGRESO");
-  }
-};
+    setIdAEliminar(id);
+  };
+
+  const eliminarRegistro = async () => {
+    try {
+      const egresoTarget = (egresos || []).find((x) => String(x.id) === String(idAEliminar));
+
+      if (!canDelete(egresoTarget)) {
+        setIdAEliminar(null);
+        mostrarExito("NO PUEDES ELIMINAR REGISTROS QUE NO CREASTE");
+        return;
+      }
+
+      await deleteEgreso(idAEliminar);
+      setIdAEliminar(null);
+      mostrarExito("EGRESO ELIMINADO");
+    } catch (error) {
+      console.error("Error eliminando egreso residente:", error);
+      mostrarExito("NO SE PUDO ELIMINAR EL EGRESO");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-blendfort-fondo flex flex-col p-4 md:p-8 font-sans text-black overflow-x-hidden">
       {/* Header */}
-      <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-8">
-        <img src={logo} alt="Blendfort" className="h-8 md:h-12 w-auto object-contain" />
+      <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 md:mb-8">
+        <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
 
         <button
           onClick={logout}
-          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-5 pr-2 py-2 rounded-full transition-all duration-300 hover:border-black hover:shadow-2xl active:scale-95"
+          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
         >
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-black/40 group-hover:text-black transition-colors">
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
             Cerrar Sesión
           </span>
-          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
+          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
             <svg className="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
               <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -314,11 +359,11 @@ const ResidentDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full flex-1">
-        {/* Bienvenida + Card inversión */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mb-8">
-          <div className="flex flex-col items-center lg:items-start space-y-4">
+        {/* Bienvenida + Card caja chica */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start mb-6">
+          <div className="flex flex-col items-center lg:items-start space-y-3">
             <div className="text-center lg:text-left">
-              <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.3em] block mb-1">
+              <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.24em] block mb-1">
                 BIENVENIDO DE NUEVO
               </span>
               <h1 className="text-3xl md:text-5xl font-black text-black uppercase tracking-tighter leading-tight">
@@ -326,7 +371,6 @@ const ResidentDashboard = () => {
               </h1>
             </div>
 
-            {/* Proyecto activo como CustomSelect */}
             {multiProyecto && (
               <div className="w-full max-w-sm">
                 <CustomSelect
@@ -343,32 +387,57 @@ const ResidentDashboard = () => {
           </div>
 
           <div className="flex justify-center lg:justify-end">
-            <div className="bg-white border border-black/[0.05] p-6 rounded-[2rem] shadow-sm w-full max-w-sm">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a1a1a1] mb-3">
-                Inversión del Mes
+            <div className="bg-white border border-black/[0.05] p-4 md:p-5 rounded-[1.4rem] md:rounded-[1.6rem] shadow-sm w-full max-w-sm">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2.5">
+                Caja Chica
               </p>
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-1.5 h-8 bg-blendfort-naranja rounded-full"></div>
-                <h2 className="text-3xl font-black tracking-tighter">
-                  $ {Number(totalMes || 0).toLocaleString()}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-1.5 h-7 bg-blendfort-naranja rounded-full"></div>
+                <h2 className="text-2xl md:text-3xl font-black tracking-tighter">
+                  {money(resumenCajaChica?.gastadoActual || 0)}
                 </h2>
               </div>
 
-              <div className="flex justify-between border-t border-gray-100 pt-4">
+              <p className="text-[8px] font-black uppercase tracking-[0.14em] text-black/35 mb-4">
+                Gastado del fondo asignado
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
                 <div>
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-widest">
-                    Registros
+                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
+                    Total Asignado
                   </p>
-                  <p className="text-[10px] font-black">{registrosScope.length} UNIDADES</p>
+                  <p className="text-[10px] font-black">{money(resumenCajaChica?.montoActualAsignado || 0)}</p>
                 </div>
+
                 <div className="text-right">
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-widest">
+                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
+                    Saldo
+                  </p>
+                  <p className="text-[10px] font-black">{money(resumenCajaChica?.saldoActual || 0)}</p>
+                </div>
+
+                <div>
+                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
+                    Desembolso
+                  </p>
+                  <p className="text-[10px] font-black">
+                    {resumenCajaChica?.fechaUltimoDesembolso || "SIN REGISTRO"}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
                     Estado
                   </p>
-                  <p className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase">
-                    Balance OK
-                  </p>
+                  <span
+                    className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoCajaTone(
+                      resumenCajaChica?.estado
+                    )}`}
+                  >
+                    {normalize(resumenCajaChica?.estado || "SIN FONDO")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -376,20 +445,20 @@ const ResidentDashboard = () => {
         </div>
 
         {/* Card maestra */}
-        <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl overflow-hidden">
+        <div className="bg-white rounded-[1.8rem] md:rounded-[2.2rem] border border-black/5 shadow-xl overflow-hidden">
           {/* Top bar */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 md:p-5 border-b border-black/5 bg-blendfort-fondo/30">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
-                <span className="text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
+                <span className="text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.28em]">
                   Resident Console
                 </span>
               </div>
-              <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">
+              <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">
                 Reportes de Egresos
               </h3>
-              <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-2">
+              <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.18em] mt-1.5">
                 {multiProyecto
                   ? `PROYECTO ACTIVO: ${proyectoActivo}`
                   : `PROYECTO: ${proyectoActivo || proyectosAsignados[0] || "—"}`}
@@ -397,19 +466,19 @@ const ResidentDashboard = () => {
             </div>
 
             <div className="w-full md:w-auto">
-              <div className="grid grid-cols-3 gap-2 md:flex md:gap-3 md:items-center md:justify-end">
+              <div className="grid grid-cols-3 gap-2 md:flex md:gap-2.5 md:items-center md:justify-end">
                 <button
                   type="button"
                   onClick={() => setShowFiltros((v) => !v)}
-                  className={`h-11 md:h-auto w-full md:w-auto px-0 md:px-5 py-2.5 rounded-2xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja
-                    flex items-center justify-center md:justify-start gap-2 md:gap-3
+                  className={`h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja
+                    flex items-center justify-center md:justify-start gap-2
                     ${hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"}
                   `}
                 >
                   <svg className="w-3.5 h-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
                   </svg>
-                  <span className="text-[8px] font-black uppercase tracking-[0.22em] text-black/60">
+                  <span className="text-[8px] font-black uppercase tracking-[0.16em] text-black/60">
                     Filtros
                   </span>
                   {hayFiltros && <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />}
@@ -418,12 +487,12 @@ const ResidentDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setShowReporteDiario(true)}
-                  className="h-11 md:h-auto w-full md:w-auto px-0 md:px-6 py-2.5 rounded-2xl bg-blendfort-naranja text-white
-                    font-black text-[9px] uppercase tracking-[0.22em]
+                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-blendfort-naranja text-white
+                    font-black text-[9px] uppercase tracking-[0.16em]
                     hover:bg-black transition-all active:scale-95 shadow-sm
-                    flex items-center justify-center gap-2 md:gap-3"
+                    flex items-center justify-center gap-2"
                 >
-                  <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
                     <span className="text-sm font-light">+</span>
                   </div>
                   <span className="text-[8px] md:text-[9px]">Reporte</span>
@@ -432,12 +501,12 @@ const ResidentDashboard = () => {
                 <button
                   type="button"
                   onClick={abrirModalNuevo}
-                  className="h-11 md:h-auto w-full md:w-auto px-0 md:px-6 py-2.5 rounded-2xl bg-black text-white
-                    font-black text-[9px] uppercase tracking-[0.22em]
+                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-black text-white
+                    font-black text-[9px] uppercase tracking-[0.16em]
                     hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm
-                    flex items-center justify-center gap-2 md:gap-3"
+                    flex items-center justify-center gap-2"
                 >
-                  <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
                     <span className="text-sm font-light">+</span>
                   </div>
                   <span className="text-[8px] md:text-[9px]">Egreso</span>
@@ -448,9 +517,8 @@ const ResidentDashboard = () => {
 
           {/* Filtros */}
           {showFiltros && (
-            <div className="p-5 md:p-6 border-b border-black/5 animate-in fade-in zoom-in duration-300">
+            <div className="p-4 md:p-5 border-b border-black/5 animate-in fade-in zoom-in duration-300">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/*  CATEGORÍA como CustomSelect */}
                 <CustomSelect
                   label="Categoría"
                   options={["TODAS...", ...(opcionesCategorias || [])]}
@@ -463,7 +531,6 @@ const ResidentDashboard = () => {
                   allowCustom={false}
                 />
 
-                {/*  FECHA se queda como input (tal como pediste) */}
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
                     Fecha
@@ -472,7 +539,7 @@ const ResidentDashboard = () => {
                     type="date"
                     value={filtroFecha}
                     onChange={(e) => setFiltroFecha(e.target.value)}
-                    className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm"
+                    className="w-full bg-white border border-black/5 p-4 rounded-xl text-[10px] font-black outline-none h-[50px] focus:border-black transition-all shadow-sm"
                   />
                 </div>
               </div>
@@ -482,9 +549,9 @@ const ResidentDashboard = () => {
                   <button
                     type="button"
                     onClick={limpiarFiltros}
-                    className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+                    className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
                   >
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+                    <span className="text-[8px] font-black uppercase tracking-[0.18em]">
                       Limpiar
                     </span>
                   </button>
@@ -494,7 +561,7 @@ const ResidentDashboard = () => {
           )}
 
           {/* Tabla */}
-          <div className="p-4 md:p-6">
+          <div className="p-3 md:p-5">
             <TablaEgresos
               registros={registrosFiltrados}
               onEdit={onEditSafe}
@@ -540,7 +607,7 @@ const ResidentDashboard = () => {
         onClose={() => setModalExito({ show: false, mensaje: "" })}
       />
 
-      <footer className="mt-8 text-center opacity-20 text-[9px] font-bold uppercase tracking-[0.3em] text-black">
+      <footer className="mt-8 text-center opacity-20 text-[9px] font-bold uppercase tracking-[0.22em] text-black">
         Blendfort Control Interno v1.0
       </footer>
     </div>

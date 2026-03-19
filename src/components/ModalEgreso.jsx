@@ -1,4 +1,3 @@
-// ModalEgreso.jsx
 import React, { useEffect, useMemo } from "react";
 import CustomSelect from "./CustomSelect";
 import { useAppContext } from "../context/AppContext";
@@ -22,11 +21,8 @@ const ModalEgreso = ({
 }) => {
   const { usuario, nombreUsuario, getProyectosAsignados } = useAppContext();
 
-  // return después de hooks (para no romper Rules of Hooks)
-  // (pero aquí podemos hacer la lógica antes y retornar luego)
   const esResidente = String(usuario || "").toLowerCase() === "residente";
 
-  // Categorías permitidas (excluye MANO DE OBRA)
   const categoriasSinManoObra = useMemo(() => {
     return (opcionesCategorias || [])
       .map((c) => norm(c))
@@ -34,41 +30,35 @@ const ModalEgreso = ({
       .filter((c) => c !== "MANO DE OBRA");
   }, [opcionesCategorias]);
 
-  //  proyectos permitidos para residente (PASO 2)
   const proyectosAsignados = useMemo(() => {
     if (!esResidente) return [];
     return (getProyectosAsignados?.(nombreUsuario) || []).map(norm).filter(Boolean);
   }, [esResidente, getProyectosAsignados, nombreUsuario]);
 
   const multiProyectoResidente = esResidente && proyectosAsignados.length > 1;
-  const proyectoFijoResidente = esResidente && proyectosAsignados.length === 1 ? proyectosAsignados[0] : "";
+  const proyectoFijoResidente =
+    esResidente && proyectosAsignados.length === 1 ? proyectosAsignados[0] : "";
 
-  // opciones finales de proyecto que se muestran en el select
   const opcionesProyectoFinal = useMemo(() => {
     if (esResidente) return proyectosAsignados;
-    // admin: usa lo que viene por props
     return (opcionesProyectos || []).map(norm).filter(Boolean);
   }, [esResidente, proyectosAsignados, opcionesProyectos]);
 
-  // Estado por defecto + forzar proyecto en residente
   useEffect(() => {
     if (!show) return;
 
-    // Estado por defecto
     if (!nuevoEgreso.estado) {
       setNuevoEgreso((prev) => ({ ...prev, estado: "PENDIENTE" }));
     }
 
-    //  Residente: fijar/proteger proyecto
     if (esResidente) {
       setNuevoEgreso((prev) => {
         const pActual = norm(prev?.proyecto);
-        // Si tiene 1 proyecto: lo fijamos siempre
+
         if (proyectoFijoResidente) {
           return { ...prev, proyecto: proyectoFijoResidente };
         }
 
-        // Si tiene varios: si el actual no está permitido, ponemos el primero
         if (multiProyectoResidente) {
           const first = proyectosAsignados[0] || "";
           if (!pActual || !proyectosAsignados.includes(pActual)) {
@@ -87,7 +77,6 @@ const ModalEgreso = ({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
       <div className="bg-white w-full max-w-2xl rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col my-auto animate-in fade-in zoom-in duration-300">
-        {/* HEADER */}
         <div className="relative pt-12 px-12 pb-6 flex justify-between items-end border-b border-black/5">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -114,11 +103,8 @@ const ModalEgreso = ({
           </button>
         </div>
 
-        {/* FORM */}
         <form onSubmit={onSave} className="p-12 pt-8 space-y-8">
-          {/* SECCIÓN 1: IDENTIFICACIÓN */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/*  PROYECTO: Admin siempre; Residente solo si multi */}
             {(!esResidente || multiProyectoResidente) ? (
               <CustomSelect
                 label="Proyecto"
@@ -134,7 +120,7 @@ const ModalEgreso = ({
                 <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
                   Proyecto
                 </label>
-                <div className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[11px] font-black uppercase border border-transparent">
+                <div className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black uppercase border border-transparent">
                   {proyectoFijoResidente || "SIN PROYECTO"}
                 </div>
               </div>
@@ -151,7 +137,6 @@ const ModalEgreso = ({
             />
           </div>
 
-          {/* SECCIÓN 2: PAGO + ESTADO */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <CustomSelect
               label="Pago"
@@ -172,28 +157,33 @@ const ModalEgreso = ({
             />
           </div>
 
-          {/* SECCIÓN 3: DETALLE DEL EGRESO */}
           <div className="space-y-8 animate-in slide-in-from-top-2 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">Fecha</label>
+                <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
+                  Fecha
+                </label>
                 <input
                   required
                   type="date"
-                  className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[11px] font-black outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
+                  className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
                   value={String(nuevoEgreso.fecha || "")}
                   onChange={(e) => setNuevoEgreso({ ...nuevoEgreso, fecha: e.target.value })}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">Concepto</label>
+                <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
+                  Concepto
+                </label>
                 <input
                   required
                   placeholder="¿QUÉ SE COMPRÓ?"
-                  className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
+                  className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black uppercase outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
                   value={String(nuevoEgreso.concepto || "")}
-                  onChange={(e) => setNuevoEgreso({ ...nuevoEgreso, concepto: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setNuevoEgreso({ ...nuevoEgreso, concepto: e.target.value.toUpperCase() })
+                  }
                 />
               </div>
             </div>
@@ -223,34 +213,47 @@ const ModalEgreso = ({
                 </label>
                 <textarea
                   placeholder="NOTAS RELEVANTES..."
-                  className="w-full bg-blendfort-fondo p-5 rounded-[2rem] text-[11px] font-black uppercase outline-none h-24 resize-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
+                  className="w-full bg-blendfort-fondo p-5 rounded-[2rem] text-[16px] md:text-[11px] font-black uppercase outline-none h-24 resize-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
                   value={String(nuevoEgreso.detalles || "")}
-                  onChange={(e) => setNuevoEgreso({ ...nuevoEgreso, detalles: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setNuevoEgreso({ ...nuevoEgreso, detalles: e.target.value.toUpperCase() })
+                  }
                 />
               </div>
 
               <div className="flex items-center justify-between px-8 py-5 bg-blendfort-fondo rounded-full border border-black/5">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${nuevoEgreso.tieneFactura ? "bg-blendfort-naranja animate-pulse" : "bg-black/20"}`}></div>
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      nuevoEgreso.tieneFactura ? "bg-blendfort-naranja animate-pulse" : "bg-black/20"
+                    }`}
+                  ></div>
                   <span className="text-[9px] font-black uppercase tracking-widest opacity-40">
                     ¿Posee Factura SRI?
                   </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setNuevoEgreso({ ...nuevoEgreso, tieneFactura: !nuevoEgreso.tieneFactura })}
-                  className={`w-14 h-7 rounded-full transition-all relative ${nuevoEgreso.tieneFactura ? "bg-blendfort-naranja" : "bg-black/10"}`}
+                  onClick={() =>
+                    setNuevoEgreso({ ...nuevoEgreso, tieneFactura: !nuevoEgreso.tieneFactura })
+                  }
+                  className={`w-14 h-7 rounded-full transition-all relative ${
+                    nuevoEgreso.tieneFactura ? "bg-blendfort-naranja" : "bg-black/10"
+                  }`}
                 >
-                  <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${nuevoEgreso.tieneFactura ? "left-8" : "left-1"}`}></div>
+                  <div
+                    className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                      nuevoEgreso.tieneFactura ? "left-8" : "left-1"
+                    }`}
+                  ></div>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* SUBMIT */}
           <button
             type="submit"
-            className="w-full bg-black text-white py-7 rounded-full font-black text-[11px] uppercase tracking-[0.5em] hover:bg-blendfort-naranja hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-4"
+            className="w-full bg-black text-white py-7 rounded-full font-black text-[16px] md:text-[11px] uppercase tracking-[0.3em] md:tracking-[0.5em] hover:bg-blendfort-naranja hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-4"
           >
             {editandoId ? "Actualizar Datos" : "Guardar Reporte"}
             <svg className="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">

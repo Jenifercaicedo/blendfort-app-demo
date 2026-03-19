@@ -1,6 +1,240 @@
 @import "tailwindcss";
 
 @theme {
-  --color-blendfort-fondo: #f5f6f3;
-  --color-blendfort-naranja: #fbb016;
+  --color-blendfort-fondo: #f5f7fb;
+  --color-blendfort-surface: #ffffff;
+  --color-blendfort-naranja: #f59e0b;
+  --color-blendfort-naranja-soft: #fff4db;
+  --color-blendfort-texto: #111827;
+  --color-blendfort-texto-suave: #6b7280;
+  --color-blendfort-borde: #e5e7eb;
+  --color-blendfort-success: #16a34a;
+  --color-blendfort-danger: #dc2626;
+  --color-blendfort-warning: #d97706;
+
+  /* INVERTIDAS */
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-blendfort-card: 0 8px 30px rgba(17, 24, 39, 0.06);
+  --shadow-blendfort-soft: 0 2px 10px rgba(17, 24, 39, 0.04);
+
+  --radius-blendfort-card: 1.5rem;
+  --radius-blendfort-input: 1rem;
+  --radius-blendfort-button: 999px;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--color-blendfort-fondo);
+    color: var(--color-blendfort-texto);
+    font-family: var(--font-sans);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+    color: var(--color-blendfort-texto);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  input,
+  select,
+  textarea {
+    background: #fff;
+    border: 1px solid var(--color-blendfort-borde);
+    color: var(--color-blendfort-texto);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--color-blendfort-naranja) 45%, white);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+  }
+
+  @media (max-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  .bf-page {
+    @apply min-h-screen bg-blendfort-fondo text-blendfort-texto;
+  }
+
+  .bf-shell {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .bf-card {
+    background: var(--color-blendfort-surface);
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: var(--radius-blendfort-card);
+    box-shadow: var(--shadow-blendfort-card);
+  }
+
+  .bf-card-soft {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-blendfort-soft);
+    backdrop-filter: blur(8px);
+  }
+
+  .bf-kpi-card {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: 1.1rem;
+    box-shadow: var(--shadow-blendfort-soft);
+  }
+
+  .bf-section-title {
+    font-family: var(--font-display);
+    letter-spacing: -0.04em;
+    color: var(--color-blendfort-texto);
+  }
+
+  .bf-eyebrow {
+    font-size: 0.7rem;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-blendfort-texto-suave);
+  }
+
+  .bf-input {
+    background: #fff;
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: var(--radius-blendfort-input);
+    min-height: 52px;
+    box-shadow: var(--shadow-blendfort-soft);
+  }
+
+  .bf-button-primary {
+    background: var(--color-blendfort-naranja);
+    color: white;
+    border-radius: var(--radius-blendfort-button);
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-blendfort-soft);
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease;
+  }
+
+  .bf-button-primary:hover {
+    background: #111827;
+  }
+
+  .bf-button-secondary {
+    background: #fff;
+    color: var(--color-blendfort-texto);
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: var(--radius-blendfort-button);
+    box-shadow: var(--shadow-blendfort-soft);
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .bf-button-secondary:hover {
+    border-color: #d1d5db;
+    background: #fff;
+  }
+
+  .bf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-blendfort-borde);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .bf-table-shell {
+    background: #fff;
+    border: 1px solid var(--color-blendfort-borde);
+    border-radius: 1.35rem;
+    box-shadow: var(--shadow-blendfort-soft);
+    overflow: hidden;
+  }
+
+  .bf-table-head {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--color-blendfort-borde);
+  }
+
+  .bf-muted {
+    color: var(--color-blendfort-texto-suave);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-ui {
+    font-family: var(--font-sans);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }

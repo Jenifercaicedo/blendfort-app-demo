@@ -13,7 +13,7 @@ const money = (n) => {
   return `$ ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-// ✅ helpers auditoría (compatibles con registros viejos)
+// helpers auditoría (compatibles con registros viejos)
 const normUp = (s) => String(s || "").toUpperCase().trim();
 
 const getCreadoPor = (egreso) => {
@@ -48,7 +48,7 @@ const EgresoDetailModal = ({ egreso, onClose, onEdit, onDelete }) => {
   const metodoPago = (egreso.metodoPago || "—").toUpperCase();
   const factura = egreso.factura === "si" || egreso.tieneFactura ? "SÍ" : "NO";
 
-  // ✅ Auditoría real (sin romper legacy)
+  //  Auditoría real (sin romper legacy)
   const creadoPor = getCreadoPor(egreso);
   const creadoRol = getCreadoRol(egreso);
   const actualizadoPor = getActualizadoPor(egreso);
@@ -88,7 +88,7 @@ const EgresoDetailModal = ({ egreso, onClose, onEdit, onDelete }) => {
             {proyecto}
           </h4>
 
-          {/* ✅ antes: residente; ahora: creado por */}
+          {/*  antes: residente; ahora: creado por */}
           <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50 mt-1">
             {creadoPor}
             {creadoRol ? <span className="ml-2 text-white/30">· {creadoRol}</span> : null}

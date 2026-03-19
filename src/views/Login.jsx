@@ -193,32 +193,32 @@ const Login = () => {
             <div>
               <label className="text-[10px] font-black uppercase ml-1 opacity-70">Nombre completo</label>
               <input
-                autoFocus
-                type="text"
-                value={nombre}
-                onChange={(e) => {
-                  setNombre(e.target.value);
-                  resetError();
-                }}
-                placeholder="Ej. Juan Pérez"
-                className="w-full mt-1 bg-blendfort-fondo border-2 border-transparent focus:border-blendfort-naranja outline-none p-4 rounded-xl font-bold transition-all"
-              />
+  autoFocus
+  type="text"
+  value={nombre}
+  onChange={(e) => {
+    setNombre(e.target.value);
+    resetError();
+  }}
+  placeholder="Ej. Juan Pérez"
+  className="w-full mt-1 bg-blendfort-fondo border-2 border-transparent focus:border-blendfort-naranja outline-none p-4 rounded-xl text-base md:text-[16px] font-bold transition-all"
+/>
             </div>
 
             <div>
               <label className="text-[10px] font-black uppercase ml-1 opacity-70">Contraseña</label>
               <div className="relative">
                 <input
-                  type={verPassword ? "text" : "password"}
-                  value={password}
-                  onChange={manejarCambioPassword}
-                  placeholder="••••••••"
-                  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl font-bold transition-all ${
-                    error.show
-                      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-                      : "border-transparent focus:border-blendfort-naranja"
-                  }`}
-                />
+  type={verPassword ? "text" : "password"}
+  value={password}
+  onChange={manejarCambioPassword}
+  placeholder="••••••••"
+  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
+    error.show
+      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+      : "border-transparent focus:border-blendfort-naranja"
+  }`}
+/>
                 <button
                   type="button"
                   onClick={() => setVerPassword(!verPassword)}
@@ -263,17 +263,17 @@ const Login = () => {
               <label className="text-[10px] font-black uppercase ml-1 opacity-70">Clave de Administrador</label>
               <div className="relative">
                 <input
-                  autoFocus
-                  type={verPassword ? "text" : "password"}
-                  value={password}
-                  onChange={manejarCambioPassword}
-                  placeholder="••••••••"
-                  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl font-bold transition-all ${
-                    error.show
-                      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-                      : "border-transparent focus:border-black"
-                  }`}
-                />
+  autoFocus
+  type={verPassword ? "text" : "password"}
+  value={password}
+  onChange={manejarCambioPassword}
+  placeholder="••••••••"
+  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
+    error.show
+      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+      : "border-transparent focus:border-black"
+  }`}
+/>
                 <button
                   type="button"
                   onClick={() => setVerPassword(!verPassword)}
