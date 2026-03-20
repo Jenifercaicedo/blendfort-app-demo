@@ -890,70 +890,79 @@ export const AppProvider = ({ children }) => {
      CRUD EGRESOS
   =========================== */
   const addEgreso = async (payload, customActor) => {
-    const a = customActor || actor;
+  const a = customActor || actor;
 
-    const egresoFinal = {
-      proyecto: norm(payload?.proyecto),
-      residente: norm(payload?.residente),
-      fecha: ensureISODate(payload?.fecha),
-      categoria: norm(payload?.categoria),
-      lugar: norm(payload?.lugar),
-      concepto: norm(payload?.concepto),
-      detalles: norm(payload?.detalles),
+  const egresoFinal = {
+    proyecto: norm(payload?.proyecto),
+    residente: norm(payload?.residente),
+    fecha: ensureISODate(payload?.fecha),
+    categoria: norm(payload?.categoria),
+    lugar: norm(payload?.lugar),
+    concepto: norm(payload?.concepto),
+    detalles: norm(payload?.detalles),
 
-      metodo_pago: norm(payload?.metodoPago || payload?.metodo_pago),
-      pagado_por: norm(payload?.pagadoPor || payload?.pagado_por),
+    metodo_pago: norm(payload?.metodoPago || payload?.metodo_pago),
+    pagado_por: norm(payload?.pagadoPor || payload?.pagado_por),
 
-      valor: safeNum(payload?.valor),
-      tiene_factura: Boolean(payload?.tieneFactura ?? payload?.tiene_factura),
-      factura: payload?.tieneFactura || payload?.tiene_factura ? "si" : "",
-      estado: norm(payload?.estado || "PENDIENTE"),
-      tipo_registro: norm(payload?.tipoRegistro || payload?.tipo_registro || "EGRESO"),
-      fuente_fondos: norm(payload?.fuenteFondos || payload?.fuente_fondos || "GENERAL"),
+    valor: safeNum(payload?.valor),
+    tiene_factura: Boolean(payload?.tieneFactura ?? payload?.tiene_factura),
+    factura: payload?.tieneFactura || payload?.tiene_factura ? "si" : "",
+    estado: norm(payload?.estado || "PENDIENTE"),
+    tipo_registro: norm(payload?.tipoRegistro || payload?.tipo_registro || "EGRESO"),
+    fuente_fondos: norm(payload?.fuenteFondos || payload?.fuente_fondos || "GENERAL"),
 
-      cargo: norm(payload?.cargo),
-      asistio: typeof payload?.asistio === "boolean" ? payload.asistio : null,
-      num_horas_extras: safeNum(payload?.numHorasExtras ?? payload?.num_horas_extras),
-      valores_pendientes: safeNum(payload?.valoresPendientes ?? payload?.valores_pendientes),
-      descuentos: safeNum(payload?.descuentos),
+    cargo: norm(payload?.cargo),
+    asistio: typeof payload?.asistio === "boolean" ? payload.asistio : null,
+    num_horas_extras: safeNum(payload?.numHorasExtras ?? payload?.num_horas_extras),
+    valores_pendientes: safeNum(payload?.valoresPendientes ?? payload?.valores_pendientes),
+    descuentos: safeNum(payload?.descuentos),
 
-      creado_por: norm(a?.name),
-      creado_por_rol: norm(a?.role),
-      creado_por_nombre: norm(a?.display),
-      actualizado_por: norm(a?.name),
-      actualizado_por_rol: norm(a?.role),
-    };
+    creado_por: norm(a?.name),
+    creado_por_rol: norm(a?.role),
+    creado_por_nombre: norm(a?.display),
+    actualizado_por: norm(a?.name),
+    actualizado_por_rol: norm(a?.role),
+  };
 
-    const { data, error } = await supabase
-      .from("egresos")
-      .insert([egresoFinal])
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from("egresos")
+    .insert([egresoFinal])
+    .select()
+    .single();
 
-    if (error) throw error;
+  if (error) throw error;
 
-    const normalizado = {
-      ...data,
-      metodoPago: data.metodo_pago ?? "",
-      pagadoPor: data.pagado_por ?? "",
-      tieneFactura:
-        typeof data.tiene_factura === "boolean"
-          ? data.tiene_factura
-          : data.factura === "si",
-      tipoRegistro: data.tipo_registro ?? "EGRESO",
-      numHorasExtras: data.num_horas_extras ?? 0,
-      valoresPendientes: data.valores_pendientes ?? 0,
-      creadoPor: data.creado_por ?? "",
-      creadoPorRol: data.creado_por_rol ?? "",
-      creadoPorNombre: data.creado_por_nombre ?? "",
-      actualizadoPor: data.actualizado_por ?? "",
-      actualizadoPorRol: data.actualizado_por_rol ?? "",
-      fuenteFondos: data.fuente_fondos ?? "GENERAL",
-    };
+  const normalizado = {
+    ...data,
+    metodoPago: data.metodo_pago ?? "",
+    pagadoPor: data.pagado_por ?? "",
+    tieneFactura:
+      typeof data.tiene_factura === "boolean"
+        ? data.tiene_factura
+        : data.factura === "si",
+    tipoRegistro: data.tipo_registro ?? "EGRESO",
+    numHorasExtras: data.num_horas_extras ?? 0,
+    valoresPendientes: data.valores_pendientes ?? 0,
+    creadoPor: data.creado_por ?? "",
+    creadoPorRol: data.creado_por_rol ?? "",
+    creadoPorNombre: data.creado_por_nombre ?? "",
+    actualizadoPor: data.actualizado_por ?? "",
+    actualizadoPorRol: data.actualizado_por_rol ?? "",
+    fuenteFondos: data.fuente_fondos ?? "GENERAL",
+  };
 
-    setEgresos((prev) => [normalizado, ...(prev || [])]);
+  setEgresos((prev) => [normalizado, ...(prev || [])]);
 
-    if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
+  // Caja chica: intentar descontar, pero sin romper el egreso si falla
+  if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
+    try {
+      const caja = getCajaChicaProyectoByProyecto(normalizado.proyecto);
+
+      if (!caja?.id) {
+        console.warn("El egreso se guardó, pero no existe caja chica activa para este proyecto.");
+        return normalizado;
+      }
+
       await registrarMovimientoCajaChica(
         {
           egresoId: normalizado.id,
@@ -965,10 +974,19 @@ export const AppProvider = ({ children }) => {
         },
         a
       );
+    } catch (movError) {
+      console.error(
+        "El egreso se guardó, pero falló el movimiento de caja chica:",
+        movError?.message,
+        movError?.details,
+        movError?.hint,
+        movError
+      );
     }
+  }
 
-    return normalizado;
-  };
+  return normalizado;
+};
 
   const updateEgreso = async (id, patch, customActor) => {
     const a = customActor || actor;

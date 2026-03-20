@@ -17,6 +17,7 @@ const normalize = (s) =>
     .trim();
 
 const iso10 = (d) => String(d || "").slice(0, 10);
+const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 const money = (n) =>
   `$ ${Number(n || 0).toLocaleString(undefined, {
@@ -225,17 +226,17 @@ const ResidentDashboard = () => {
      Acciones
   =========================== */
   const abrirModalNuevo = () => {
-    setEditandoId(null);
-    setNuevoEgreso({
-      ...initialForm,
-      residente: nombreUsuario,
-      proyecto: proyectoActivo || proyectosAsignados[0] || "",
-      fecha: iso10(new Date()),
-      estado: "PENDIENTE",
-      tipoRegistro: "EGRESO",
-    });
-    setShowModalNuevo(true);
-  };
+  setEditandoId(null);
+  setNuevoEgreso({
+    ...initialForm,
+    residente: nombreUsuario,
+    proyecto: proyectoActivo || proyectosAsignados[0] || "",
+    fecha: hoyISO(),
+    estado: "PENDIENTE",
+    tipoRegistro: "EGRESO",
+  });
+  setShowModalNuevo(true);
+};
 
   const onEditSafe = (reg) => {
     if (!canEdit(reg)) {
