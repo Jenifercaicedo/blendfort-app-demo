@@ -10,7 +10,8 @@ const norm = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const iso10 = (d) => String(d || "").slice(0, 10);
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+
 const money = (n) =>
   `$ ${Number(n || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -43,7 +44,7 @@ const CajaChicaView = ({ onBack }) => {
   const [data, setData] = useState({
     proyecto: "",
     residente: "",
-    fechaDesembolso: iso10(new Date()),
+    fechaDesembolso: hoyISO(),
     monto: "",
     observacion: "",
   });
@@ -68,7 +69,7 @@ const CajaChicaView = ({ onBack }) => {
     return (resumenes || []).filter((r) => {
       const okProyecto = !filtroProyecto || norm(r.proyecto) === norm(filtroProyecto);
       const okEstado = !filtroEstado || norm(r.estado) === norm(filtroEstado);
-      const okFecha = !filtroFecha || iso10(r.fechaUltimoDesembolso) === iso10(filtroFecha);
+      const okFecha = !filtroFecha || String(r.fechaUltimoDesembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
       return okProyecto && okEstado && okFecha;
     });
   }, [resumenes, filtroProyecto, filtroEstado, filtroFecha]);
@@ -102,7 +103,9 @@ const CajaChicaView = ({ onBack }) => {
   const historialFiltrado = useMemo(() => {
     return (cajaChicaDesembolsos || []).filter((d) => {
       const okProyecto = !filtroProyecto || norm(d.proyecto) === norm(filtroProyecto);
-      const okFecha = !filtroFecha || iso10(d.fechaDesembolso || d.fecha_desembolso) === iso10(filtroFecha);
+      const okFecha =
+        !filtroFecha ||
+        String(d.fechaDesembolso || d.fecha_desembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
       return okProyecto && okFecha;
     });
   }, [cajaChicaDesembolsos, filtroProyecto, filtroFecha]);
@@ -124,7 +127,7 @@ const CajaChicaView = ({ onBack }) => {
     setData({
       proyecto: "",
       residente: "",
-      fechaDesembolso: iso10(new Date()),
+      fechaDesembolso: hoyISO(),
       monto: "",
       observacion: "",
     });
@@ -233,7 +236,16 @@ const CajaChicaView = ({ onBack }) => {
 
             <button
               type="button"
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setData({
+                  proyecto: "",
+                  residente: "",
+                  fechaDesembolso: hoyISO(),
+                  monto: "",
+                  observacion: "",
+                });
+                setShowModal(true);
+              }}
               className="group flex items-center gap-3 px-7 py-3 rounded-full bg-blendfort-naranja text-white shadow-sm hover:bg-black transition-all active:scale-95"
               aria-label="Nuevo desembolso"
               title="Nuevo desembolso"
@@ -436,7 +448,7 @@ const CajaChicaView = ({ onBack }) => {
                                 setData({
                                   proyecto: item.proyecto,
                                   residente: item.residente,
-                                  fechaDesembolso: iso10(new Date()),
+                                  fechaDesembolso: hoyISO(),
                                   monto: "",
                                   observacion: "",
                                 });
