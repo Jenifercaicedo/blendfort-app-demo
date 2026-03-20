@@ -9,9 +9,7 @@ const norm = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const iso10 = (d) => String(d || "").slice(0, 10);
-
-const hoyISO = () => iso10(new Date());
+const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 const ModalCajaChica = ({
   show,
@@ -127,7 +125,7 @@ const ModalCajaChica = ({
                 required
                 type="date"
                 className="w-full bg-blendfort-fondo px-4 py-3.5 md:p-4.5 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black outline-none border border-transparent focus:bg-white focus:border-black/5 transition-all"
-                value={String(data?.fechaDesembolso || "")}
+                value={data?.fechaDesembolso || ""}
                 onChange={(e) =>
                   setData((prev) => ({
                     ...prev,
