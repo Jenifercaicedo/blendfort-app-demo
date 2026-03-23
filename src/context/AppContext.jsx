@@ -673,218 +673,233 @@ export const AppProvider = ({ children }) => {
      CAJA CHICA: DESEMBOLSO
   =========================== */
   const registrarDesembolsoCajaChica = async (payload, customActor) => {
-    const a = customActor || actor;
+  const a = customActor || actor;
 
-    const proyectoN = norm(payload?.proyecto);
-    const fechaDesembolso = ensureISODate(payload?.fechaDesembolso || payload?.fecha_desembolso);
-    const monto = safeNum(payload?.monto ?? payload?.montoDesembolsado ?? payload?.monto_desembolsado);
+  const proyectoN = norm(payload?.proyecto);
+  const fechaDesembolso = ensureISODate(
+    payload?.fechaDesembolso || payload?.fecha_desembolso
+  );
+  const monto = safeNum(
+    payload?.monto ?? payload?.montoDesembolsado ?? payload?.monto_desembolsado
+  );
 
-    const proyectoObj = (proyectos || []).find((p) => norm(p?.nombre) === proyectoN) || null;
-    const residenteAuto = norm(payload?.residente || proyectoObj?.residente);
+  const proyectoObj =
+    (proyectos || []).find((p) => norm(p?.nombre) === proyectoN) || null;
 
-    const existente = getCajaChicaProyectoByProyecto(proyectoN);
+  // Buscar el estado actual en la base, no solo en React state
+  const { data: cajaActual, error: cajaActualError } = await supabase
+    .from("caja_chica_proyecto")
+    .select("*")
+    .eq("proyecto", proyectoN)
+    .maybeSingle();
 
-    const saldoAnterior = safeNum(existente?.saldoActual ?? existente?.saldo_actual);
-    const estadoAnterior = norm(existente?.estado);
-    const estadoNuevoCalc = getCajaChicaEstado(monto, 0);
+  if (cajaActualError) throw cajaActualError;
 
-    const desembolsoFinal = {
-      proyecto: proyectoN,
-      residente: residenteAuto,
-      fecha_desembolso: fechaDesembolso,
-      monto_desembolsado: monto,
-      saldo_final_antes_reposicion: saldoAnterior,
-      estado_antes: estadoAnterior || "SIN FONDO",
-      estado_nuevo: estadoNuevoCalc.estado,
-      observacion: norm(payload?.observacion),
-      creado_por: norm(a?.name),
-      creado_por_rol: norm(a?.role),
-    };
+  const residenteAuto = norm(
+    payload?.residente || cajaActual?.residente || proyectoObj?.residente
+  );
 
-    const { data: desembolsoData, error: desembolsoError } = await supabase
-      .from("caja_chica_desembolsos")
-      .insert([desembolsoFinal])
-      .select()
-      .single();
+  const saldoAnterior = safeNum(cajaActual?.saldo_actual);
+  const estadoAnterior = norm(cajaActual?.estado);
+  const estadoNuevoCalc = getCajaChicaEstado(monto, 0);
 
-    if (desembolsoError) throw desembolsoError;
-
-    let cajaData = null;
-
-    if (existente?.id) {
-      const updatePayload = {
-        proyecto: proyectoN,
-        residente: residenteAuto,
-        monto_actual_asignado: monto,
-        gastado_actual: 0,
-        saldo_actual: monto,
-        estado: estadoNuevoCalc.estado,
-        fecha_ultimo_desembolso: fechaDesembolso,
-        observacion: norm(payload?.observacion),
-        creado_por: norm(a?.name),
-        creado_por_rol: norm(a?.role),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from("caja_chica_proyecto")
-        .update(updatePayload)
-        .eq("id", existente.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      cajaData = data;
-    } else {
-      const insertPayload = {
-        proyecto: proyectoN,
-        residente: residenteAuto,
-        monto_actual_asignado: monto,
-        gastado_actual: 0,
-        saldo_actual: monto,
-        estado: estadoNuevoCalc.estado,
-        fecha_ultimo_desembolso: fechaDesembolso,
-        observacion: norm(payload?.observacion),
-        creado_por: norm(a?.name),
-        creado_por_rol: norm(a?.role),
-      };
-
-      const { data, error } = await supabase
-        .from("caja_chica_proyecto")
-        .insert([insertPayload])
-        .select()
-        .single();
-
-      if (error) throw error;
-      cajaData = data;
-    }
-
-    const cajaNormalizada = {
-      ...cajaData,
-      proyecto: norm(cajaData.proyecto),
-      residente: norm(cajaData.residente),
-      montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
-      gastadoActual: safeNum(cajaData.gastado_actual),
-      saldoActual: safeNum(cajaData.saldo_actual),
-      fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
-      creadoPor: cajaData.creado_por ?? "",
-      creadoPorRol: cajaData.creado_por_rol ?? "",
-    };
-
-    const desembolsoNormalizado = {
-      ...desembolsoData,
-      proyecto: norm(desembolsoData.proyecto),
-      residente: norm(desembolsoData.residente),
-      fechaDesembolso: desembolsoData.fecha_desembolso || "",
-      montoDesembolsado: safeNum(desembolsoData.monto_desembolsado),
-      saldoFinalAntesReposicion: safeNum(desembolsoData.saldo_final_antes_reposicion),
-      estadoAntes: norm(desembolsoData.estado_antes),
-      estadoNuevo: norm(desembolsoData.estado_nuevo),
-      creadoPor: desembolsoData.creado_por ?? "",
-      creadoPorRol: desembolsoData.creado_por_rol ?? "",
-    };
-
-    setCajaChicaProyecto((prev) => {
-      const exists = (prev || []).some((c) => c.id === cajaNormalizada.id);
-      if (exists) {
-        return (prev || []).map((c) => (c.id === cajaNormalizada.id ? cajaNormalizada : c));
-      }
-      return [cajaNormalizada, ...(prev || [])];
-    });
-
-    setCajaChicaDesembolsos((prev) => [desembolsoNormalizado, ...(prev || [])]);
-
-    return {
-      caja: cajaNormalizada,
-      desembolso: desembolsoNormalizado,
-    };
+  const desembolsoFinal = {
+    proyecto: proyectoN,
+    residente: residenteAuto,
+    fecha_desembolso: fechaDesembolso,
+    monto_desembolsado: monto,
+    saldo_final_antes_reposicion: saldoAnterior,
+    estado_antes: estadoAnterior || "SIN FONDO",
+    estado_nuevo: estadoNuevoCalc.estado,
+    observacion: norm(payload?.observacion),
+    creado_por: norm(a?.name),
+    creado_por_rol: norm(a?.role),
   };
+
+  const { data: desembolsoData, error: desembolsoError } = await supabase
+    .from("caja_chica_desembolsos")
+    .insert([desembolsoFinal])
+    .select()
+    .single();
+
+  if (desembolsoError) throw desembolsoError;
+
+  const cajaPayload = {
+    proyecto: proyectoN,
+    residente: residenteAuto,
+    monto_actual_asignado: monto,
+    gastado_actual: 0,
+    saldo_actual: monto,
+    estado: estadoNuevoCalc.estado,
+    fecha_ultimo_desembolso: fechaDesembolso,
+    observacion: norm(payload?.observacion),
+    creado_por: norm(a?.name),
+    creado_por_rol: norm(a?.role),
+    updated_at: new Date().toISOString(),
+  };
+
+  // Upsert: si existe por proyecto, actualiza; si no existe, inserta
+  const { data: cajaData, error: cajaError } = await supabase
+    .from("caja_chica_proyecto")
+    .upsert([cajaPayload], { onConflict: "proyecto" })
+    .select()
+    .single();
+
+  if (cajaError) throw cajaError;
+
+  const cajaNormalizada = {
+    ...cajaData,
+    proyecto: norm(cajaData.proyecto),
+    residente: norm(cajaData.residente),
+    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
+    gastadoActual: safeNum(cajaData.gastado_actual),
+    saldoActual: safeNum(cajaData.saldo_actual),
+    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
+    creadoPor: cajaData.creado_por ?? "",
+    creadoPorRol: cajaData.creado_por_rol ?? "",
+  };
+
+  const desembolsoNormalizado = {
+    ...desembolsoData,
+    proyecto: norm(desembolsoData.proyecto),
+    residente: norm(desembolsoData.residente),
+    fechaDesembolso: desembolsoData.fecha_desembolso || "",
+    montoDesembolsado: safeNum(desembolsoData.monto_desembolsado),
+    saldoFinalAntesReposicion: safeNum(desembolsoData.saldo_final_antes_reposicion),
+    estadoAntes: norm(desembolsoData.estado_antes),
+    estadoNuevo: norm(desembolsoData.estado_nuevo),
+    creadoPor: desembolsoData.creado_por ?? "",
+    creadoPorRol: desembolsoData.creado_por_rol ?? "",
+  };
+
+  setCajaChicaProyecto((prev) => {
+    const exists = (prev || []).some((c) => c.id === cajaNormalizada.id);
+    if (exists) {
+      return (prev || []).map((c) =>
+        c.id === cajaNormalizada.id ? cajaNormalizada : c
+      );
+    }
+    return [cajaNormalizada, ...(prev || [])];
+  });
+
+  setCajaChicaDesembolsos((prev) => [desembolsoNormalizado, ...(prev || [])]);
+
+  return {
+    caja: cajaNormalizada,
+    desembolso: desembolsoNormalizado,
+  };
+};
 
   /* ===========================
      CAJA CHICA: MOVIMIENTO
   =========================== */
   const registrarMovimientoCajaChica = async (payload, customActor) => {
-    const a = customActor || actor;
+  const a = customActor || actor;
 
-    const proyectoN = norm(payload?.proyecto);
-    const caja = getCajaChicaProyectoByProyecto(proyectoN);
+  const proyectoN = norm(payload?.proyecto);
 
-    if (!caja?.id) {
-      throw new Error("Este proyecto no tiene caja chica activa.");
+  // 1) Buscar la caja chica real en la base, no en el estado local
+  const { data: caja, error: cajaLookupError } = await supabase
+    .from("caja_chica_proyecto")
+    .select("*")
+    .eq("proyecto", proyectoN)
+    .maybeSingle();
+
+  if (cajaLookupError) throw cajaLookupError;
+
+  if (!caja?.id) {
+    throw new Error("Este proyecto no tiene caja chica activa.");
+  }
+
+  const valorMovimiento = safeNum(payload?.valor);
+  const fechaMovimiento = ensureISODate(payload?.fecha);
+
+  const movimientoFinal = {
+    caja_chica_proyecto_id: caja.id,
+    egreso_id: payload?.egresoId ?? payload?.egreso_id ?? null,
+    proyecto: proyectoN,
+    fecha: fechaMovimiento,
+    concepto: norm(payload?.concepto),
+    categoria: norm(payload?.categoria),
+    valor: valorMovimiento,
+    creado_por: norm(a?.name),
+    creado_por_rol: norm(a?.role),
+  };
+
+  const { data: movData, error: movError } = await supabase
+    .from("movimientos_caja_chica")
+    .insert([movimientoFinal])
+    .select()
+    .single();
+
+  if (movError) throw movError;
+
+  const nuevoGastado =
+    safeNum(caja.gastado_actual) + valorMovimiento;
+
+  const estadoCalc = getCajaChicaEstado(
+    safeNum(caja.monto_actual_asignado),
+    nuevoGastado
+  );
+
+  const updateCaja = {
+    gastado_actual: nuevoGastado,
+    saldo_actual: estadoCalc.saldo,
+    estado: estadoCalc.estado,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: cajaData, error: cajaError } = await supabase
+    .from("caja_chica_proyecto")
+    .update(updateCaja)
+    .eq("id", caja.id)
+    .select()
+    .single();
+
+  if (cajaError) throw cajaError;
+
+  const movimientoNormalizado = {
+    ...movData,
+    proyecto: norm(movData.proyecto),
+    fecha: movData.fecha || "",
+    concepto: norm(movData.concepto),
+    categoria: norm(movData.categoria),
+    valor: safeNum(movData.valor),
+    creadoPor: movData.creado_por ?? "",
+    creadoPorRol: movData.creado_por_rol ?? "",
+  };
+
+  const cajaNormalizada = {
+    ...cajaData,
+    proyecto: norm(cajaData.proyecto),
+    residente: norm(cajaData.residente),
+    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
+    gastadoActual: safeNum(cajaData.gastado_actual),
+    saldoActual: safeNum(cajaData.saldo_actual),
+    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
+    creadoPor: cajaData.creado_por ?? "",
+    creadoPorRol: cajaData.creado_por_rol ?? "",
+  };
+
+  setMovimientosCajaChica((prev) => [movimientoNormalizado, ...(prev || [])]);
+
+  setCajaChicaProyecto((prev) => {
+    const existe = (prev || []).some((c) => c.id === cajaNormalizada.id);
+
+    if (!existe) {
+      return [cajaNormalizada, ...(prev || [])];
     }
 
-    const movimientoFinal = {
-      caja_chica_proyecto_id: caja.id,
-      egreso_id: payload?.egresoId ?? payload?.egreso_id ?? null,
-      proyecto: proyectoN,
-      fecha: ensureISODate(payload?.fecha),
-      concepto: norm(payload?.concepto),
-      categoria: norm(payload?.categoria),
-      valor: safeNum(payload?.valor),
-      creado_por: norm(a?.name),
-      creado_por_rol: norm(a?.role),
-    };
-
-    const { data: movData, error: movError } = await supabase
-      .from("movimientos_caja_chica")
-      .insert([movimientoFinal])
-      .select()
-      .single();
-
-    if (movError) throw movError;
-
-    const nuevoGastado = safeNum(caja.gastadoActual ?? caja.gastado_actual) + safeNum(movimientoFinal.valor);
-    const estadoCalc = getCajaChicaEstado(caja.montoActualAsignado ?? caja.monto_actual_asignado, nuevoGastado);
-
-    const updateCaja = {
-      gastado_actual: nuevoGastado,
-      saldo_actual: estadoCalc.saldo,
-      estado: estadoCalc.estado,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data: cajaData, error: cajaError } = await supabase
-      .from("caja_chica_proyecto")
-      .update(updateCaja)
-      .eq("id", caja.id)
-      .select()
-      .single();
-
-    if (cajaError) throw cajaError;
-
-    const movimientoNormalizado = {
-      ...movData,
-      proyecto: norm(movData.proyecto),
-      fecha: movData.fecha || "",
-      concepto: norm(movData.concepto),
-      categoria: norm(movData.categoria),
-      valor: safeNum(movData.valor),
-      creadoPor: movData.creado_por ?? "",
-      creadoPorRol: movData.creado_por_rol ?? "",
-    };
-
-    const cajaNormalizada = {
-      ...cajaData,
-      proyecto: norm(cajaData.proyecto),
-      residente: norm(cajaData.residente),
-      montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
-      gastadoActual: safeNum(cajaData.gastado_actual),
-      saldoActual: safeNum(cajaData.saldo_actual),
-      fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
-      creadoPor: cajaData.creado_por ?? "",
-      creadoPorRol: cajaData.creado_por_rol ?? "",
-    };
-
-    setMovimientosCajaChica((prev) => [movimientoNormalizado, ...(prev || [])]);
-    setCajaChicaProyecto((prev) =>
-      (prev || []).map((c) => (c.id === cajaNormalizada.id ? cajaNormalizada : c))
+    return (prev || []).map((c) =>
+      c.id === cajaNormalizada.id ? cajaNormalizada : c
     );
+  });
 
-    return {
-      movimiento: movimientoNormalizado,
-      caja: cajaNormalizada,
-    };
+  return {
+    movimiento: movimientoNormalizado,
+    caja: cajaNormalizada,
   };
+};
 
   /* ===========================
      CRUD EGRESOS
@@ -953,37 +968,30 @@ export const AppProvider = ({ children }) => {
 
   setEgresos((prev) => [normalizado, ...(prev || [])]);
 
-  // Caja chica: intentar descontar, pero sin romper el egreso si falla
-  if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
-    try {
-      const caja = getCajaChicaProyectoByProyecto(normalizado.proyecto);
-
-      if (!caja?.id) {
-        console.warn("El egreso se guardó, pero no existe caja chica activa para este proyecto.");
-        return normalizado;
-      }
-
-      await registrarMovimientoCajaChica(
-        {
-          egresoId: normalizado.id,
-          proyecto: normalizado.proyecto,
-          fecha: normalizado.fecha,
-          concepto: normalizado.concepto,
-          categoria: normalizado.categoria,
-          valor: normalizado.valor,
-        },
-        a
-      );
-    } catch (movError) {
-      console.error(
-        "El egreso se guardó, pero falló el movimiento de caja chica:",
-        movError?.message,
-        movError?.details,
-        movError?.hint,
-        movError
-      );
-    }
+ // Caja chica: intentar descontar, pero sin romper el egreso si falla
+if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
+  try {
+    await registrarMovimientoCajaChica(
+      {
+        egresoId: normalizado.id,
+        proyecto: normalizado.proyecto,
+        fecha: normalizado.fecha,
+        concepto: normalizado.concepto,
+        categoria: normalizado.categoria,
+        valor: normalizado.valor,
+      },
+      a
+    );
+  } catch (movError) {
+    console.error(
+      "El egreso se guardó, pero falló el movimiento de caja chica:",
+      movError?.message,
+      movError?.details,
+      movError?.hint,
+      movError
+    );
   }
+}
 
   return normalizado;
 };
