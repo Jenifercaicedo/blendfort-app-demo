@@ -506,13 +506,32 @@ export const AppProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    cargarProyectos();
-    cargarEgresos();
-    cargarPersonal();
-    cargarCajaChicaProyecto();
-    cargarCajaChicaDesembolsos();
-    cargarMovimientosCajaChica();
-  }, []);
+  if (authLoading) return;
+
+  if (!usuario) {
+    setProyectos([]);
+    setEgresos([]);
+    setPersonal([]);
+    setCajaChicaProyecto([]);
+    setCajaChicaDesembolsos([]);
+    setMovimientosCajaChica([]);
+
+    setLoadingProyectos(false);
+    setLoadingEgresos(false);
+    setLoadingPersonal(false);
+    setLoadingCajaChicaProyecto(false);
+    setLoadingCajaChicaDesembolsos(false);
+    setLoadingMovimientosCajaChica(false);
+    return;
+  }
+
+  cargarProyectos();
+  cargarEgresos();
+  cargarPersonal();
+  cargarCajaChicaProyecto();
+  cargarCajaChicaDesembolsos();
+  cargarMovimientosCajaChica();
+}, [authLoading, usuario]);
 
   /* ===========================
      CRUD PROYECTOS
