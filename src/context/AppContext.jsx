@@ -89,6 +89,77 @@ const getCajaChicaEstado = (montoAsignado, gastadoActual) => {
   };
 };
 
+const recalcularCajaChicaProyecto = async (proyecto) => {
+  const proyectoN = norm(proyecto);
+  if (!proyectoN) return null;
+
+  const { data: caja, error: cajaError } = await supabase
+    .from("caja_chica_proyecto")
+    .select("*")
+    .eq("proyecto", proyectoN)
+    .maybeSingle();
+
+  if (cajaError) throw cajaError;
+  if (!caja?.id) return null;
+
+  const { data: movimientos, error: movimientosError } = await supabase
+    .from("movimientos_caja_chica")
+    .select("valor")
+    .eq("caja_chica_proyecto_id", caja.id);
+
+  if (movimientosError) throw movimientosError;
+
+  const gastadoActual = (movimientos || []).reduce(
+    (acc, m) => acc + safeNum(m?.valor),
+    0
+  );
+
+  const estadoCalc = getCajaChicaEstado(
+    safeNum(caja.monto_actual_asignado),
+    gastadoActual
+  );
+
+  const { data: cajaData, error: updateError } = await supabase
+    .from("caja_chica_proyecto")
+    .update({
+      gastado_actual: gastadoActual,
+      saldo_actual: estadoCalc.saldo,
+      estado: estadoCalc.estado,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", caja.id)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  const cajaNormalizada = {
+    ...cajaData,
+    proyecto: norm(cajaData.proyecto),
+    residente: norm(cajaData.residente),
+    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
+    gastadoActual: safeNum(cajaData.gastado_actual),
+    saldoActual: safeNum(cajaData.saldo_actual),
+    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
+    creadoPor: cajaData.creado_por ?? "",
+    creadoPorRol: cajaData.creado_por_rol ?? "",
+  };
+
+  setCajaChicaProyecto((prev) => {
+    const existe = (prev || []).some((c) => c.id === cajaNormalizada.id);
+
+    if (!existe) {
+      return [cajaNormalizada, ...(prev || [])];
+    }
+
+    return (prev || []).map((c) =>
+      c.id === cajaNormalizada.id ? cajaNormalizada : c
+    );
+  });
+
+  return cajaNormalizada;
+};
+
 /* ===========================
    Context Provider
 =========================== */
@@ -997,79 +1068,228 @@ if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
 };
 
   const updateEgreso = async (id, patch, customActor) => {
-    const a = customActor || actor;
+  const a = customActor || actor;
 
-    const egresoPatch = {
-      proyecto: norm(patch?.proyecto),
-      residente: norm(patch?.residente),
-      fecha: ensureISODate(patch?.fecha),
-      categoria: norm(patch?.categoria),
-      lugar: norm(patch?.lugar),
-      concepto: norm(patch?.concepto),
-      detalles: norm(patch?.detalles),
+  // 1) Leer el egreso actual real antes de editar
+  const { data: egresoAnterior, error: egresoAnteriorError } = await supabase
+    .from("egresos")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-      metodo_pago: norm(patch?.metodoPago || patch?.metodo_pago),
-      pagado_por: norm(patch?.pagadoPor || patch?.pagado_por),
+  if (egresoAnteriorError) throw egresoAnteriorError;
 
-      valor: safeNum(patch?.valor),
-      tiene_factura: Boolean(patch?.tieneFactura ?? patch?.tiene_factura),
-      factura: patch?.tieneFactura || patch?.tiene_factura ? "si" : "",
-      estado: norm(patch?.estado || "PENDIENTE"),
-      tipo_registro: norm(patch?.tipoRegistro || patch?.tipo_registro || "EGRESO"),
-      fuente_fondos: norm(patch?.fuenteFondos || patch?.fuente_fondos || "GENERAL"),
+  const fuenteAnterior = norm(
+    egresoAnterior?.fuente_fondos ?? egresoAnterior?.fuenteFondos ?? "GENERAL"
+  );
+  const proyectoAnterior = norm(egresoAnterior?.proyecto);
 
-      cargo: norm(patch?.cargo),
-      asistio: typeof patch?.asistio === "boolean" ? patch.asistio : null,
-      num_horas_extras: safeNum(patch?.numHorasExtras ?? patch?.num_horas_extras),
-      valores_pendientes: safeNum(patch?.valoresPendientes ?? patch?.valores_pendientes),
-      descuentos: safeNum(patch?.descuentos),
+  const egresoPatch = {
+    proyecto: norm(patch?.proyecto),
+    residente: norm(patch?.residente),
+    fecha: ensureISODate(patch?.fecha),
+    categoria: norm(patch?.categoria),
+    lugar: norm(patch?.lugar),
+    concepto: norm(patch?.concepto),
+    detalles: norm(patch?.detalles),
 
-      actualizado_por: norm(a?.name),
-      actualizado_por_rol: norm(a?.role),
-    };
+    metodo_pago: norm(patch?.metodoPago || patch?.metodo_pago),
+    pagado_por: norm(patch?.pagadoPor || patch?.pagado_por),
 
-    const { data, error } = await supabase
-      .from("egresos")
-      .update(egresoPatch)
-      .eq("id", id)
-      .select()
-      .single();
+    valor: safeNum(patch?.valor),
+    tiene_factura: Boolean(patch?.tieneFactura ?? patch?.tiene_factura),
+    factura: patch?.tieneFactura || patch?.tiene_factura ? "si" : "",
+    estado: norm(patch?.estado || "PENDIENTE"),
+    tipo_registro: norm(patch?.tipoRegistro || patch?.tipo_registro || "EGRESO"),
+    fuente_fondos: norm(patch?.fuenteFondos || patch?.fuente_fondos || "GENERAL"),
 
-    if (error) throw error;
+    cargo: norm(patch?.cargo),
+    asistio: typeof patch?.asistio === "boolean" ? patch.asistio : null,
+    num_horas_extras: safeNum(patch?.numHorasExtras ?? patch?.num_horas_extras),
+    valores_pendientes: safeNum(patch?.valoresPendientes ?? patch?.valores_pendientes),
+    descuentos: safeNum(patch?.descuentos),
 
-    const normalizado = {
-      ...data,
-      metodoPago: data.metodo_pago ?? "",
-      pagadoPor: data.pagado_por ?? "",
-      tieneFactura:
-        typeof data.tiene_factura === "boolean"
-          ? data.tiene_factura
-          : data.factura === "si",
-      tipoRegistro: data.tipo_registro ?? "EGRESO",
-      numHorasExtras: data.num_horas_extras ?? 0,
-      valoresPendientes: data.valores_pendientes ?? 0,
-      creadoPor: data.creado_por ?? "",
-      creadoPorRol: data.creado_por_rol ?? "",
-      creadoPorNombre: data.creado_por_nombre ?? "",
-      actualizadoPor: data.actualizado_por ?? "",
-      actualizadoPorRol: data.actualizado_por_rol ?? "",
-      fuenteFondos: data.fuente_fondos ?? "GENERAL",
-    };
-
-    setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
-    return normalizado;
+    actualizado_por: norm(a?.name),
+    actualizado_por_rol: norm(a?.role),
   };
+
+  const fuenteNueva = norm(egresoPatch.fuente_fondos);
+  const proyectoNuevo = norm(egresoPatch.proyecto);
+
+  // 2) Si el egreso editado quedará usando caja chica,
+  // validar antes que sí exista una caja activa en ese proyecto
+  let cajaDestino = null;
+
+  if (fuenteNueva === "CAJA_CHICA") {
+    const { data: cajaData, error: cajaDestinoError } = await supabase
+      .from("caja_chica_proyecto")
+      .select("*")
+      .eq("proyecto", proyectoNuevo)
+      .maybeSingle();
+
+    if (cajaDestinoError) throw cajaDestinoError;
+
+    if (!cajaData?.id) {
+      throw new Error("No existe caja chica activa para el proyecto seleccionado.");
+    }
+
+    cajaDestino = cajaData;
+  }
+
+  // 3) Actualizar el egreso
+  const { data, error } = await supabase
+    .from("egresos")
+    .update(egresoPatch)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // 4) Buscar si ya existe movimiento asociado a este egreso
+  const { data: movimientoExistente, error: movimientoExistenteError } = await supabase
+    .from("movimientos_caja_chica")
+    .select("*")
+    .eq("egreso_id", id)
+    .maybeSingle();
+
+  if (movimientoExistenteError) throw movimientoExistenteError;
+
+  const proyectosARecalcular = new Set();
+
+  if (fuenteAnterior === "CAJA_CHICA") {
+    proyectosARecalcular.add(proyectoAnterior);
+  }
+
+  if (fuenteNueva === "CAJA_CHICA") {
+    proyectosARecalcular.add(proyectoNuevo);
+  }
+
+  // 5) Reconciliar caja chica según el cambio
+  if (fuenteAnterior === "CAJA_CHICA" && fuenteNueva === "CAJA_CHICA") {
+    if (movimientoExistente?.id) {
+      const { error: updateMovimientoError } = await supabase
+        .from("movimientos_caja_chica")
+        .update({
+          caja_chica_proyecto_id: cajaDestino.id,
+          proyecto: proyectoNuevo,
+          fecha: ensureISODate(data.fecha),
+          concepto: norm(data.concepto),
+          categoria: norm(data.categoria),
+          valor: safeNum(data.valor),
+        })
+        .eq("id", movimientoExistente.id);
+
+      if (updateMovimientoError) throw updateMovimientoError;
+    } else {
+      const { error: insertMovimientoError } = await supabase
+        .from("movimientos_caja_chica")
+        .insert([
+          {
+            caja_chica_proyecto_id: cajaDestino.id,
+            egreso_id: data.id,
+            proyecto: proyectoNuevo,
+            fecha: ensureISODate(data.fecha),
+            concepto: norm(data.concepto),
+            categoria: norm(data.categoria),
+            valor: safeNum(data.valor),
+            creado_por: norm(a?.name),
+            creado_por_rol: norm(a?.role),
+          },
+        ]);
+
+      if (insertMovimientoError) throw insertMovimientoError;
+    }
+  } else if (fuenteAnterior !== "CAJA_CHICA" && fuenteNueva === "CAJA_CHICA") {
+    const { error: insertMovimientoError } = await supabase
+      .from("movimientos_caja_chica")
+      .insert([
+        {
+          caja_chica_proyecto_id: cajaDestino.id,
+          egreso_id: data.id,
+          proyecto: proyectoNuevo,
+          fecha: ensureISODate(data.fecha),
+          concepto: norm(data.concepto),
+          categoria: norm(data.categoria),
+          valor: safeNum(data.valor),
+          creado_por: norm(a?.name),
+          creado_por_rol: norm(a?.role),
+        },
+      ]);
+
+    if (insertMovimientoError) throw insertMovimientoError;
+  } else if (fuenteAnterior === "CAJA_CHICA" && fuenteNueva !== "CAJA_CHICA") {
+    if (movimientoExistente?.id) {
+      const { error: deleteMovimientoError } = await supabase
+        .from("movimientos_caja_chica")
+        .delete()
+        .eq("id", movimientoExistente.id);
+
+      if (deleteMovimientoError) throw deleteMovimientoError;
+    }
+  }
+
+  // 6) Recalcular las cajas afectadas con base en movimientos reales
+  const proyectosValidos = [...proyectosARecalcular].filter(Boolean);
+
+  for (const proyecto of proyectosValidos) {
+    await recalcularCajaChicaProyecto(proyecto);
+  }
+
+  // 7) Recargar movimientos para que el frontend quede coherente
+  await cargarMovimientosCajaChica();
+
+  const normalizado = {
+    ...data,
+    metodoPago: data.metodo_pago ?? "",
+    pagadoPor: data.pagado_por ?? "",
+    tieneFactura:
+      typeof data.tiene_factura === "boolean"
+        ? data.tiene_factura
+        : data.factura === "si",
+    tipoRegistro: data.tipo_registro ?? "EGRESO",
+    numHorasExtras: data.num_horas_extras ?? 0,
+    valoresPendientes: data.valores_pendientes ?? 0,
+    creadoPor: data.creado_por ?? "",
+    creadoPorRol: data.creado_por_rol ?? "",
+    creadoPorNombre: data.creado_por_nombre ?? "",
+    actualizadoPor: data.actualizado_por ?? "",
+    actualizadoPorRol: data.actualizado_por_rol ?? "",
+    fuenteFondos: data.fuente_fondos ?? "GENERAL",
+  };
+
+  setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
+  return normalizado;
+};
 
   const deleteEgreso = async (id) => {
-    const { error } = await supabase
-      .from("egresos")
-      .delete()
-      .eq("id", id);
+  const { data: egresoActual, error: egresoActualError } = await supabase
+    .from("egresos")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-    if (error) throw error;
+  if (egresoActualError) throw egresoActualError;
 
-    setEgresos((prev) => (prev || []).filter((e) => e.id !== id));
-  };
+  const fuenteActual = norm(
+    egresoActual?.fuente_fondos ?? egresoActual?.fuenteFondos ?? "GENERAL"
+  );
+
+  if (fuenteActual === "CAJA_CHICA") {
+    throw new Error(
+      "Por ahora no se permite eliminar egresos de caja chica. Primero cambia la fuente de fondos o haz la reversión de forma controlada."
+    );
+  }
+
+  const { error } = await supabase
+    .from("egresos")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+
+  setEgresos((prev) => (prev || []).filter((e) => e.id !== id));
+};
 
   const addReporteDiario = async (payload, customActor) => {
     return addEgreso(
