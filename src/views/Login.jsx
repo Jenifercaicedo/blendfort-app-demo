@@ -11,12 +11,10 @@ const normalize = (s) =>
 
 const Login = () => {
   const {
-    loginAdmin,
-    loginResidente,
-    personal,
-    puedeIngresarComoResidente,
-    authLoading,
-  } = useAppContext();
+  loginAdmin,
+  loginResidente,
+  authLoading,
+} = useAppContext();
 
   const [paso, setPaso] = useState("seleccion");
   const [nombre, setNombre] = useState("");
@@ -78,46 +76,33 @@ const Login = () => {
   };
 
   const accesoResidente = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+  e.preventDefault();
+  setSubmitting(true);
 
-    try {
-      const nombreInput = String(nombre || "").trim();
-      const passOk = password === "Blendfort2026";
+  try {
+    const nombreInput = String(nombre || "").trim();
+    const passOk = password === "Blendfort2026";
 
-      if (!nombreInput || !passOk) {
-        setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
-        return;
-      }
-
-      const nombreN = normalize(nombreInput);
-
-      const emp = (personal || []).find((p) => normalize(p?.nombre) === nombreN);
-      if (!emp) {
-        setError({ show: true, msg: "NO ESTÁS REGISTRADO EN GESTIÓN PERSONAL" });
-        return;
-      }
-
-      const rol = String(emp?.rol || "").toUpperCase().trim();
-      if (!rolesPermitidos.has(rol)) {
-        setError({ show: true, msg: "TU ROL NO TIENE ACCESO A RESIDENTE" });
-        return;
-      }
-
-      const okAsignado = Boolean(puedeIngresarComoResidente?.(nombreInput));
-      if (!okAsignado) {
-        setError({ show: true, msg: "NO TIENES PROYECTO ASIGNADO" });
-        return;
-      }
-
-      await loginResidente(nombreInput);
-    } catch (err) {
-      console.error("Error login residente:", err);
-      setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
-    } finally {
-      setSubmitting(false);
+    if (!nombreInput || !passOk) {
+      setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
+      return;
     }
-  };
+
+    await loginResidente(nombreInput);
+  } catch (err) {
+    console.error("Error login residente:", err);
+
+    const msg = String(err?.message || "").trim();
+
+    if (msg) {
+      setError({ show: true, msg: msg.toUpperCase() });
+    } else {
+      setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
+    }
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const accesoAdmin = async (e) => {
     e.preventDefault();
