@@ -89,7 +89,33 @@ const getCajaChicaEstado = (montoAsignado, gastadoActual) => {
   };
 };
 
-const recalcularCajaChicaProyecto = async (proyecto) => {
+/* ===========================
+   Context Provider
+=========================== */
+export const AppProvider = ({ children }) => {
+  // SESIÓN APP
+  const [usuario, setUsuario] = useState(null);
+  const [nombreUsuario, setNombreUsuario] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // DATOS GLOBALES
+  const [egresos, setEgresos] = useState([]);
+  const [proyectos, setProyectos] = useState([]);
+  const [personal, setPersonal] = useState([]);
+
+  // CAJA CHICA
+  const [cajaChicaProyecto, setCajaChicaProyecto] = useState([]);
+  const [cajaChicaDesembolsos, setCajaChicaDesembolsos] = useState([]);
+  const [movimientosCajaChica, setMovimientosCajaChica] = useState([]);
+
+  const [loadingProyectos, setLoadingProyectos] = useState(true);
+  const [loadingEgresos, setLoadingEgresos] = useState(true);
+  const [loadingPersonal, setLoadingPersonal] = useState(true);
+  const [loadingCajaChicaProyecto, setLoadingCajaChicaProyecto] = useState(true);
+  const [loadingCajaChicaDesembolsos, setLoadingCajaChicaDesembolsos] = useState(true);
+  const [loadingMovimientosCajaChica, setLoadingMovimientosCajaChica] = useState(true);
+
+  const recalcularCajaChicaProyecto = async (proyecto) => {
   const proyectoN = norm(proyecto);
   if (!proyectoN) return null;
 
@@ -160,31 +186,6 @@ const recalcularCajaChicaProyecto = async (proyecto) => {
   return cajaNormalizada;
 };
 
-/* ===========================
-   Context Provider
-=========================== */
-export const AppProvider = ({ children }) => {
-  // SESIÓN APP
-  const [usuario, setUsuario] = useState(null);
-  const [nombreUsuario, setNombreUsuario] = useState("");
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // DATOS GLOBALES
-  const [egresos, setEgresos] = useState([]);
-  const [proyectos, setProyectos] = useState([]);
-  const [personal, setPersonal] = useState([]);
-
-  // CAJA CHICA
-  const [cajaChicaProyecto, setCajaChicaProyecto] = useState([]);
-  const [cajaChicaDesembolsos, setCajaChicaDesembolsos] = useState([]);
-  const [movimientosCajaChica, setMovimientosCajaChica] = useState([]);
-
-  const [loadingProyectos, setLoadingProyectos] = useState(true);
-  const [loadingEgresos, setLoadingEgresos] = useState(true);
-  const [loadingPersonal, setLoadingPersonal] = useState(true);
-  const [loadingCajaChicaProyecto, setLoadingCajaChicaProyecto] = useState(true);
-  const [loadingCajaChicaDesembolsos, setLoadingCajaChicaDesembolsos] = useState(true);
-  const [loadingMovimientosCajaChica, setLoadingMovimientosCajaChica] = useState(true);
 
   /* ===========================
      Sesión Supabase + sesión app
