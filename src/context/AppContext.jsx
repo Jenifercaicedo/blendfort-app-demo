@@ -159,7 +159,7 @@ export const AppProvider = ({ children }) => {
 
   if (updateError) throw updateError;
 
-  const cajaNormalizada = {
+  return {
     ...cajaData,
     proyecto: norm(cajaData.proyecto),
     residente: norm(cajaData.residente),
@@ -170,20 +170,6 @@ export const AppProvider = ({ children }) => {
     creadoPor: cajaData.creado_por ?? "",
     creadoPorRol: cajaData.creado_por_rol ?? "",
   };
-
-  setCajaChicaProyecto((prev) => {
-    const existe = (prev || []).some((c) => c.id === cajaNormalizada.id);
-
-    if (!existe) {
-      return [cajaNormalizada, ...(prev || [])];
-    }
-
-    return (prev || []).map((c) =>
-      c.id === cajaNormalizada.id ? cajaNormalizada : c
-    );
-  });
-
-  return cajaNormalizada;
 };
 
 
