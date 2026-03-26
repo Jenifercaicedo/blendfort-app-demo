@@ -44,6 +44,7 @@ const ResidentDashboard = () => {
     addEgreso,
     updateEgreso,
     deleteEgreso,
+    cajaChicaProyecto,
     getResumenCajaChica,
 
     canEditEgreso,
