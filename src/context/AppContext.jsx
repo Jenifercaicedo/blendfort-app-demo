@@ -128,17 +128,23 @@ export const AppProvider = ({ children }) => {
   if (cajaError) throw cajaError;
   if (!caja?.id) return null;
 
-  const { data: movimientos, error: movimientosError } = await supabase
-    .from("movimientos_caja_chica")
-    .select("valor")
-    .eq("caja_chica_proyecto_id", caja.id);
+  // La fuente de verdad ahora serán los EGRESOS reales del proyecto
+  const { data: egresosCaja, error: egresosCajaError } = await supabase
+    .from("egresos")
+    .select("valor, estado, fuente_fondos, proyecto")
+    .eq("proyecto", proyectoN)
+    .eq("fuente_fondos", "CAJA_CHICA");
 
-  if (movimientosError) throw movimientosError;
+  if (egresosCajaError) throw egresosCajaError;
 
-  const gastadoActual = (movimientos || []).reduce(
-    (acc, m) => acc + safeNum(m?.valor),
-    0
-  );
+  const gastadoActual = (egresosCaja || []).reduce((acc, eg) => {
+    const estado = norm(eg?.estado || "PENDIENTE");
+
+    // Si en el futuro manejas ANULADO, no lo suma
+    if (estado === "ANULADO") return acc;
+
+    return acc + safeNum(eg?.valor);
+  }, 0);
 
   const estadoCalc = getCajaChicaEstado(
     safeNum(caja.monto_actual_asignado),
