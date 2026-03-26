@@ -692,19 +692,35 @@ export const AppProvider = ({ children }) => {
   /* ===========================
      Permisos
   =========================== */
-  const canEditEgreso = (egreso, customActor) => {
-    const a = customActor || actor;
-    if (!egreso) return false;
+ const canEditEgreso = (egreso, customActor) => {
+  const a = customActor || actor;
+  if (!egreso) return false;
 
-    if (a?.role === "ADMIN") return true;
+  const estado = norm(egreso?.estado || "PENDIENTE");
+  if (estado === "ANULADO") return false;
 
-    const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
-    const creador = norm(egreso?.creadoPor || egreso?.creado_por);
+  if (a?.role === "ADMIN") return true;
 
-    return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
-  };
+  const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
+  const creador = norm(egreso?.creadoPor || egreso?.creado_por);
 
-  const canDeleteEgreso = (egreso, customActor) => canEditEgreso(egreso, customActor);
+  return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
+};
+
+  const canDeleteEgreso = (egreso, customActor) => {
+  const a = customActor || actor;
+  if (!egreso) return false;
+
+  const estado = norm(egreso?.estado || "PENDIENTE");
+  if (estado === "ANULADO") return false;
+
+  if (a?.role === "ADMIN") return true;
+
+  const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
+  const creador = norm(egreso?.creadoPor || egreso?.creado_por);
+
+  return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
+};
 
   /* ===========================
      HELPERS CAJA CHICA
@@ -1278,7 +1294,9 @@ await Promise.all([
   return normalizado;
 };
 
-  const deleteEgreso = async (id) => {
+  const deleteEgreso = async (id, customActor) => {
+  const a = customActor || actor;
+
   const { data: egresoActual, error: egresoActualError } = await supabase
     .from("egresos")
     .select("*")
@@ -1287,24 +1305,64 @@ await Promise.all([
 
   if (egresoActualError) throw egresoActualError;
 
-  const fuenteActual = norm(
-    egresoActual?.fuente_fondos ?? egresoActual?.fuenteFondos ?? "GENERAL"
-  );
-
-  if (fuenteActual === "CAJA_CHICA") {
-    throw new Error(
-      "Por ahora no se permite eliminar egresos de caja chica. Primero cambia la fuente de fondos o haz la reversión de forma controlada."
-    );
+  const estadoActual = norm(egresoActual?.estado || "PENDIENTE");
+  if (estadoActual === "ANULADO") {
+    throw new Error("Este egreso ya está anulado.");
   }
 
-  const { error } = await supabase
+  const proyectoActual = norm(egresoActual?.proyecto);
+
+  const { data, error } = await supabase
     .from("egresos")
-    .delete()
-    .eq("id", id);
+    .update({
+      estado: "ANULADO",
+      anulado_at: new Date().toISOString(),
+      anulado_por: norm(a?.name),
+      anulado_por_rol: norm(a?.role),
+      actualizado_por: norm(a?.name),
+      actualizado_por_rol: norm(a?.role),
+      motivo_anulacion: "ANULACIÓN DESDE APP",
+    })
+    .eq("id", id)
+    .select()
+    .single();
 
   if (error) throw error;
 
-  setEgresos((prev) => (prev || []).filter((e) => e.id !== id));
+  // Recalcular caja chica si este egreso afectaba caja chica
+  const fuenteActual = norm(egresoActual?.fuente_fondos ?? "GENERAL");
+
+  if (fuenteActual === "CAJA_CHICA") {
+    await recalcularCajaChicaProyecto(proyectoActual);
+
+    await Promise.all([
+      cargarCajaChicaProyecto(),
+      cargarMovimientosCajaChica(),
+    ]);
+  }
+
+  const normalizado = {
+    ...data,
+    metodoPago: data.metodo_pago ?? "",
+    pagadoPor: data.pagado_por ?? "",
+    tieneFactura:
+      typeof data.tiene_factura === "boolean"
+        ? data.tiene_factura
+        : data.factura === "si",
+    tipoRegistro: data.tipo_registro ?? "EGRESO",
+    numHorasExtras: data.num_horas_extras ?? 0,
+    valoresPendientes: data.valores_pendientes ?? 0,
+    creadoPor: data.creado_por ?? "",
+    creadoPorRol: data.creado_por_rol ?? "",
+    creadoPorNombre: data.creado_por_nombre ?? "",
+    actualizadoPor: data.actualizado_por ?? "",
+    actualizadoPorRol: data.actualizado_por_rol ?? "",
+    fuenteFondos: data.fuente_fondos ?? "GENERAL",
+  };
+
+  setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
+
+  return normalizado;
 };
 
   const addReporteDiario = async (payload, customActor) => {
