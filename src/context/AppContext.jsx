@@ -1235,15 +1235,19 @@ if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
     }
   }
 
-  // 6) Recalcular las cajas afectadas con base en movimientos reales
-  const proyectosValidos = [...proyectosARecalcular].filter(Boolean);
+ // 6) Recalcular las cajas afectadas con base en movimientos reales
+const proyectosValidos = [...proyectosARecalcular].filter(Boolean);
 
-  for (const proyecto of proyectosValidos) {
-    await recalcularCajaChicaProyecto(proyecto);
-  }
+for (const proyecto of proyectosValidos) {
+  await recalcularCajaChicaProyecto(proyecto);
+}
 
-  // 7) Recargar movimientos para que el frontend quede coherente
-  await cargarMovimientosCajaChica();
+// 7) Refrescar TODO lo necesario desde la base
+await Promise.all([
+  cargarCajaChicaProyecto(),
+  cargarMovimientosCajaChica(),
+  cargarEgresos(),
+]);
 
   const normalizado = {
     ...data,
