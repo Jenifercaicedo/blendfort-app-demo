@@ -199,28 +199,28 @@ const ResidentDashboard = () => {
      Resumen Caja Chica
   =========================== */
   const resumenCajaChica = useMemo(() => {
-    if (!proyectoActivo || typeof getResumenCajaChica !== "function") {
-      return {
-        existe: false,
-        montoActualAsignado: 0,
-        gastadoActual: 0,
-        saldoActual: 0,
-        estado: "SIN FONDO",
-        fechaUltimoDesembolso: "",
-      };
-    }
+  if (!proyectoActivo || typeof getResumenCajaChica !== "function") {
+    return {
+      existe: false,
+      montoActualAsignado: 0,
+      gastadoActual: 0,
+      saldoActual: 0,
+      estado: "SIN FONDO",
+      fechaUltimoDesembolso: "",
+    };
+  }
 
-    return (
-      getResumenCajaChica(proyectoActivo) || {
-        existe: false,
-        montoActualAsignado: 0,
-        gastadoActual: 0,
-        saldoActual: 0,
-        estado: "SIN FONDO",
-        fechaUltimoDesembolso: "",
-      }
-    );
-  }, [getResumenCajaChica, proyectoActivo]);
+  return (
+    getResumenCajaChica(proyectoActivo) || {
+      existe: false,
+      montoActualAsignado: 0,
+      gastadoActual: 0,
+      saldoActual: 0,
+      estado: "SIN FONDO",
+      fechaUltimoDesembolso: "",
+    }
+  );
+}, [getResumenCajaChica, proyectoActivo, cajaChicaProyecto]);
 
   /* ===========================
      Acciones

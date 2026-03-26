@@ -1242,7 +1242,7 @@ for (const proyecto of proyectosValidos) {
   await recalcularCajaChicaProyecto(proyecto);
 }
 
-// 7) Refrescar TODO lo necesario desde la base
+// 7) Recargar estado real desde la base
 await Promise.all([
   cargarCajaChicaProyecto(),
   cargarMovimientosCajaChica(),
