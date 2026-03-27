@@ -261,10 +261,10 @@ const AdminDashboard = () => {
     try {
       await deleteEgreso(idAEliminar);
       setIdAEliminar(null);
-      mostrarExitoCentral("REGISTRO ELIMINADO");
+      mostrarExitoCentral("REGISTRO ANULADO");
     } catch (error) {
-      console.error("Error eliminando egreso:", error);
-      setToast({ show: true, mensaje: "NO SE PUDO ELIMINAR EL EGRESO", tipo: "error" });
+      console.error("Error anulando egreso:", error);
+      setToast({ show: true, mensaje: "NO SE PUDO ANULAR EL EGRESO", tipo: "error" });
     }
   };
 
@@ -398,29 +398,39 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-blendfort-fondo p-4 md:p-10 font-sans text-black relative">
       <div className="max-w-7xl mx-auto flex justify-between items-center mb-12 px-2">
-        <img src={logo} alt="Blendfort" className="h-9 md:h-11 w-auto object-contain" />
-        <button
-          onClick={logout}
-          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-5 pr-3 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-xl active:scale-95"
-        >
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-black/70 group-hover:text-black transition-colors">
-            Cerrar Sesión
-          </span>
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = "/";
+    }}
+    className="shrink-0 transition-transform active:scale-95"
+    aria-label="Ir al inicio"
+    title="Ir al inicio"
+  >
+    <img src={logo} alt="Blendfort" className="h-9 md:h-11 w-auto object-contain" />
+  </button>
 
-          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
-            <svg
-              className="w-3.5 h-3.5 rotate-180"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </div>
-        </button>
-      </div>
+  <button
+    onClick={logout}
+    className="group relative flex items-center gap-3 bg-white border border-black/10 pl-5 pr-3 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-xl active:scale-95"
+  >
+    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-black/70 group-hover:text-black transition-colors">
+      Cerrar Sesión
+    </span>
 
+    <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
+      <svg
+        className="w-3.5 h-3.5 rotate-180"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="3"
+      >
+        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+      </svg>
+    </div>
+  </button>
+</div>
       {!seccionActiva && (
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-5 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="space-y-1">

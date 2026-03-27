@@ -33,8 +33,7 @@ const CustomSelect = ({
   const filteredOptions = useMemo(() => {
     const q = normalize(search);
     if (!q) return options;
-
-    return (options || []).filter((opt) => normalize(opt).startsWith(q));
+    return (options || []).filter((opt) => normalize(opt).includes(q));
   }, [options, search]);
 
   useEffect(() => {
@@ -86,6 +85,7 @@ const CustomSelect = ({
       if (!typed) return;
 
       const exact = optionsIndex.get(normalize(typed));
+
       if (exact) {
         pick(exact);
         return;
@@ -107,7 +107,7 @@ const CustomSelect = ({
   return (
     <div className="space-y-1 relative" ref={containerRef}>
       {label && (
-        <label className="text-[9px] font-black uppercase ml-4 opacity-40 tracking-widest">
+        <label className="text-[8px] md:text-[9px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
           {label}
         </label>
       )}
@@ -116,9 +116,9 @@ const CustomSelect = ({
         type="button"
         onClick={() => (isOpen ? close() : open())}
         disabled={disabled}
-        className={`w-full bg-white p-4 rounded-2xl text-[16px] md:text-[10px] font-black uppercase flex justify-between items-center cursor-pointer border transition-all h-[53px] ${
+        className={`w-full bg-white px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black uppercase flex justify-between items-center border transition-all h-[54px] ${
           disabled ? "opacity-50 cursor-not-allowed" : "hover:border-blendfort-naranja"
-        } ${value ? "border-black/10 shadow-sm" : "border-black/5 opacity-70"} ${
+        } ${value ? "border-black/10 shadow-sm text-black" : "border-black/5 text-black/50"} ${
           showInvalid ? "border-red-500/40" : ""
         }`}
       >
@@ -146,10 +146,14 @@ const CustomSelect = ({
           <div className="p-3 border-b border-black/5 bg-blendfort-fondo/40">
             <input
               ref={inputRef}
-              className={`w-full bg-white p-3 rounded-xl text-[16px] md:text-[10px] font-bold uppercase outline-none border transition-all ${
+              className={`w-full bg-white px-3 py-3 rounded-xl text-[16px] md:text-[10px] font-bold uppercase outline-none border transition-all ${
                 attemptInvalid ? "border-red-500/40" : "border-black/5 focus:border-black/20"
               }`}
-              placeholder={allowCustom ? "Escribe para buscar o agregar..." : "Escribe para buscar..."}
+              placeholder={
+                allowCustom
+                  ? "Escribe para buscar o agregar..."
+                  : "Escribe para buscar..."
+              }
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -171,13 +175,14 @@ const CustomSelect = ({
               </div>
             ) : (
               filteredOptions.map((opt, i) => (
-                <div
+                <button
                   key={`${opt}-${i}`}
+                  type="button"
                   onClick={() => pick(opt)}
-                  className="p-4 text-[16px] md:text-[10px] font-black uppercase hover:bg-black hover:text-white cursor-pointer transition-colors"
+                  className="w-full text-left p-4 text-[16px] md:text-[10px] font-black uppercase hover:bg-black hover:text-white transition-colors"
                 >
                   {opt}
-                </div>
+                </button>
               ))
             )}
           </div>

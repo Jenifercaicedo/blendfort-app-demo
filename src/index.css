@@ -12,7 +12,6 @@
   --color-blendfort-danger: #dc2626;
   --color-blendfort-warning: #d97706;
 
-  /* INVERTIDAS */
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
@@ -25,11 +24,14 @@
 }
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
   }
 
   html {
+    min-height: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -39,13 +41,20 @@
   body {
     margin: 0;
     min-width: 320px;
+    min-height: 100vh;
     background: var(--color-blendfort-fondo);
     color: var(--color-blendfort-texto);
     font-family: var(--font-sans);
+    line-height: 1.45;
   }
 
   #root {
     min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(245, 158, 11, 0.18);
+    color: var(--color-blendfort-texto);
   }
 
   h1,
@@ -57,6 +66,11 @@
     font-family: var(--font-display);
     letter-spacing: -0.03em;
     color: var(--color-blendfort-texto);
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
   }
 
   button,
@@ -70,6 +84,10 @@
     cursor: pointer;
   }
 
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   input,
   select,
   textarea {
@@ -80,7 +98,12 @@
       border-color 180ms ease,
       box-shadow 180ms ease,
       background-color 180ms ease,
-      transform 180ms ease;
+      transform 180ms ease,
+      opacity 180ms ease;
+  }
+
+  textarea {
+    resize: vertical;
   }
 
   input::placeholder,
@@ -237,4 +260,32 @@
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Scrollbar suave */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 24, 39, 0.16) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(17, 24, 39, 0.14);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 24, 39, 0.22);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }

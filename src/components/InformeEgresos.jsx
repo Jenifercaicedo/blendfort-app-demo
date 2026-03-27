@@ -9,7 +9,9 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-// Regla única: Mano de Obra solo cuenta si PAGADO/COMPLETADO
+// Regla única:
+// - ANULADO no suma
+// - MANO DE OBRA solo suma si está PAGADO o COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normalize(e?.categoria);
   const est = normalize(e?.estado || "PENDIENTE");
@@ -38,7 +40,7 @@ const InformeEgresos = ({
   setIdAEliminar,
   setEgresoSeleccionado,
   editandoId,
-  totalFiltrado, // (lo dejamos por compatibilidad, pero ya no es fuente de verdad)
+  totalFiltrado, // compatibilidad
   onBack,
   onNuevoEgreso,
 }) => {
@@ -49,7 +51,6 @@ const InformeEgresos = ({
     [filtroProyecto, filtroResidente, filtroFecha]
   );
 
-  // Total contable: excluye MO pendiente
   const totalContable = useMemo(() => {
     return (egresos || []).reduce((acc, curr) => {
       if (!shouldCountInTotals(curr)) return acc;
@@ -57,7 +58,6 @@ const InformeEgresos = ({
     }, 0);
   }, [egresos]);
 
-  //  Detecta si hay Mano de Obra pendiente en el scope filtrado (para UI)
   const hayManoObraPendiente = useMemo(() => {
     return (egresos || []).some((e) => {
       const cat = normalize(e?.categoria);
@@ -92,10 +92,18 @@ const InformeEgresos = ({
               title="Filtros"
             >
               <div className="relative">
-                <svg className="w-4 h-4 text-black/40 group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                <svg
+                  className="w-4 h-4 text-black/40 group-hover:text-black transition-colors"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
                 </svg>
-                {hayFiltros && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />}
+                {hayFiltros && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />
+                )}
               </div>
 
               <span className="text-[9px] font-black uppercase tracking-[0.35em] text-black/50 group-hover:text-black transition-colors">
@@ -135,7 +143,6 @@ const InformeEgresos = ({
                   Balance y Control de Egresos
                 </p>
 
-                {/* Aviso opcional (muy útil) */}
                 {hayManoObraPendiente && (
                   <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -152,9 +159,13 @@ const InformeEgresos = ({
                     Total Filtrado
                   </div>
                   <div className="mt-1 text-2xl md:text-3xl font-black tracking-tighter text-black">
-                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">USD</span>
-                    {/* Ahora SIEMPRE respeta la regla */}
-                    $ {Number(totalContable || 0).toLocaleString()}
+                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">
+                      USD
+                    </span>
+                    $ {Number(totalContable || 0).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </div>
                 </div>
               </div>
@@ -171,6 +182,7 @@ const InformeEgresos = ({
                   onChange={setFiltroProyecto}
                   placeholder="TODOS..."
                 />
+
                 <FilterSelect
                   label="Residente"
                   options={opcionesResidentes}
@@ -180,7 +192,9 @@ const InformeEgresos = ({
                 />
 
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">Fecha</label>
+                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+                    Fecha
+                  </label>
                   <input
                     type="date"
                     value={filtroFecha}
@@ -197,10 +211,22 @@ const InformeEgresos = ({
                     type="button"
                     className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
                   >
-                    <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    <svg
+                      className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                      />
                     </svg>
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar Filtros</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+                      Limpiar Filtros
+                    </span>
                   </button>
                 </div>
               )}
@@ -214,7 +240,6 @@ const InformeEgresos = ({
               onDelete={setIdAEliminar}
               onSelect={setEgresoSeleccionado}
               editandoId={editandoId}
-              // pasamos el total contable para que si la tabla lo usa, sea consistente
               totalFiltrado={totalContable}
             />
           </div>

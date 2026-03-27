@@ -41,13 +41,14 @@ const buildDefaultEmpleado = () => ({
 
 const GestionPersonal = ({ onBack }) => {
   const nombreInputRef = useRef(null);
+
   const {
-  personal,
-  proyectos,
-  addPersonal,
-  updatePersonal,
-  deletePersonal,
-} = useAppContext();
+    personal,
+    proyectos,
+    addPersonal,
+    updatePersonal,
+    deletePersonal,
+  } = useAppContext();
 
   /* ===========================
      Estados UI
@@ -67,9 +68,7 @@ const GestionPersonal = ({ onBack }) => {
 
   const [nuevoEmpleado, setNuevoEmpleado] = useState(buildDefaultEmpleado());
 
-  // Confirmación eliminar (nuevo flujo)
   const [idAEliminar, setIdAEliminar] = useState(null);
-
 
   /* ===========================
      Derivados
@@ -85,16 +84,23 @@ const GestionPersonal = ({ onBack }) => {
     const q = normalize(queryNombre);
     let base = personal || [];
 
-    if (filtroProyecto) base = base.filter((e) => (e.proyecto || "") === filtroProyecto);
+    if (filtroProyecto) {
+      base = base.filter((e) => (e.proyecto || "") === filtroProyecto);
+    }
 
-    if (q) base = base.filter((e) => normalize(e.nombre).includes(q));
+    if (q) {
+      base = base.filter((e) => normalize(e.nombre).includes(q));
+    }
 
     return [...base].sort((a, b) => normalize(a.nombre).localeCompare(normalize(b.nombre)));
   }, [personal, filtroProyecto, queryNombre]);
 
   const hayFiltros = Boolean(queryNombre || filtroProyecto);
 
-
+  const modalConfirmarId = useMemo(() => {
+    if (!idAEliminar) return null;
+    return `PERSONAL:${idAEliminar}`;
+  }, [idAEliminar]);
 
   /* ===========================
      Modal UX
@@ -150,61 +156,78 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const guardarEmpleado = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    if (!nuevoEmpleado.nombre || !nuevoEmpleado.cargo) {
-      setToast({ show: true, mensaje: "NOMBRE Y CARGO SON OBLIGATORIOS", tipo: "error" });
-      return;
+    try {
+      if (!nuevoEmpleado.nombre || !nuevoEmpleado.cargo) {
+        setToast({
+          show: true,
+          mensaje: "NOMBRE Y CARGO SON OBLIGATORIOS",
+          tipo: "error",
+        });
+        return;
+      }
+
+      const payload = {
+        ...nuevoEmpleado,
+        nombre: String(nuevoEmpleado.nombre || "").toUpperCase(),
+        cargo: String(nuevoEmpleado.cargo || "").toUpperCase(),
+        proyecto: String(nuevoEmpleado.proyecto || "").toUpperCase(),
+        tipo: nuevoEmpleado.tipo || "CAMPO",
+        rol: nuevoEmpleado.rol || "OPERARIO",
+      };
+
+      if (existeDuplicado(payload)) {
+        setToast({
+          show: true,
+          mensaje: "YA EXISTE EN ESE PROYECTO",
+          tipo: "error",
+        });
+        return;
+      }
+
+      if (editandoEmpleado) {
+        await updatePersonal(payload.id, payload);
+        setModalExito({ show: true, mensaje: "EMPLEADO ACTUALIZADO" });
+      } else {
+        await addPersonal(payload);
+        setModalExito({ show: true, mensaje: "EMPLEADO CREADO" });
+      }
+
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error guardando empleado:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO GUARDAR EL EMPLEADO",
+        tipo: "error",
+      });
     }
+  };
 
-    const payload = {
-      ...nuevoEmpleado,
-      nombre: String(nuevoEmpleado.nombre || "").toUpperCase(),
-      cargo: String(nuevoEmpleado.cargo || "").toUpperCase(),
-      proyecto: String(nuevoEmpleado.proyecto || "").toUpperCase(),
-      tipo: nuevoEmpleado.tipo || "CAMPO",
-      rol: nuevoEmpleado.rol || "OPERARIO",
-    };
-
-    if (existeDuplicado(payload)) {
-      setToast({ show: true, mensaje: "YA EXISTE EN ESE PROYECTO", tipo: "error" });
-      return;
-    }
-
-    if (editandoEmpleado) {
-      await updatePersonal(payload.id, payload);
-      setModalExito({ show: true, mensaje: "EMPLEADO ACTUALIZADO" });
-    } else {
-      await addPersonal(payload);
-      setModalExito({ show: true, mensaje: "EMPLEADO CREADO" });
-    }
-
-    setShowModal(false);
-  } catch (error) {
-    console.error("Error guardando empleado:", error);
-    setToast({ show: true, mensaje: "NO SE PUDO GUARDAR EL EMPLEADO", tipo: "error" });
-  }
-};
-
-  // Nuevo: solicitar confirmación
   const solicitarEliminar = (id) => {
     setIdAEliminar(id);
   };
 
-  // Nuevo: eliminar confirmado
   const eliminarConfirmado = async () => {
-  try {
-    await deletePersonal(idAEliminar);
-    setIdAEliminar(null);
-    setModalExito({ show: true, mensaje: "EMPLEADO ELIMINADO" });
+    try {
+      await deletePersonal(idAEliminar);
 
-    if (detalleEmpleado?.id === idAEliminar) setDetalleEmpleado(null);
-  } catch (error) {
-    console.error("Error eliminando empleado:", error);
-    setToast({ show: true, mensaje: "NO SE PUDO ELIMINAR EL EMPLEADO", tipo: "error" });
-  }
-};
+      if (detalleEmpleado?.id === idAEliminar) {
+        setDetalleEmpleado(null);
+      }
+
+      setIdAEliminar(null);
+      setModalExito({ show: true, mensaje: "EMPLEADO ELIMINADO" });
+    } catch (error) {
+      console.error("Error eliminando empleado:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO ELIMINAR EL EMPLEADO",
+        tipo: "error",
+      });
+    }
+  };
 
   const limpiarFiltros = () => {
     setQueryNombre("");
@@ -218,7 +241,6 @@ const GestionPersonal = ({ onBack }) => {
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
       <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        {/* TOP BAR */}
         <PersonalTopBar
           onBack={onBack}
           onToggleFiltros={() => setShowFiltros((v) => !v)}
@@ -227,7 +249,6 @@ const GestionPersonal = ({ onBack }) => {
         />
 
         <div className="p-8 md:p-14 relative">
-          {/* Título */}
           <div className="mb-10">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
@@ -245,7 +266,6 @@ const GestionPersonal = ({ onBack }) => {
             </p>
           </div>
 
-          {/* Filtros */}
           <PersonalFilters
             show={showFiltros}
             queryNombre={queryNombre}
@@ -257,7 +277,6 @@ const GestionPersonal = ({ onBack }) => {
             limpiarFiltros={limpiarFiltros}
           />
 
-          {/* Tabla */}
           <PersonalTable
             data={personalFiltrado}
             onOpenDetalle={setDetalleEmpleado}
@@ -268,17 +287,16 @@ const GestionPersonal = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Modales */}
       <PersonalFormModal
-  show={showModal}
-  onClose={() => setShowModal(false)}
-  onSave={guardarEmpleado}
-  editando={Boolean(editandoEmpleado)}
-  empleado={nuevoEmpleado}
-  setEmpleado={setNuevoEmpleado}
-  opcionesProyectos={opcionesProyectos}
-  nombreInputRef={nombreInputRef}
-/>
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        onSave={guardarEmpleado}
+        editando={Boolean(editandoEmpleado)}
+        empleado={nuevoEmpleado}
+        setEmpleado={setNuevoEmpleado}
+        opcionesProyectos={opcionesProyectos}
+        nombreInputRef={nombreInputRef}
+      />
 
       <PersonalDetailModal
         empleado={detalleEmpleado}
@@ -290,14 +308,12 @@ const GestionPersonal = ({ onBack }) => {
         onDelete={() => solicitarEliminar(detalleEmpleado?.id)}
       />
 
-      {/* Confirmación eliminar */}
       <ModalConfirmar
-        id={idAEliminar}
+        id={modalConfirmarId}
         onConfirm={eliminarConfirmado}
         onCancel={() => setIdAEliminar(null)}
       />
 
-      {/* Notificaciones */}
       <ModalExito
         show={modalExito.show}
         mensaje={modalExito.mensaje}

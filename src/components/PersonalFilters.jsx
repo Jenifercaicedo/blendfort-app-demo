@@ -1,6 +1,6 @@
 // PersonalFilters.jsx
 import React from "react";
-import FilterSelect from "../components/FilterSelect";
+import FilterSelect from "./FilterSelect";
 
 const PersonalFilters = ({
   show,
@@ -15,20 +15,20 @@ const PersonalFilters = ({
   if (!show) return null;
 
   return (
-    <div className="mb-10 bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
+    <div className="mb-10 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Buscar */}
         <div className="space-y-1">
-          <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">Buscar</label>
+          <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+            Buscar
+          </label>
           <input
             value={queryNombre}
             onChange={(e) => setQueryNombre(e.target.value)}
             placeholder="NOMBRE..."
-            className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm uppercase"
+            className="w-full bg-white border border-black/5 px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black outline-none h-[54px] focus:border-black transition-all shadow-sm uppercase"
           />
         </div>
 
-        {/* Proyecto */}
         <FilterSelect
           label="Proyecto"
           options={opcionesProyectos}
@@ -38,7 +38,6 @@ const PersonalFilters = ({
         />
       </div>
 
-      {/* Limpiar filtros (debajo, estilo informe) */}
       {hayFiltros && (
         <div className="flex justify-end mt-4">
           <button
@@ -60,7 +59,9 @@ const PersonalFilters = ({
               />
             </svg>
 
-            <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar Filtros</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+              Limpiar Filtros
+            </span>
           </button>
         </div>
       )}

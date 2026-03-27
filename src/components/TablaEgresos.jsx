@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import EgresoDetalleResidenteModal from "../components/EgresoDetalleResidenteModal";
 
+const norm = (s) =>
+  String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
 const money = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "0.00";
@@ -46,11 +53,15 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
 
             <tbody className="divide-y divide-black/[0.02]">
               {(registros || []).map((reg) => {
-                const puedeEditar = canEdit ? canEdit(reg) : true;
-                const puedeEliminar = canDelete ? canDelete(reg) : true;
-
-                const estadoU = String(reg?.estado || "PENDIENTE").toUpperCase().trim();
+                const estadoU = norm(reg?.estado || "PENDIENTE");
                 const esPagado = estadoU === "PAGADO" || estadoU === "COMPLETADO";
+                const esAnulado = estadoU === "ANULADO";
+
+                const puedeEditarBase = canEdit ? canEdit(reg) : true;
+                const puedeEliminarBase = canDelete ? canDelete(reg) : true;
+
+                const puedeEditar = !esAnulado && puedeEditarBase;
+                const puedeEliminar = !esAnulado && puedeEliminarBase;
 
                 const tieneFactura =
                   Boolean(reg?.tieneFactura) || String(reg?.factura || "").toLowerCase() === "si";
@@ -58,15 +69,22 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                 return (
                   <tr
                     key={reg.id}
-                    className="group hover:bg-blendfort-fondo/20 transition-colors"
+                    className={`group transition-colors ${
+                      esAnulado
+                        ? "bg-red-50/40 hover:bg-red-50/70"
+                        : "hover:bg-blendfort-fondo/20"
+                    }`}
                   >
                     <td className="px-4 md:px-8 py-3.5 md:py-5">
-                      <div className="text-[9px] md:text-[10px] font-black uppercase text-black/40">
+                      <div
+                        className={`text-[9px] md:text-[10px] font-black uppercase ${
+                          esAnulado ? "text-red-700/70" : "text-black/40"
+                        }`}
+                      >
                         {reg.fecha}
                       </div>
                     </td>
 
-                    {/* CLICK PARA ABRIR DETALLE */}
                     <td className="px-4 md:px-8 py-3.5 md:py-5">
                       <button
                         type="button"
@@ -74,32 +92,61 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                         className="text-left w-full group/item"
                         title="Ver detalle"
                       >
-                        <div className="text-[9px] md:text-[10px] font-black uppercase text-blendfort-naranja">
-                          <span className="border-b border-transparent group-hover/item:border-blendfort-naranja transition-all">
+                        <div
+                          className={`text-[9px] md:text-[10px] font-black uppercase ${
+                            esAnulado ? "text-red-700" : "text-blendfort-naranja"
+                          }`}
+                        >
+                          <span
+                            className={`border-b border-transparent transition-all ${
+                              esAnulado
+                                ? "line-through decoration-red-300 decoration-2"
+                                : "group-hover/item:border-blendfort-naranja"
+                            }`}
+                          >
                             {reg.proyecto}
                           </span>
                         </div>
-                        <div className="text-[10px] md:text-[11px] font-black uppercase text-black/70 mt-1 truncate max-w-[260px]">
+
+                        <div
+                          className={`text-[10px] md:text-[11px] font-black uppercase mt-1 truncate max-w-[260px] ${
+                            esAnulado
+                              ? "text-red-700/80 line-through decoration-red-300"
+                              : "text-black/70"
+                          }`}
+                        >
                           {reg.concepto}
                         </div>
                       </button>
                     </td>
 
                     <td className="px-4 md:px-8 py-3.5 md:py-5">
-                      <div className="text-[8px] md:text-[9px] font-black uppercase text-black/40 italic">
+                      <div
+                        className={`text-[8px] md:text-[9px] font-black uppercase italic ${
+                          esAnulado ? "text-red-700/70" : "text-black/40"
+                        }`}
+                      >
                         {reg.categoria}
                       </div>
                     </td>
 
                     <td className="px-4 md:px-8 py-3.5 md:py-5">
                       <div
-                        className={`text-[6px] md:text-[7px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
-                          esPagado ? "text-green-600" : "text-amber-500"
+                        className={`text-[6px] md:text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                          esAnulado
+                            ? "text-red-700 bg-red-50 border-red-200"
+                            : esPagado
+                            ? "text-green-600 bg-green-50 border-green-100"
+                            : "text-amber-500 bg-amber-50 border-amber-100"
                         }`}
                       >
                         <div
-                          className={`w-1 h-1 rounded-full ${
-                            esPagado ? "bg-green-600" : "bg-amber-500 animate-pulse"
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            esAnulado
+                              ? "bg-red-600"
+                              : esPagado
+                              ? "bg-green-600"
+                              : "bg-amber-500 animate-pulse"
                           }`}
                         />
                         {reg.estado}
@@ -108,23 +155,29 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
 
                     <td className="px-4 md:px-8 py-3.5 md:py-5 text-center">
                       {tieneFactura ? (
-                        <div className="flex justify-center">
-                          <div className="text-blendfort-naranja/70 hover:text-blendfort-naranja transition-colors">
-                            <svg
-                              className="w-3.5 h-3.5 md:w-4 md:h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M9 12h6m-6 4h6M7 3h7l3 3v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
-                              />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v3a1 1 0 001 1h3" />
-                            </svg>
-                          </div>
+                        <div
+                          className={`flex justify-center ${
+                            esAnulado ? "text-red-400" : "text-blendfort-naranja/70"
+                          }`}
+                        >
+                          <svg
+                            className="w-3.5 h-3.5 md:w-4 md:h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12h6m-6 4h6M7 3h7l3 3v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M14 3v3a1 1 0 001 1h3"
+                            />
+                          </svg>
                         </div>
                       ) : (
                         <span className="text-[9px] opacity-10 font-black">—</span>
@@ -132,7 +185,13 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                     </td>
 
                     <td className="px-4 md:px-8 py-3.5 md:py-5 text-right">
-                      <div className="text-[10px] md:text-[11px] font-black text-black tracking-tight">
+                      <div
+                        className={`text-[10px] md:text-[11px] font-black tracking-tight ${
+                          esAnulado
+                            ? "text-red-700/80 line-through decoration-red-300"
+                            : "text-black"
+                        }`}
+                      >
                         $ {money(reg.valor)}
                       </div>
                     </td>
@@ -146,14 +205,26 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                             if (puedeEditar) onEdit(reg);
                           }}
                           disabled={!puedeEditar}
-                          title={!puedeEditar ? "Solo puedes editar registros que tú creaste" : "Editar"}
+                          title={
+                            esAnulado
+                              ? "No se puede editar un registro anulado"
+                              : !puedeEditarBase
+                              ? "Solo puedes editar registros que tú creaste"
+                              : "Editar"
+                          }
                           className={`w-9 h-9 rounded-full transition-all shadow-sm active:scale-90 flex items-center justify-center ${
                             puedeEditar
                               ? "bg-blendfort-fondo text-black/70 hover:bg-black hover:text-white"
                               : "bg-black/5 text-black/20 cursor-not-allowed"
                           }`}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.6">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2.6"
+                          >
                             <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
                             <path d="M19.5 7.125L16.875 4.5" />
                           </svg>
@@ -166,14 +237,26 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                             if (puedeEliminar) onDelete(reg.id);
                           }}
                           disabled={!puedeEliminar}
-                          title={!puedeEliminar ? "Solo puedes eliminar registros que tú creaste" : "Eliminar"}
+                          title={
+                            esAnulado
+                              ? "El registro ya está anulado"
+                              : !puedeEliminarBase
+                              ? "Solo puedes anular registros que tú creaste"
+                              : "Anular"
+                          }
                           className={`w-9 h-9 rounded-full transition-all shadow-sm active:scale-90 flex items-center justify-center ${
                             puedeEliminar
                               ? "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"
                               : "bg-black/5 text-black/20 cursor-not-allowed"
                           }`}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.6">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2.6"
+                          >
                             <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>

@@ -8,11 +8,20 @@ const MESES = [
 ];
 
 const pad2 = (n) => String(n || "").padStart(2, "0");
+const norm = (s) =>
+  String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
 const money = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "$ 0.00";
-  return `$ ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$ ${num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
 const formatRangoES = (rows = []) => {
@@ -55,7 +64,6 @@ const ManoObraDetalleModal = ({
   onPagarSemana,
   onEditReporte,
 }) => {
-  // Hooks SIEMPRE corren (valores seguros aunque no haya detalle)
   const nombreEmpleado = String(detalle?.nombre || "").toUpperCase();
   const baseRows = Array.isArray(detalle?.rows) ? detalle.rows : [];
 
@@ -73,7 +81,7 @@ const ManoObraDetalleModal = ({
     const neto = rows.reduce((t, r) => t + (Number(r?.valor) || 0), 0);
 
     const estadoSemana = rows.some(
-      (r) => String(r?.estado || "PENDIENTE").toUpperCase().trim() === "PENDIENTE"
+      (r) => norm(r?.estado || "PENDIENTE") === "PENDIENTE"
     )
       ? "PENDIENTE"
       : "PAGADO";
@@ -82,15 +90,21 @@ const ManoObraDetalleModal = ({
   }, [rows]);
 
   const rango = useMemo(() => formatRangoES(rows), [rows]);
-  const puedePagar = Boolean(semanaActiva);
 
   const opcionesDias = useMemo(() => {
     return rows
       .slice(-10)
-      .map((r) => ({
-        id: r?.id,
-        label: `${formatDiaES(r?.fecha)} · ${r?.asistio === false ? "NO ASISTIÓ" : "ASISTIÓ"}`,
-      }))
+      .map((r) => {
+        const estado = norm(r?.estado || "PENDIENTE");
+        const anulado = estado === "ANULADO";
+
+        return {
+          id: r?.id,
+          label: `${formatDiaES(r?.fecha)} · ${
+            r?.asistio === false ? "NO ASISTIÓ" : "ASISTIÓ"
+          }${anulado ? " · ANULADO" : ""}`,
+        };
+      })
       .filter((x) => x.id != null)
       .reverse();
   }, [rows]);
@@ -101,7 +115,7 @@ const ManoObraDetalleModal = ({
     if (!show) return;
     const last = rows[rows.length - 1];
     setDiaSeleccionado(last?.id ? String(last.id) : "");
-  }, [show, nombreEmpleado, rows.length]); //  más seguro
+  }, [show, nombreEmpleado, rows]);
 
   const rowSeleccionado = useMemo(() => {
     const idN = Number(diaSeleccionado);
@@ -112,20 +126,24 @@ const ManoObraDetalleModal = ({
   const labelSeleccionado =
     opcionesDias.find((x) => String(x.id) === String(diaSeleccionado))?.label || "";
 
-  // El return condicional va DESPUÉS de hooks
+  const estadoRowSeleccionado = norm(rowSeleccionado?.estado || "");
+  const rowSeleccionadoAnulado = estadoRowSeleccionado === "ANULADO";
+
+  const puedePagar = Boolean(semanaActiva) && resumen.estadoSemana !== "PAGADO";
+
   if (!show || !detalle) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[170] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-[170] overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
       role="dialog"
       aria-modal="true"
     >
-      <div className="min-h-[100vh] w-full flex items-center justify-center p-3 sm:p-4 md:p-6">
-        <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden border border-black/5 animate-in zoom-in-95 duration-300 max-h-[calc(100vh-24px)] sm:max-h-[calc(100vh-32px)] flex flex-col">
+      <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
+        <div className="bg-white w-full max-w-md rounded-[2.4rem] md:rounded-[3rem] shadow-2xl overflow-hidden border border-black/5 animate-in zoom-in-95 duration-300 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto my-2 md:my-4">
           {/* Header */}
           <div className="bg-black text-white relative px-7 sm:px-8 pt-9 sm:pt-10 pb-7 sm:pb-8">
             <button
@@ -156,12 +174,16 @@ const ManoObraDetalleModal = ({
 
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">RANGO</span>
+                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
+                  RANGO
+                </span>
                 <span className="text-[8px] font-black uppercase tracking-widest">{rango}</span>
               </span>
 
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">DÍAS</span>
+                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
+                  DÍAS
+                </span>
                 <span className="text-[8px] font-black uppercase tracking-widest">{resumen.dias}</span>
               </span>
 
@@ -172,7 +194,9 @@ const ManoObraDetalleModal = ({
                     : "bg-amber-500/10 border-amber-500/20"
                 }`}
               >
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">EST</span>
+                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
+                  EST
+                </span>
                 <span
                   className={`text-[8px] font-black uppercase tracking-widest ${
                     resumen.estadoSemana === "PAGADO" ? "text-green-300" : "text-amber-300"
@@ -185,7 +209,7 @@ const ManoObraDetalleModal = ({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-7 sm:p-8 space-y-6">
+          <div className="p-7 sm:p-8 space-y-6">
             {/* Identidad */}
             <div className="bg-blendfort-fondo rounded-[2.5rem] border border-black/5 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -199,19 +223,25 @@ const ManoObraDetalleModal = ({
 
               <div className="space-y-3 text-[10px]">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Proyecto</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Proyecto
+                  </span>
                   <span className="font-black uppercase tracking-tight text-black">
                     {String(proyectoActivo || "SIN PROYECTO").toUpperCase()}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Periodo</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Periodo
+                  </span>
                   <span className="font-black uppercase tracking-tight text-black">{rango}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Semana</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Semana
+                  </span>
                   <span className="font-black uppercase tracking-tight text-black">
                     {semanaActiva ? String(semanaActiva) : "NO FILTRADA"}
                   </span>
@@ -232,18 +262,28 @@ const ManoObraDetalleModal = ({
 
               <div className="space-y-3 text-[10px]">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Horas extras</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Horas extras
+                  </span>
                   <span className="font-black uppercase tracking-tight text-black">{resumen.horas}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Bonos</span>
-                  <span className="font-black uppercase tracking-tight text-black">{money(resumen.bonos)}</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Bonos
+                  </span>
+                  <span className="font-black uppercase tracking-tight text-black">
+                    {money(resumen.bonos)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">Descuentos</span>
-                  <span className="font-black uppercase tracking-tight text-red-500">- {money(resumen.desc)}</span>
+                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
+                    Descuentos
+                  </span>
+                  <span className="font-black uppercase tracking-tight text-red-500">
+                    - {money(resumen.desc)}
+                  </span>
                 </div>
 
                 <div className="pt-4 mt-2 border-t border-black/5 flex items-center justify-between">
@@ -282,12 +322,20 @@ const ManoObraDetalleModal = ({
                   disabled={!opcionesDias.length}
                 />
 
+                {rowSeleccionadoAnulado && (
+                  <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-100">
+                    <p className="text-[8px] font-black uppercase tracking-[0.25em] text-red-700">
+                      Este reporte está anulado y no puede editarse
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => rowSeleccionado && onEditReporte?.(rowSeleccionado)}
-                  disabled={!rowSeleccionado}
+                  disabled={!rowSeleccionado || rowSeleccionadoAnulado}
                   className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] transition-all active:scale-95 ${
-                    rowSeleccionado
+                    rowSeleccionado && !rowSeleccionadoAnulado
                       ? "bg-black text-white hover:bg-blendfort-naranja"
                       : "bg-black/10 text-black/30 cursor-not-allowed"
                   }`}
@@ -312,14 +360,24 @@ const ManoObraDetalleModal = ({
                     ? "bg-black text-white hover:bg-blendfort-naranja"
                     : "bg-black/10 text-black/30 cursor-not-allowed"
                 }`}
-                title={puedePagar ? "Marcar semana como pagada" : "Filtra por semana para pagar"}
+                title={
+                  !semanaActiva
+                    ? "Filtra por semana para pagar"
+                    : resumen.estadoSemana === "PAGADO"
+                    ? "La semana ya está pagada"
+                    : "Marcar semana como pagada"
+                }
               >
                 Pagar Semana
               </button>
             </div>
 
             <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20">
-              Tip: filtra por semana para pagar correctamente.
+              {!semanaActiva
+                ? "Tip: filtra por semana para pagar correctamente."
+                : resumen.estadoSemana === "PAGADO"
+                ? "La semana ya figura como pagada."
+                : "Puedes editar un día o pagar la semana completa."}
             </div>
           </div>
         </div>

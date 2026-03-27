@@ -1,9 +1,19 @@
 import React from "react";
 
+const norm = (s) =>
+  String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
 const money = (n) => {
   const num = Number(n);
   if (Number.isNaN(num)) return "0.00";
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
 const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
@@ -11,7 +21,7 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
     <div className="space-y-4">
       <div className="rounded-[2rem] border border-black/[0.04] bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin scrollbar-thumb-black/5">
-          <table className="w-full text-left border-collapse min-w-[920px]">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead className="sticky top-0 z-20 bg-white">
               <tr className="border-b border-black/[0.04]">
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
@@ -21,7 +31,7 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                   Proyecto
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
-                  Tipo
+                  Tipo & Rol
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30 text-right">
                   Valores
@@ -57,9 +67,15 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                 </tr>
               ) : (
                 data.map((emp) => {
-                  const tipo = emp.tipo || "CAMPO";
+                  const tipo = norm(emp.tipo || "CAMPO");
+                  const rol = norm(emp.rol || "OPERARIO");
                   const esOficina = tipo === "OFICINA";
-                  const valorPrincipal = esOficina ? emp.salarioMensual : emp.valorDia;
+
+                  const valorPrincipal = esOficina
+                    ? Number(emp.salarioMensual) || 0
+                    : Number(emp.valorDia) || 0;
+
+                  const valorHoraExtra = Number(emp.valorHoraExtra) || 0;
                   const sufijo = esOficina ? "MES" : "DÍA";
 
                   return (
@@ -67,7 +83,7 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                       key={emp.id}
                       className="group hover:bg-blendfort-fondo/20 transition-colors"
                     >
-                      {/* Empleado (nombre + cargo) */}
+                      {/* Empleado */}
                       <td className="px-8 py-5">
                         <button
                           type="button"
@@ -79,7 +95,8 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                             {emp.nombre}
                           </span>
                         </button>
-                        <div className="text-[8px] font-bold opacity-30 uppercase tracking-wider">
+
+                        <div className="text-[8px] font-bold opacity-30 uppercase tracking-wider mt-0.5">
                           {emp.cargo}
                         </div>
                       </td>
@@ -94,21 +111,33 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                         </div>
                       </td>
 
-                      {/* Tipo */}
+                      {/* Tipo & Rol */}
                       <td className="px-8 py-5">
-                        <div className="inline-flex items-center gap-2">
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              esOficina ? "bg-black/30" : "bg-blendfort-naranja/80"
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${
+                              esOficina
+                                ? "bg-black/5 text-black/50 border-black/10"
+                                : "bg-blendfort-naranja/10 text-blendfort-naranja border-blendfort-naranja/20"
                             }`}
-                          />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-black/50">
-                            {tipo}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                esOficina ? "bg-black/30" : "bg-blendfort-naranja"
+                              }`}
+                            />
+                            <span className="text-[8px] font-black uppercase tracking-widest">
+                              {tipo}
+                            </span>
+                          </span>
+
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-black/5 text-[8px] font-black uppercase tracking-widest text-black/50">
+                            {rol}
                           </span>
                         </div>
                       </td>
 
-                      {/* Valores (dinámico por tipo) */}
+                      {/* Valores */}
                       <td className="px-8 py-5 text-right">
                         <div className="text-[11px] font-black text-black tracking-tight">
                           <span className="text-[8px] font-black uppercase text-blendfort-naranja mr-1">
@@ -120,15 +149,18 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                           </span>
                         </div>
 
-                        <div className="text-[8px] font-black uppercase tracking-widest text-blendfort-naranja/70 mt-0.5">
-                          HEX $ {money(emp.valorHoraExtra)}
+                        <div
+                          className={`text-[8px] font-black uppercase tracking-widest mt-0.5 ${
+                            esOficina ? "text-black/25" : "text-blendfort-naranja/70"
+                          }`}
+                        >
+                          HEX $ {money(valorHoraExtra)}
                         </div>
                       </td>
 
                       {/* Acciones */}
                       <td className="px-8 py-5">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Editar */}
                           <button
                             onClick={() => onEdit(emp)}
                             type="button"
@@ -152,7 +184,6 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                             </span>
                           </button>
 
-                          {/* Eliminar */}
                           <button
                             onClick={() => onDelete(emp.id)}
                             type="button"

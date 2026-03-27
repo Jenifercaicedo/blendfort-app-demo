@@ -49,19 +49,16 @@ const money = (n) => {
 const ManoObraCard = ({ onBack }) => {
   const {
     egresos,
-    setEgresos, // fallback seguro
+    setEgresos,
     proyectos,
     usuario,
     nombreUsuario,
-    actor, 
-
-    // si existen en tu AppContext
+    actor,
     updateEgreso,
   } = useAppContext();
 
-  //  registradoPor consistente
   const registradoPor =
-    actor?.display || (usuario === "admin" ? "ADMINISTRACIÓN" : (nombreUsuario || "RESIDENTE"));
+    actor?.display || (usuario === "admin" ? "ADMINISTRACIÓN" : nombreUsuario || "RESIDENTE");
 
   const opcionesProyectos = useMemo(
     () => (proyectos || []).map((p) => p?.nombre).filter(Boolean),
@@ -70,7 +67,6 @@ const ManoObraCard = ({ onBack }) => {
 
   const [proyectoActivo, setProyectoActivo] = useState(opcionesProyectos[0] || "");
 
-  // FIX: si proyectos cambian/cargan después, asegurar proyectoActivo válido
   useEffect(() => {
     setProyectoActivo((prev) => {
       if (prev && opcionesProyectos.includes(prev)) return prev;
@@ -79,21 +75,25 @@ const ManoObraCard = ({ onBack }) => {
   }, [opcionesProyectos]);
 
   const [showReporte, setShowReporte] = useState(false);
-
   const [showFiltros, setShowFiltros] = useState(false);
   const [semanaActiva, setSemanaActiva] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
-  const [detalle, setDetalle] = useState(null); // { nombre, rows }
-
+  const [detalle, setDetalle] = useState(null);
   const [showEditReporte, setShowEditReporte] = useState(false);
   const [editReporte, setEditReporte] = useState(null);
 
-  const [modalExito, setModalExito] = useState({ show: false, mensaje: "", tipo: "success" });
-  const mostrarExito = (mensaje, tipo = "success") => setModalExito({ show: true, mensaje, tipo });
+  const [modalExito, setModalExito] = useState({
+    show: false,
+    mensaje: "",
+    tipo: "success",
+  });
+
+  const mostrarExito = (mensaje, tipo = "success") =>
+    setModalExito({ show: true, mensaje, tipo });
 
   /* ===========================
-     Helpers de actualización (batch-safe)
+     Helpers de actualización
   =========================== */
   const updateManyEgresos = useCallback(
     (updater) => {
@@ -102,7 +102,6 @@ const ManoObraCard = ({ onBack }) => {
         return;
       }
 
-      // fallback: actualizar solo lo necesario (estado) y sin JSON.stringify
       if (typeof updateEgreso === "function") {
         const prev = egresos || [];
         const next = updater(prev);
@@ -129,12 +128,15 @@ const ManoObraCard = ({ onBack }) => {
     return (egresos || []).filter((e) => {
       const pE = norm(e?.proyecto);
       const cat = norm(e?.categoria);
+      const est = norm(e?.estado || "PENDIENTE");
 
       if (pE !== pA) return false;
       if (cat !== "MANO DE OBRA") return false;
 
+      // ANULADO nunca entra a nómina ni totales
+      if (est === "ANULADO") return false;
+
       if (soloPendientes) {
-        const est = norm(e?.estado || "PENDIENTE");
         if (est === "PAGADO" || est === "COMPLETADO") return false;
       }
 
@@ -147,6 +149,12 @@ const ManoObraCard = ({ onBack }) => {
     return [...new Set(weeks)].sort().reverse();
   }, [egresosMOProyecto]);
 
+  useEffect(() => {
+    if (semanaActiva && !opcionesSemanas.includes(semanaActiva)) {
+      setSemanaActiva("");
+    }
+  }, [semanaActiva, opcionesSemanas]);
+
   const egresosMO = useMemo(() => {
     if (!semanaActiva) return egresosMOProyecto;
     return egresosMOProyecto.filter((e) => getISOWeekKey(e.fecha) === semanaActiva);
@@ -156,6 +164,7 @@ const ManoObraCard = ({ onBack }) => {
     return egresosMO.reduce((acc, curr) => {
       const nombre = curr.concepto ? norm(curr.concepto) : "SIN NOMBRE";
       const asistio = curr.asistio === false ? false : true;
+      const estado = norm(curr.estado || "PENDIENTE");
 
       if (!acc[nombre]) {
         acc[nombre] = {
@@ -170,8 +179,9 @@ const ManoObraCard = ({ onBack }) => {
         };
       }
 
-      const est = norm(curr.estado || "PENDIENTE");
-      if (est === "PENDIENTE") acc[nombre].estadoSemana = "PENDIENTE";
+      if (estado === "PENDIENTE") {
+        acc[nombre].estadoSemana = "PENDIENTE";
+      }
 
       if (asistio) {
         acc[nombre].dias += 1;
@@ -186,6 +196,7 @@ const ManoObraCard = ({ onBack }) => {
   }, [egresosMO]);
 
   const listaFinal = useMemo(() => Object.values(resumenNomina), [resumenNomina]);
+
   const granTotal = useMemo(
     () => listaFinal.reduce((t, e) => t + (Number(e.neto) || 0), 0),
     [listaFinal]
@@ -216,8 +227,9 @@ const ManoObraCard = ({ onBack }) => {
         const mismoProyecto = norm(e?.proyecto) === pA;
         const mismaSemana = getISOWeekKey(e?.fecha) === semanaActiva;
         const mismoEmpleado = norm(e?.concepto) === nombreN;
+        const noAnulado = norm(e?.estado || "PENDIENTE") !== "ANULADO";
 
-        if (esMO && mismoProyecto && mismaSemana && mismoEmpleado) {
+        if (esMO && mismoProyecto && mismaSemana && mismoEmpleado && noAnulado) {
           return { ...e, estado: "PAGADO" };
         }
         return e;
@@ -232,9 +244,19 @@ const ManoObraCard = ({ onBack }) => {
       <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
         {/* TOP BAR */}
         <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
-          <button onClick={onBack} className="flex items-center gap-3 group transition-all active:scale-95" type="button">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-3 group transition-all active:scale-95"
+            type="button"
+          >
             <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white border border-black/5 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-sm">
-              <svg className="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <svg
+                className="w-3.5 h-3.5 rotate-180"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="3"
+              >
                 <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>
@@ -252,13 +274,21 @@ const ManoObraCard = ({ onBack }) => {
               }`}
               title="Filtros"
             >
-              <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <svg
+                className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="3"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
               </svg>
               <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.25em] text-black/50 group-hover:text-black">
                 Filtros
               </span>
-              {hayFiltros && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />}
+              {hayFiltros && (
+                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
+              )}
             </button>
 
             <button
@@ -296,7 +326,9 @@ const ManoObraCard = ({ onBack }) => {
                     Total {semanaActiva ? "Semana" : "Acumulado"}
                   </div>
                   <div className="mt-1 text-2xl md:text-3xl font-black tracking-tighter text-black">
-                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">USD</span>
+                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">
+                      USD
+                    </span>
                     $ {money(granTotal)}
                   </div>
                   <div className="mt-1 text-[7px] font-bold uppercase tracking-widest text-black/30">
@@ -337,7 +369,9 @@ const ManoObraCard = ({ onBack }) => {
                 />
 
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">Pendientes</label>
+                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+                    Pendientes
+                  </label>
                   <button
                     type="button"
                     onClick={() => setSoloPendientes((v) => !v)}
@@ -346,8 +380,16 @@ const ManoObraCard = ({ onBack }) => {
                     <span className="text-[9px] font-black uppercase tracking-[0.25em] text-black/50">
                       {soloPendientes ? "ACTIVO" : "DESACT."}
                     </span>
-                    <div className={`w-14 h-7 rounded-full transition-all relative ${soloPendientes ? "bg-blendfort-naranja" : "bg-black/10"}`}>
-                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${soloPendientes ? "left-8" : "left-1"}`} />
+                    <div
+                      className={`w-14 h-7 rounded-full transition-all relative ${
+                        soloPendientes ? "bg-blendfort-naranja" : "bg-black/10"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                          soloPendientes ? "left-8" : "left-1"
+                        }`}
+                      />
                     </div>
                   </button>
                 </div>
@@ -363,14 +405,20 @@ const ManoObraCard = ({ onBack }) => {
                     }}
                     className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
                   >
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+                      Limpiar
+                    </span>
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          <ManoObraTabla listaFinal={listaFinal} onDetalle={abrirDetalle} onPagarSemana={marcarPagadoSemanaEmpleado} />
+          <ManoObraTabla
+            listaFinal={listaFinal}
+            onDetalle={abrirDetalle}
+            onPagarSemana={marcarPagadoSemanaEmpleado}
+          />
         </div>
       </div>
 

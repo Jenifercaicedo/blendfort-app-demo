@@ -18,7 +18,7 @@ const money = (n) => {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Regla: Mano de Obra solo suma si está PAGADO/COMPLETADO
+// Regla: ANULADO nunca suma. Mano de Obra solo suma si está PAGADO/COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normU(e?.categoria);
   const est = normU(e?.estado || "PENDIENTE");
@@ -56,7 +56,7 @@ const GestionProyectos = ({
 
   const proy = proyectos?.[safeIndex] || null;
 
-  // gasto acumulado por proyecto (CON regla MO)
+  // gasto acumulado por proyecto (CON regla de ANULADO y MANO DE OBRA)
   const gastoReal = useMemo(() => {
     const nombre = proy?.nombre;
     if (!nombre) return 0;
@@ -227,18 +227,18 @@ const GestionProyectos = ({
               </button>
 
               <button
-  onClick={() => onDelete?.(proy)}
-  type="button"
-  className="inline-flex items-center gap-2 px-3 py-3 bg-blendfort-fondo hover:bg-red-500 hover:text-white rounded-xl md:rounded-2xl transition-all text-red-500/30 active:scale-90"
-  title="Eliminar"
->
-  <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-  <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
-    Eliminar
-  </span>
-</button>
+                onClick={() => onDelete?.(proy)}
+                type="button"
+                className="inline-flex items-center gap-2 px-3 py-3 bg-blendfort-fondo hover:bg-red-500 hover:text-white rounded-xl md:rounded-2xl transition-all text-red-500/30 active:scale-90"
+                title="Eliminar"
+              >
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
+                  Eliminar
+                </span>
+              </button>
             </div>
           </div>
 
@@ -266,7 +266,13 @@ const GestionProyectos = ({
 
               <div className="mt-5 w-full h-2.5 bg-blendfort-fondo rounded-full overflow-hidden p-[1px] border border-black/5">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${porcentajeGasto >= 100 ? "bg-red-500" : porcentajeGasto > 90 ? "bg-amber-500" : "bg-black"}`}
+                  className={`h-full rounded-full transition-all duration-700 ${
+                    porcentajeGasto >= 100
+                      ? "bg-red-500"
+                      : porcentajeGasto > 90
+                      ? "bg-amber-500"
+                      : "bg-black"
+                  }`}
                   style={{ width: `${Math.min(porcentajeGasto, 100)}%` }}
                 />
               </div>

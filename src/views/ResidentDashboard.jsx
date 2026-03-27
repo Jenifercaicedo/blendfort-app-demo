@@ -8,6 +8,7 @@ import ModalEgreso from "../components/ModalEgreso";
 import ModalExito from "../components/ModalExito";
 import ReporteDiarioModal from "../components/ReporteDiarioModal";
 import CustomSelect from "../components/CustomSelect";
+import ResidentManoObraModal from "../components/ResidentManoObraModal";
 
 const normalize = (s) =>
   String(s || "")
@@ -40,13 +41,13 @@ const ResidentDashboard = () => {
     logout,
     egresos,
     proyectos,
+    personal,
     getProyectosAsignados,
     addEgreso,
     updateEgreso,
     deleteEgreso,
     cajaChicaProyecto,
     getResumenCajaChica,
-
     canEditEgreso,
     canDeleteEgreso,
   } = useAppContext();
@@ -67,12 +68,15 @@ const ResidentDashboard = () => {
       setProyectoActivo("");
       return;
     }
+
     setProyectoActivo((prev) =>
       prev && proyectosAsignados.includes(prev) ? prev : proyectosAsignados[0]
     );
   }, [proyectosAsignados]);
 
   const multiProyecto = proyectosAsignados.length > 1;
+  const proyectoActivoFinal = proyectoActivo || proyectosAsignados[0] || "";
+  const tieneProyectosAsignados = proyectosAsignados.length > 0;
 
   /* ===========================
      Fallback de permisos
@@ -121,8 +125,8 @@ const ResidentDashboard = () => {
   const [showModalNuevo, setShowModalNuevo] = useState(false);
   const [idAEliminar, setIdAEliminar] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
-
   const [showReporteDiario, setShowReporteDiario] = useState(false);
+  const [showManoObraModal, setShowManoObraModal] = useState(false);
 
   const [modalExito, setModalExito] = useState({ show: false, mensaje: "" });
   const mostrarExito = (mensaje) => setModalExito({ show: true, mensaje });
@@ -149,7 +153,15 @@ const ResidentDashboard = () => {
   const [nuevoEgreso, setNuevoEgreso] = useState(initialForm);
 
   const opcionesCategorias = useMemo(
-    () => ["FERRETERIA", "MAQUINARIA", "PAPELERIA", "TRAMITES", "TRANSPORTE", "ASERRADERO", "MANO DE OBRA"],
+    () => [
+      "FERRETERIA",
+      "MAQUINARIA",
+      "PAPELERIA",
+      "TRAMITES",
+      "TRANSPORTE",
+      "ASERRADERO",
+      "MANO DE OBRA",
+    ],
     []
   );
 
@@ -162,11 +174,11 @@ const ResidentDashboard = () => {
   }, [egresos, proyectosAsignados]);
 
   const registrosScope = useMemo(() => {
-    if (!proyectoActivo) return registrosProyecto;
+    if (!proyectoActivoFinal) return registrosProyecto;
     return registrosProyecto.filter(
-      (e) => normalize(e?.proyecto) === normalize(proyectoActivo)
+      (e) => normalize(e?.proyecto) === normalize(proyectoActivoFinal)
     );
-  }, [registrosProyecto, proyectoActivo]);
+  }, [registrosProyecto, proyectoActivoFinal]);
 
   const registrosFiltrados = useMemo(() => {
     return registrosScope.filter((reg) => {
@@ -197,47 +209,73 @@ const ResidentDashboard = () => {
   }, [registrosScope]);
 
   /* ===========================
+     Mano de obra residente
+  =========================== */
+  const personalProyectoActivo = useMemo(() => {
+    if (!proyectoActivoFinal) return [];
+
+    return (personal || []).filter(
+      (p) => normalize(p?.proyecto) === normalize(proyectoActivoFinal)
+    );
+  }, [personal, proyectoActivoFinal]);
+
+  const registrosManoObraProyecto = useMemo(() => {
+    return (registrosScope || []).filter(
+      (reg) => normalize(reg?.categoria) === "MANO DE OBRA"
+    );
+  }, [registrosScope]);
+
+  /* ===========================
      Resumen Caja Chica
   =========================== */
   const resumenCajaChica = useMemo(() => {
-  if (!proyectoActivo || typeof getResumenCajaChica !== "function") {
-    return {
-      existe: false,
-      montoActualAsignado: 0,
-      gastadoActual: 0,
-      saldoActual: 0,
-      estado: "SIN FONDO",
-      fechaUltimoDesembolso: "",
-    };
-  }
-
-  return (
-    getResumenCajaChica(proyectoActivo) || {
-      existe: false,
-      montoActualAsignado: 0,
-      gastadoActual: 0,
-      saldoActual: 0,
-      estado: "SIN FONDO",
-      fechaUltimoDesembolso: "",
+    if (!proyectoActivoFinal || typeof getResumenCajaChica !== "function") {
+      return {
+        existe: false,
+        montoActualAsignado: 0,
+        gastadoActual: 0,
+        saldoActual: 0,
+        estado: "SIN FONDO",
+        fechaUltimoDesembolso: "",
+      };
     }
-  );
-}, [getResumenCajaChica, proyectoActivo, cajaChicaProyecto]);
+
+    return (
+      getResumenCajaChica(proyectoActivoFinal) || {
+        existe: false,
+        montoActualAsignado: 0,
+        gastadoActual: 0,
+        saldoActual: 0,
+        estado: "SIN FONDO",
+        fechaUltimoDesembolso: "",
+      }
+    );
+  }, [getResumenCajaChica, proyectoActivoFinal, cajaChicaProyecto]);
 
   /* ===========================
      Acciones
   =========================== */
   const abrirModalNuevo = () => {
-  setEditandoId(null);
-  setNuevoEgreso({
-    ...initialForm,
-    residente: nombreUsuario,
-    proyecto: proyectoActivo || proyectosAsignados[0] || "",
-    fecha: hoyISO(),
-    estado: "PENDIENTE",
-    tipoRegistro: "EGRESO",
-  });
-  setShowModalNuevo(true);
-};
+    setEditandoId(null);
+    setNuevoEgreso({
+      ...initialForm,
+      residente: nombreUsuario,
+      proyecto: proyectoActivoFinal,
+      fecha: hoyISO(),
+      estado: "PENDIENTE",
+      tipoRegistro: "EGRESO",
+    });
+    setShowModalNuevo(true);
+  };
+
+  const abrirManoObra = () => {
+    if (!tieneProyectosAsignados || !proyectoActivoFinal) {
+      mostrarExito("NO TIENES UN PROYECTO ACTIVO ASIGNADO");
+      return;
+    }
+
+    setShowManoObraModal(true);
+  };
 
   const onEditSafe = (reg) => {
     if (!canEdit(reg)) {
@@ -266,8 +304,8 @@ const ResidentDashboard = () => {
     try {
       const proyectoFinal = normalize(
         multiProyecto
-          ? (nuevoEgreso.proyecto || proyectoActivo || proyectosAsignados[0] || "")
-          : (proyectoActivo || proyectosAsignados[0] || "")
+          ? nuevoEgreso.proyecto || proyectoActivoFinal || proyectosAsignados[0] || ""
+          : proyectoActivoFinal || proyectosAsignados[0] || ""
       );
 
       const categoriaFinal = normalize(nuevoEgreso.categoria);
@@ -343,27 +381,43 @@ const ResidentDashboard = () => {
     <div className="min-h-screen bg-blendfort-fondo flex flex-col p-4 md:p-8 font-sans text-black overflow-x-hidden">
       {/* Header */}
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 md:mb-8">
-        <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = "/";
+    }}
+    className="shrink-0 transition-transform active:scale-95"
+    aria-label="Ir al inicio"
+    title="Ir al inicio"
+  >
+    <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
+  </button>
 
-        <button
-          onClick={logout}
-          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
-        >
-          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
-            Cerrar Sesión
-          </span>
-          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
-            <svg className="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </div>
-        </button>
-      </div>
+  <button
+    onClick={logout}
+    className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
+  >
+    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
+      Cerrar Sesión
+    </span>
+    <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
+      <svg
+        className="w-3.5 h-3.5 rotate-180"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="3"
+      >
+        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+      </svg>
+    </div>
+  </button>
+</div>
 
       <div className="max-w-7xl mx-auto w-full flex-1">
         {/* Bienvenida + Card caja chica */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start mb-6">
-          <div className="flex flex-col items-center lg:items-start space-y-3">
+          <div className="flex flex-col items-center lg:items-start space-y-3 w-full">
             <div className="text-center lg:text-left">
               <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.24em] block mb-1">
                 BIENVENIDO DE NUEVO
@@ -373,18 +427,41 @@ const ResidentDashboard = () => {
               </h1>
             </div>
 
-            {multiProyecto && (
-              <div className="w-full max-w-sm">
-                <CustomSelect
-                  label="Proyecto activo"
-                  options={proyectosAsignados}
-                  value={proyectoActivo}
-                  onChange={(val) => setProyectoActivo(normalize(val))}
-                  placeholder="SELECCIONAR..."
-                  allowCustom={false}
-                  disabled={!proyectosAsignados.length}
-                />
+            {multiProyecto ? (
+              <div className="w-full max-w-2xl">
+                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                  <CustomSelect
+                    label="Proyecto activo"
+                    options={proyectosAsignados}
+                    value={proyectoActivo}
+                    onChange={(val) => setProyectoActivo(normalize(val))}
+                    placeholder="SELECCIONAR..."
+                    allowCustom={false}
+                    disabled={!proyectosAsignados.length}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={abrirManoObra}
+                    disabled={!tieneProyectosAsignados}
+                    className="h-[50px] px-4 md:px-5 rounded-xl bg-black text-white font-black text-[8px] md:text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    Mano de Obra
+                  </button>
+                </div>
               </div>
+            ) : (
+              tieneProyectosAsignados && (
+                <div className="w-full max-w-sm">
+                  <button
+                    type="button"
+                    onClick={abrirManoObra}
+                    className="w-full h-[50px] px-4 rounded-xl bg-black text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
+                  >
+                    Mano de Obra
+                  </button>
+                </div>
+              )
             )}
           </div>
 
@@ -410,14 +487,18 @@ const ResidentDashboard = () => {
                   <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
                     Total Asignado
                   </p>
-                  <p className="text-[10px] font-black">{money(resumenCajaChica?.montoActualAsignado || 0)}</p>
+                  <p className="text-[10px] font-black">
+                    {money(resumenCajaChica?.montoActualAsignado || 0)}
+                  </p>
                 </div>
 
                 <div className="text-right">
                   <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
                     Saldo
                   </p>
-                  <p className="text-[10px] font-black">{money(resumenCajaChica?.saldoActual || 0)}</p>
+                  <p className="text-[10px] font-black">
+                    {money(resumenCajaChica?.saldoActual || 0)}
+                  </p>
                 </div>
 
                 <div>
@@ -462,8 +543,8 @@ const ResidentDashboard = () => {
               </h3>
               <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.18em] mt-1.5">
                 {multiProyecto
-                  ? `PROYECTO ACTIVO: ${proyectoActivo}`
-                  : `PROYECTO: ${proyectoActivo || proyectosAsignados[0] || "—"}`}
+                  ? `PROYECTO ACTIVO: ${proyectoActivoFinal}`
+                  : `PROYECTO: ${proyectoActivoFinal || "—"}`}
               </p>
             </div>
 
@@ -477,13 +558,21 @@ const ResidentDashboard = () => {
                     ${hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"}
                   `}
                 >
-                  <svg className="w-3.5 h-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                  <svg
+                    className="w-3.5 h-3.5 opacity-50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
                   </svg>
                   <span className="text-[8px] font-black uppercase tracking-[0.16em] text-black/60">
                     Filtros
                   </span>
-                  {hayFiltros && <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />}
+                  {hayFiltros && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
+                  )}
                 </button>
 
                 <button
@@ -595,12 +684,20 @@ const ResidentDashboard = () => {
       <ReporteDiarioModal
         show={showReporteDiario}
         onClose={() => setShowReporteDiario(false)}
-        proyectoActivo={proyectoActivo || proyectosAsignados[0] || ""}
+        proyectoActivo={proyectoActivoFinal}
         registradoPor={nombreUsuario}
         onSuccess={(msg) => {
           mostrarExito(msg || "REPORTE GUARDADO");
           setShowReporteDiario(false);
         }}
+      />
+
+      <ResidentManoObraModal
+        show={showManoObraModal}
+        onClose={() => setShowManoObraModal(false)}
+        proyectoActivo={proyectoActivoFinal}
+        personalProyecto={personalProyectoActivo}
+        registrosManoObra={registrosManoObraProyecto}
       />
 
       <ModalExito

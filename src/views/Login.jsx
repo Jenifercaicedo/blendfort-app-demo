@@ -1,20 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import logo from "../assets/logo-blendfort.png";
 import { useAppContext } from "../context/AppContext";
 
-const normalize = (s) =>
-  String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-
 const Login = () => {
-  const {
-  loginAdmin,
-  loginResidente,
-  authLoading,
-} = useAppContext();
+  const { loginAdmin, loginResidente, authLoading } = useAppContext();
 
   const [paso, setPaso] = useState("seleccion");
   const [nombre, setNombre] = useState("");
@@ -23,22 +12,6 @@ const Login = () => {
   const [error, setError] = useState({ show: false, msg: "" });
   const [verPassword, setVerPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  const rolesPermitidos = useMemo(
-    () =>
-      new Set([
-        "RESIDENTE",
-        "INGENIERO",
-        "INGENIERA",
-        "ARQUITECTO",
-        "ARQUITECTA",
-        "ING",
-        "ING.",
-        "ARQ",
-        "ARQ.",
-      ]),
-    []
-  );
 
   const IconoOjo = () => (
     <svg
@@ -70,42 +43,68 @@ const Login = () => {
     if (error.show) setError({ show: false, msg: "" });
   };
 
+  const limpiarFormulario = ({ limpiarNombre = false } = {}) => {
+    setPassword("");
+    setVerPassword(false);
+    setError({ show: false, msg: "" });
+    if (limpiarNombre) setNombre("");
+  };
+
+  const irASeleccion = () => {
+    setPaso("seleccion");
+    limpiarFormulario();
+  };
+
+  const irAResidente = () => {
+    setPaso("form_residente");
+    limpiarFormulario();
+  };
+
+  const irAAdmin = () => {
+    setPaso("form_admin");
+    limpiarFormulario({ limpiarNombre: true });
+  };
+
   const manejarCambioPassword = (e) => {
     setPassword(e.target.value);
     resetError();
   };
 
   const accesoResidente = async (e) => {
-  e.preventDefault();
-  setSubmitting(true);
+    e.preventDefault();
+    if (submitting) return;
 
-  try {
-    const nombreInput = String(nombre || "").trim();
-    const passOk = password === "Blendfort2026";
+    setSubmitting(true);
 
-    if (!nombreInput || !passOk) {
-      setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
-      return;
+    try {
+      const nombreInput = String(nombre || "").trim();
+      const passOk = password === "Blendfort2026";
+
+      if (!nombreInput || !passOk) {
+        setError({ show: true, msg: "CONTRASEÑA O NOMBRE INCORRECTO" });
+        return;
+      }
+
+      await loginResidente(nombreInput);
+    } catch (err) {
+      console.error("Error login residente:", err);
+
+      const msg = String(err?.message || "").trim();
+
+      if (msg) {
+        setError({ show: true, msg: msg.toUpperCase() });
+      } else {
+        setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    await loginResidente(nombreInput);
-  } catch (err) {
-    console.error("Error login residente:", err);
-
-    const msg = String(err?.message || "").trim();
-
-    if (msg) {
-      setError({ show: true, msg: msg.toUpperCase() });
-    } else {
-      setError({ show: true, msg: "NO SE PUDO INICIAR SESIÓN" });
-    }
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   const accesoAdmin = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     setSubmitting(true);
 
     try {
@@ -126,46 +125,49 @@ const Login = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-blendfort-fondo flex items-center justify-center p-6">
-        <div className="bg-white w-full max-w-md rounded-3xl p-10 shadow-2xl text-center border border-black/5">
-          <p className="font-black uppercase tracking-widest opacity-50">Cargando sesión...</p>
+        <div className="bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-center border border-black/5">
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-blendfort-naranja animate-pulse"></div>
+            <p className="font-black uppercase tracking-[0.22em] text-black/50 text-[11px]">
+              Cargando sesión...
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-blendfort-fondo flex flex-col items-center justify-center p-6 text-black">
-      <div className="bg-white w-full max-w-md rounded-3xl p-10 shadow-2xl text-center border border-black/5">
-        <div className="mt-6 mb-8 flex justify-center">
-          <img src={logo} alt="Logo Blendfort" className="h-44 w-auto object-contain" />
+    <div className="min-h-screen bg-blendfort-fondo flex flex-col items-center justify-center p-5 md:p-6 text-black">
+      <div className="bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] px-6 py-8 md:px-10 md:py-10 shadow-2xl text-center border border-black/5">
+        <div className="mb-6 md:mb-8 flex justify-center">
+          <img
+            src={logo}
+            alt="Logo Blendfort"
+            className="h-32 md:h-44 w-auto object-contain"
+          />
         </div>
 
-        <h1 className="text-3xl font-black mb-1 tracking-tighter uppercase">BLENDFORT</h1>
-        <p className="font-medium mb-10 opacity-60">Control de Egresos</p>
+        <h1 className="text-3xl md:text-3xl font-black mb-1 tracking-tighter uppercase">
+          BLENDFORT
+        </h1>
+        <p className="font-medium mb-8 md:mb-10 opacity-60">Control de Egresos</p>
 
         {paso === "seleccion" && (
-          <div className="space-y-5 animate-in fade-in duration-300">
+          <div className="space-y-4 md:space-y-5 animate-in fade-in duration-300">
             <button
-              onClick={() => {
-                setPaso("form_residente");
-                setError({ show: false, msg: "" });
-                setVerPassword(false);
-                setPassword("");
-              }}
-              className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-blendfort-naranja transition-all duration-300 hover:bg-blendfort-naranja hover:text-white active:scale-95 shadow-sm uppercase"
+              onClick={irAResidente}
+              disabled={submitting}
+              className="w-full bg-white text-black py-4 rounded-xl font-black text-base md:text-lg border-2 border-blendfort-naranja transition-all duration-300 hover:bg-blendfort-naranja hover:text-white active:scale-95 shadow-sm uppercase disabled:opacity-60"
             >
               <span className="lg:hidden">RESIDENTE</span>
               <span className="hidden lg:inline">ENTRAR COMO RESIDENTE</span>
             </button>
 
             <button
-              onClick={() => {
-                setPaso("form_admin");
-                setError({ show: false, msg: "" });
-                setVerPassword(false);
-                setPassword("");
-              }}
-              className="w-full bg-white text-black py-4 rounded-xl font-black text-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white active:scale-95 shadow-sm uppercase"
+              onClick={irAAdmin}
+              disabled={submitting}
+              className="w-full bg-white text-black py-4 rounded-xl font-black text-base md:text-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white active:scale-95 shadow-sm uppercase disabled:opacity-60"
             >
               <span className="lg:hidden">ADMINISTRADOR</span>
               <span className="hidden lg:inline">ENTRAR COMO ADMINISTRADOR</span>
@@ -174,40 +176,50 @@ const Login = () => {
         )}
 
         {paso === "form_residente" && (
-          <form onSubmit={accesoResidente} className="space-y-4 text-left animate-in slide-in-from-right duration-300">
+          <form
+            onSubmit={accesoResidente}
+            className="space-y-4 text-left animate-in slide-in-from-right duration-300"
+          >
             <div>
-              <label className="text-[10px] font-black uppercase ml-1 opacity-70">Nombre completo</label>
+              <label className="text-[10px] font-black uppercase ml-1 opacity-70">
+                Nombre completo
+              </label>
               <input
-  autoFocus
-  type="text"
-  value={nombre}
-  onChange={(e) => {
-    setNombre(e.target.value);
-    resetError();
-  }}
-  placeholder="Ej. Juan Pérez"
-  className="w-full mt-1 bg-blendfort-fondo border-2 border-transparent focus:border-blendfort-naranja outline-none p-4 rounded-xl text-base md:text-[16px] font-bold transition-all"
-/>
+                autoFocus
+                type="text"
+                value={nombre}
+                onChange={(e) => {
+                  setNombre(e.target.value);
+                  resetError();
+                }}
+                placeholder="Ej. Juan Pérez"
+                className="w-full mt-1 bg-blendfort-fondo border-2 border-transparent focus:border-blendfort-naranja outline-none p-4 rounded-xl text-base md:text-[16px] font-bold transition-all"
+              />
             </div>
 
             <div>
-              <label className="text-[10px] font-black uppercase ml-1 opacity-70">Contraseña</label>
+              <label className="text-[10px] font-black uppercase ml-1 opacity-70">
+                Contraseña
+              </label>
+
               <div className="relative">
                 <input
-  type={verPassword ? "text" : "password"}
-  value={password}
-  onChange={manejarCambioPassword}
-  placeholder="••••••••"
-  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
-    error.show
-      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-      : "border-transparent focus:border-blendfort-naranja"
-  }`}
-/>
+                  type={verPassword ? "text" : "password"}
+                  value={password}
+                  onChange={manejarCambioPassword}
+                  placeholder="••••••••"
+                  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
+                    error.show
+                      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                      : "border-transparent focus:border-blendfort-naranja"
+                  }`}
+                />
+
                 <button
                   type="button"
                   onClick={() => setVerPassword(!verPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-black opacity-30 hover:opacity-100 transition-opacity p-1"
+                  aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   <IconoOjo />
                 </button>
@@ -223,18 +235,14 @@ const Login = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-blendfort-naranja text-white py-4 rounded-xl font-black text-lg shadow-md hover:brightness-105 transition-all uppercase mt-2 disabled:opacity-60"
+              className="w-full bg-blendfort-naranja text-white py-4 rounded-xl font-black text-base md:text-lg shadow-md hover:brightness-105 transition-all uppercase mt-2 disabled:opacity-60"
             >
               {submitting ? "INGRESANDO..." : "ACCEDER"}
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setPaso("seleccion");
-                setPassword("");
-                setError({ show: false, msg: "" });
-              }}
+              onClick={irASeleccion}
               className="w-full text-[10px] font-black uppercase opacity-40 hover:opacity-100 py-2 text-center"
             >
               ← Volver a roles
@@ -243,26 +251,34 @@ const Login = () => {
         )}
 
         {paso === "form_admin" && (
-          <form onSubmit={accesoAdmin} className="space-y-4 text-left animate-in slide-in-from-right duration-300">
+          <form
+            onSubmit={accesoAdmin}
+            className="space-y-4 text-left animate-in slide-in-from-right duration-300"
+          >
             <div>
-              <label className="text-[10px] font-black uppercase ml-1 opacity-70">Clave de Administrador</label>
+              <label className="text-[10px] font-black uppercase ml-1 opacity-70">
+                Clave de Administrador
+              </label>
+
               <div className="relative">
                 <input
-  autoFocus
-  type={verPassword ? "text" : "password"}
-  value={password}
-  onChange={manejarCambioPassword}
-  placeholder="••••••••"
-  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
-    error.show
-      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-      : "border-transparent focus:border-black"
-  }`}
-/>
+                  autoFocus
+                  type={verPassword ? "text" : "password"}
+                  value={password}
+                  onChange={manejarCambioPassword}
+                  placeholder="••••••••"
+                  className={`w-full mt-1 bg-blendfort-fondo border-2 outline-none p-4 pr-12 rounded-xl text-base md:text-[16px] font-bold transition-all ${
+                    error.show
+                      ? "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                      : "border-transparent focus:border-black"
+                  }`}
+                />
+
                 <button
                   type="button"
                   onClick={() => setVerPassword(!verPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-black opacity-30 hover:opacity-100 transition-opacity p-1"
+                  aria-label={verPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   <IconoOjo />
                 </button>
@@ -278,18 +294,14 @@ const Login = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-black text-white py-4 rounded-xl font-black text-lg shadow-md hover:opacity-80 transition-all uppercase mt-2 disabled:opacity-60"
+              className="w-full bg-black text-white py-4 rounded-xl font-black text-base md:text-lg shadow-md hover:opacity-80 transition-all uppercase mt-2 disabled:opacity-60"
             >
               {submitting ? "INGRESANDO..." : "ACCEDER"}
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setPaso("seleccion");
-                setPassword("");
-                setError({ show: false, msg: "" });
-              }}
+              onClick={irASeleccion}
               className="w-full text-[10px] font-black uppercase opacity-40 hover:opacity-100 py-2 text-center"
             >
               ← Volver a roles
@@ -297,7 +309,7 @@ const Login = () => {
           </form>
         )}
 
-        <div className="mt-12 text-[10px] opacity-30 font-bold uppercase tracking-widest">
+        <div className="mt-10 md:mt-12 text-[10px] opacity-30 font-bold uppercase tracking-widest">
           Sistema de Control Interno
         </div>
       </div>
