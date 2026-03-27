@@ -45,26 +45,49 @@ const InformeEgresos = ({
   onNuevoEgreso,
 }) => {
   const [showFiltros, setShowFiltros] = useState(false);
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+
+  const opcionesCategorias = useMemo(() => {
+    const unique = [...new Set((egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean))];
+
+    const sinMO = unique.filter((c) => c !== "MANO DE OBRA").sort();
+
+    return unique.includes("MANO DE OBRA")
+      ? ["MANO DE OBRA", ...sinMO]
+      : sinMO;
+  }, [egresos]);
+
+  const egresosFiltrados = useMemo(() => {
+    return (egresos || []).filter((e) => {
+      if (!filtroCategoria) return true;
+      return normalize(e?.categoria) === normalize(filtroCategoria);
+    });
+  }, [egresos, filtroCategoria]);
 
   const hayFiltros = useMemo(
-    () => Boolean(filtroProyecto || filtroResidente || filtroFecha),
-    [filtroProyecto, filtroResidente, filtroFecha]
+    () => Boolean(filtroProyecto || filtroResidente || filtroFecha || filtroCategoria),
+    [filtroProyecto, filtroResidente, filtroFecha, filtroCategoria]
   );
 
   const totalContable = useMemo(() => {
-    return (egresos || []).reduce((acc, curr) => {
+    return (egresosFiltrados || []).reduce((acc, curr) => {
       if (!shouldCountInTotals(curr)) return acc;
       return acc + (Number(curr?.valor) || 0);
     }, 0);
-  }, [egresos]);
+  }, [egresosFiltrados]);
 
   const hayManoObraPendiente = useMemo(() => {
-    return (egresos || []).some((e) => {
+    return (egresosFiltrados || []).some((e) => {
       const cat = normalize(e?.categoria);
       if (cat !== "MANO DE OBRA") return false;
       return !shouldCountInTotals(e);
     });
-  }, [egresos]);
+  }, [egresosFiltrados]);
+
+  const limpiarTodo = () => {
+    setFiltroCategoria("");
+    limpiarFiltros?.();
+  };
 
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
@@ -143,6 +166,15 @@ const InformeEgresos = ({
                   Balance y Control de Egresos
                 </p>
 
+                {filtroCategoria && (
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.03] border border-black/5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja" />
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-black/60">
+                      Categoría: {filtroCategoria}
+                    </span>
+                  </div>
+                )}
+
                 {hayManoObraPendiente && (
                   <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-100">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -174,7 +206,7 @@ const InformeEgresos = ({
 
           {showFiltros && (
             <div className="mb-10 bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <FilterSelect
                   label="Proyecto"
                   options={opcionesProyectos}
@@ -189,6 +221,14 @@ const InformeEgresos = ({
                   value={filtroResidente}
                   onChange={setFiltroResidente}
                   placeholder="TODOS..."
+                />
+
+                <FilterSelect
+                  label="Categoría"
+                  options={opcionesCategorias}
+                  value={filtroCategoria}
+                  onChange={setFiltroCategoria}
+                  placeholder="TODAS..."
                 />
 
                 <div className="space-y-1">
@@ -207,7 +247,7 @@ const InformeEgresos = ({
               {hayFiltros && (
                 <div className="mt-5 flex justify-start">
                   <button
-                    onClick={limpiarFiltros}
+                    onClick={limpiarTodo}
                     type="button"
                     className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
                   >
@@ -235,7 +275,7 @@ const InformeEgresos = ({
 
           <div className="relative overflow-hidden">
             <TablaAdmin
-              egresos={egresos}
+              egresos={egresosFiltrados}
               onEdit={prepararEdicion}
               onDelete={setIdAEliminar}
               onSelect={setEgresoSeleccionado}

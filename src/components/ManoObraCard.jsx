@@ -60,17 +60,36 @@ const ManoObraCard = ({ onBack }) => {
   const registradoPor =
     actor?.display || (usuario === "admin" ? "ADMINISTRACIÓN" : nombreUsuario || "RESIDENTE");
 
+  const opcionesProyectosBase = useMemo(() => {
+    const unique = [];
+    const seen = new Set();
+
+    (proyectos || []).forEach((p) => {
+      const nombre = String(p?.nombre || "").trim();
+      const key = norm(nombre);
+
+      if (!nombre || !key || seen.has(key)) return;
+
+      seen.add(key);
+      unique.push(nombre);
+    });
+
+    return unique;
+  }, [proyectos]);
+
   const opcionesProyectos = useMemo(
-    () => (proyectos || []).map((p) => p?.nombre).filter(Boolean),
-    [proyectos]
+    () => ["TODOS", ...opcionesProyectosBase],
+    [opcionesProyectosBase]
   );
 
-  const [proyectoActivo, setProyectoActivo] = useState(opcionesProyectos[0] || "");
+  const [proyectoActivo, setProyectoActivo] = useState("TODOS");
 
   useEffect(() => {
     setProyectoActivo((prev) => {
-      if (prev && opcionesProyectos.includes(prev)) return prev;
-      return opcionesProyectos[0] || "";
+      const actual = String(prev || "").trim();
+      if (!actual) return "TODOS";
+      if (opcionesProyectos.includes(actual)) return actual;
+      return "TODOS";
     });
   }, [opcionesProyectos]);
 
@@ -91,6 +110,13 @@ const ManoObraCard = ({ onBack }) => {
 
   const mostrarExito = (mensaje, tipo = "success") =>
     setModalExito({ show: true, mensaje, tipo });
+
+  const proyectoParaReporte = useMemo(() => {
+    if (norm(proyectoActivo) === "TODOS") {
+      return opcionesProyectosBase[0] || "";
+    }
+    return proyectoActivo;
+  }, [proyectoActivo, opcionesProyectosBase]);
 
   /* ===========================
      Helpers de actualización
@@ -124,13 +150,14 @@ const ManoObraCard = ({ onBack }) => {
   =========================== */
   const egresosMOProyecto = useMemo(() => {
     const pA = norm(proyectoActivo);
+    const todos = pA === "TODOS";
 
     return (egresos || []).filter((e) => {
       const pE = norm(e?.proyecto);
       const cat = norm(e?.categoria);
       const est = norm(e?.estado || "PENDIENTE");
 
-      if (pE !== pA) return false;
+      if (!todos && pE !== pA) return false;
       if (cat !== "MANO DE OBRA") return false;
 
       // ANULADO nunca entra a nómina ni totales
@@ -165,10 +192,15 @@ const ManoObraCard = ({ onBack }) => {
       const nombre = curr.concepto ? norm(curr.concepto) : "SIN NOMBRE";
       const asistio = curr.asistio === false ? false : true;
       const estado = norm(curr.estado || "PENDIENTE");
+      const proyecto = norm(curr.proyecto || "SIN PROYECTO");
 
-      if (!acc[nombre]) {
-        acc[nombre] = {
+      const key = norm(proyectoActivo) === "TODOS" ? `${proyecto}__${nombre}` : nombre;
+
+      if (!acc[key]) {
+        acc[key] = {
+          key,
           nombre,
+          proyecto,
           cargo: norm(curr.cargo || "OPERARIO"),
           dias: 0,
           extras: 0,
@@ -180,20 +212,20 @@ const ManoObraCard = ({ onBack }) => {
       }
 
       if (estado === "PENDIENTE") {
-        acc[nombre].estadoSemana = "PENDIENTE";
+        acc[key].estadoSemana = "PENDIENTE";
       }
 
       if (asistio) {
-        acc[nombre].dias += 1;
-        acc[nombre].extras += Number(curr.numHorasExtras) || 0;
-        acc[nombre].subtotal += Number(curr.valor) || 0;
-        acc[nombre].descuentos += Number(curr.descuentos) || 0;
-        acc[nombre].neto = acc[nombre].subtotal - acc[nombre].descuentos;
+        acc[key].dias += 1;
+        acc[key].extras += Number(curr.numHorasExtras) || 0;
+        acc[key].subtotal += Number(curr.valor) || 0;
+        acc[key].descuentos += Number(curr.descuentos) || 0;
+        acc[key].neto = acc[key].subtotal - acc[key].descuentos;
       }
 
       return acc;
     }, {});
-  }, [egresosMO]);
+  }, [egresosMO, proyectoActivo]);
 
   const listaFinal = useMemo(() => Object.values(resumenNomina), [resumenNomina]);
 
@@ -202,7 +234,9 @@ const ManoObraCard = ({ onBack }) => {
     [listaFinal]
   );
 
-  const hayFiltros = Boolean(semanaActiva || soloPendientes);
+  const hayFiltros = useMemo(() => {
+    return norm(proyectoActivo) !== "TODOS" || Boolean(semanaActiva || soloPendientes);
+  }, [proyectoActivo, semanaActiva, soloPendientes]);
 
   const abrirDetalle = (empNombre) => {
     const nombre = norm(empNombre);
@@ -212,6 +246,11 @@ const ManoObraCard = ({ onBack }) => {
 
   const marcarPagadoSemanaEmpleado = (nombreEmpleado) => {
     if (!proyectoActivo) return;
+
+    if (norm(proyectoActivo) === "TODOS") {
+      mostrarExito("SELECCIONA UN PROYECTO ESPECÍFICO PARA PAGAR", "info");
+      return;
+    }
 
     if (!semanaActiva) {
       mostrarExito("FILTRA PRIMERO POR SEMANA PARA PAGAR", "info");
@@ -237,6 +276,12 @@ const ManoObraCard = ({ onBack }) => {
     );
 
     mostrarExito(`PAGO REGISTRADO · ${nombreN} · ${weekLabel(semanaActiva)}`, "success");
+  };
+
+  const limpiarFiltros = () => {
+    setProyectoActivo("TODOS");
+    setSemanaActiva("");
+    setSoloPendientes(false);
   };
 
   return (
@@ -318,6 +363,11 @@ const ManoObraCard = ({ onBack }) => {
                 <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-3">
                   {semanaActiva ? weekLabel(semanaActiva) : "Todas las semanas"}
                 </p>
+                <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-1">
+                  {norm(proyectoActivo) === "TODOS"
+                    ? "Todos los proyectos"
+                    : `Proyecto: ${proyectoActivo}`}
+                </p>
               </div>
 
               <div className="ml-auto w-full sm:w-auto">
@@ -348,10 +398,11 @@ const ManoObraCard = ({ onBack }) => {
                   options={opcionesProyectos}
                   value={proyectoActivo}
                   onChange={(val) => {
-                    setProyectoActivo(val);
+                    const next = String(val || "").trim();
+                    setProyectoActivo(!next ? "TODOS" : next);
                     setSemanaActiva("");
                   }}
-                  placeholder="SELECCIONAR..."
+                  placeholder="TODOS"
                   allowCustom={false}
                 />
 
@@ -399,12 +450,23 @@ const ManoObraCard = ({ onBack }) => {
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSemanaActiva("");
-                      setSoloPendientes(false);
-                    }}
+                    onClick={limpiarFiltros}
                     className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
                   >
+                    <svg
+                      className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+
                     <span className="text-[8px] font-black uppercase tracking-[0.25em]">
                       Limpiar
                     </span>
@@ -425,7 +487,7 @@ const ManoObraCard = ({ onBack }) => {
       <ReporteDiarioModal
         show={showReporte}
         onClose={() => setShowReporte(false)}
-        proyectoActivo={proyectoActivo}
+        proyectoActivo={proyectoParaReporte}
         registradoPor={registradoPor}
         onSuccess={(msg) => {
           mostrarExito(msg, "success");
@@ -440,7 +502,7 @@ const ManoObraCard = ({ onBack }) => {
           setShowEditReporte(false);
           setEditReporte(null);
         }}
-        proyectoActivo={proyectoActivo}
+        proyectoActivo={editReporte?.proyecto || proyectoParaReporte}
         registradoPor={registradoPor}
         onSuccess={(msg) => {
           mostrarExito(msg, "success");

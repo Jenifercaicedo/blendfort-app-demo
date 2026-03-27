@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
-import FilterSelect from "./FilterSelect";
+import CustomSelect from "./CustomSelect";
 import ModalCajaChica from "./ModalCajaChica";
 
 const norm = (s) =>
@@ -27,10 +27,21 @@ const estadoTone = (estado) => {
   return "bg-black/5 text-black/50 border-black/10";
 };
 
+const estadoHistorialTone = (estado) => {
+  const e = norm(estado);
+  if (e === "DISPONIBLE") return "bg-green-50 text-green-700 border-green-100";
+  if (e === "POR AGOTARSE") return "bg-amber-50 text-amber-700 border-amber-100";
+  if (e === "AGOTADA") return "bg-red-50 text-red-700 border-red-100";
+  if (e === "EXCEDIDA") return "bg-red-100 text-red-800 border-red-200";
+  if (e === "NO VIGENTE") return "bg-black/5 text-black/45 border-black/10";
+  return "bg-black/5 text-black/50 border-black/10";
+};
+
 const CajaChicaView = ({ onBack }) => {
   const {
     proyectos,
     cajaChicaDesembolsos,
+    movimientosCajaChica,
     getResumenesCajaChica,
     registrarDesembolsoCajaChica,
   } = useAppContext();
@@ -53,10 +64,8 @@ const CajaChicaView = ({ onBack }) => {
   const [filtroFecha, setFiltroFecha] = useState("");
 
   const resumenes = useMemo(() => {
-    return typeof getResumenesCajaChica === "function"
-      ? getResumenesCajaChica()
-      : [];
-  }, [getResumenesCajaChica, proyectos, cajaChicaDesembolsos]);
+    return getResumenesCajaChica();
+  }, [getResumenesCajaChica, proyectos, cajaChicaDesembolsos, movimientosCajaChica]);
 
   const opcionesProyectos = useMemo(() => {
     return [...new Set((resumenes || []).map((r) => norm(r.proyecto)).filter(Boolean))].sort();
@@ -72,8 +81,7 @@ const CajaChicaView = ({ onBack }) => {
       const okEstado = !filtroEstado || norm(r.estado) === norm(filtroEstado);
       const okFecha =
         !filtroFecha ||
-        String(r.fechaUltimoDesembolso || "").slice(0, 10) ===
-          String(filtroFecha || "").slice(0, 10);
+        String(r.fechaUltimoDesembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
 
       return okProyecto && okEstado && okFecha;
     });
@@ -130,6 +138,67 @@ const CajaChicaView = ({ onBack }) => {
     [filtroProyecto, filtroEstado, filtroFecha]
   );
 
+  const vistaCompactaMobileHistorial = useMemo(
+    () => !filtroProyecto && !filtroEstado && !filtroFecha,
+    [filtroProyecto, filtroEstado, filtroFecha]
+  );
+
+  const latestDesembolsoPorProyecto = useMemo(() => {
+    const map = new Map();
+
+    for (const item of cajaChicaDesembolsos || []) {
+      const key = norm(item?.proyecto);
+      if (!key) continue;
+
+      const current = map.get(key);
+
+      if (!current) {
+        map.set(key, item);
+        continue;
+      }
+
+      const fechaItem = String(item?.fechaDesembolso || item?.fecha_desembolso || "");
+      const fechaCurrent = String(current?.fechaDesembolso || current?.fecha_desembolso || "");
+
+      if (fechaItem > fechaCurrent) {
+        map.set(key, item);
+        continue;
+      }
+
+      if (fechaItem === fechaCurrent) {
+        const createdItem = String(item?.created_at || "");
+        const createdCurrent = String(current?.created_at || "");
+
+        if (createdItem > createdCurrent) {
+          map.set(key, item);
+        }
+      }
+    }
+
+    return map;
+  }, [cajaChicaDesembolsos]);
+
+  const getEstadoHistorialVisual = (item) => {
+    const proyectoKey = norm(item?.proyecto);
+    const latest = latestDesembolsoPorProyecto.get(proyectoKey);
+
+    const esVigente = latest && String(latest.id) === String(item.id);
+
+    if (!esVigente) {
+      return {
+        label: "NO VIGENTE",
+        tone: estadoHistorialTone("NO VIGENTE"),
+      };
+    }
+
+    const estadoActual = norm(item?.estadoNuevo || item?.estado_nuevo || "SIN FONDO");
+
+    return {
+      label: estadoActual,
+      tone: estadoHistorialTone(estadoActual),
+    };
+  };
+
   const limpiarFiltros = () => {
     setFiltroProyecto("");
     setFiltroEstado("");
@@ -184,11 +253,11 @@ const CajaChicaView = ({ onBack }) => {
             </svg>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button
               type="button"
               onClick={() => setShowFiltros((v) => !v)}
-              className={`group flex items-center gap-3 px-6 py-3 rounded-full border shadow-sm transition-all active:scale-95 ${
+              className={`md:hidden group flex items-center justify-center h-11 w-11 rounded-full border shadow-sm transition-all active:scale-95 ${
                 showFiltros
                   ? "bg-black text-white border-black"
                   : "bg-white border-black/5 hover:border-blendfort-naranja"
@@ -210,24 +279,18 @@ const CajaChicaView = ({ onBack }) => {
                 </svg>
                 {hayFiltros && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />}
               </div>
-
-              <span
-                className={`text-[9px] font-black uppercase tracking-[0.35em] transition-colors ${
-                  showFiltros ? "text-white" : "text-black/50 group-hover:text-black"
-                }`}
-              >
-                FILTROS
-              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowResumen((v) => !v)}
-              className={`group flex items-center gap-3 px-6 py-3 rounded-full border shadow-sm transition-all active:scale-95 ${
+              className={`group flex items-center justify-center md:justify-start gap-0 md:gap-3 h-11 w-11 md:w-auto md:px-6 md:py-3 rounded-full border shadow-sm transition-all active:scale-95 ${
                 showResumen
                   ? "bg-black text-white border-black"
                   : "bg-white border-black/5 hover:border-blendfort-naranja"
               }`}
+              aria-label="Resumen"
+              title="Resumen"
             >
               <svg
                 className={`w-4 h-4 transition-colors ${
@@ -240,8 +303,9 @@ const CajaChicaView = ({ onBack }) => {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 13h4v7H4zm6-9h4v16h-4zm6 5h4v11h-4z" />
               </svg>
+
               <span
-                className={`text-[9px] font-black uppercase tracking-[0.35em] transition-colors ${
+                className={`hidden md:inline text-[9px] font-black uppercase tracking-[0.35em] transition-colors ${
                   showResumen ? "text-white" : "text-black/50 group-hover:text-black"
                 }`}
               >
@@ -261,12 +325,14 @@ const CajaChicaView = ({ onBack }) => {
                 });
                 setShowModal(true);
               }}
-              className="group flex items-center gap-3 px-7 py-3 rounded-full bg-blendfort-naranja text-white shadow-sm hover:bg-black transition-all active:scale-95"
+              className="group flex items-center gap-2 md:gap-3 px-4 md:px-7 py-3 rounded-full bg-blendfort-naranja text-white shadow-sm hover:bg-black transition-all active:scale-95"
               aria-label="Nuevo desembolso"
               title="Nuevo desembolso"
             >
               <span className="text-base font-black leading-none">+</span>
-              <span className="text-[9px] font-black uppercase tracking-[0.35em]">DESEMBOLSO</span>
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.28em] md:tracking-[0.35em]">
+                DESEMBOLSO
+              </span>
             </button>
           </div>
         </div>
@@ -293,48 +359,76 @@ const CajaChicaView = ({ onBack }) => {
             </div>
           </div>
 
-          {/* CARDS GENERALES SOLO SI NO ESTÁ RESUMEN */}
-          {!showResumen && (
-            <div className="mb-8 grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-              {[
-                { label: "Fondos Activos", value: stats.activos, tone: "text-black" },
-                { label: "Total Desembolsado", value: money(stats.totalDesembolsado), tone: "text-black" },
-                { label: "Total Gastado", value: money(stats.totalGastado), tone: "text-black" },
-                { label: "Proyectos en Alerta", value: stats.alertas, tone: "text-red-500" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-blendfort-fondo/50 border border-black/5 rounded-[1rem] md:rounded-[1.2rem] px-4 py-3.5 md:px-4 md:py-4 shadow-sm"
-                >
-                  <div className="w-5 h-[2px] bg-blendfort-naranja mb-3"></div>
-                  <p className="text-[7px] font-black uppercase tracking-[0.22em] opacity-35 mb-2">
-                    {item.label}
-                  </p>
-                  <h3 className={`text-base md:text-xl font-black tracking-tight ${item.tone}`}>
-                    {item.value}
-                  </h3>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* FILTROS DESKTOP SIEMPRE VISIBLES */}
+          <div className="hidden md:block mb-8 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] border border-black/[0.02]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CustomSelect
+                label="Proyecto"
+                options={opcionesProyectos}
+                value={filtroProyecto}
+                onChange={setFiltroProyecto}
+                placeholder="TODOS..."
+                allowCustom={false}
+              />
 
+              <CustomSelect
+                label="Estado"
+                options={opcionesEstado}
+                value={filtroEstado}
+                onChange={setFiltroEstado}
+                placeholder="TODOS..."
+                allowCustom={false}
+              />
+
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm"
+                  value={filtroFecha}
+                  onChange={(e) => setFiltroFecha(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {hayFiltros && (
+              <div className="mt-5 flex justify-start">
+                <button
+                  onClick={limpiarFiltros}
+                  type="button"
+                  className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+                >
+                  <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar Filtros</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* FILTROS MOBILE DESPLEGABLES */}
           {showFiltros && (
-            <div className="mb-8 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FilterSelect
+            <div className="md:hidden mb-8 bg-blendfort-fondo/50 p-5 rounded-[1.8rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
+              <div className="grid grid-cols-1 gap-4">
+                <CustomSelect
                   label="Proyecto"
                   options={opcionesProyectos}
                   value={filtroProyecto}
                   onChange={setFiltroProyecto}
                   placeholder="TODOS..."
+                  allowCustom={false}
                 />
 
-                <FilterSelect
+                <CustomSelect
                   label="Estado"
                   options={opcionesEstado}
                   value={filtroEstado}
                   onChange={setFiltroEstado}
                   placeholder="TODOS..."
+                  allowCustom={false}
                 />
 
                 <div className="space-y-1">
@@ -364,6 +458,35 @@ const CajaChicaView = ({ onBack }) => {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* CARDS GENERALES SOLO SI NO ESTÁ RESUMEN */}
+          {!showResumen && (
+            <div className="mb-8 grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
+              {[
+                { label: "Fondos Activos", value: stats.activos, tone: "text-black" },
+                { label: "Total Desembolsado", value: money(stats.totalDesembolsado), tone: "text-black" },
+                { label: "Total Gastado", value: money(stats.totalGastado), tone: "text-black" },
+                {
+                  label: "Proyectos en Alerta",
+                  value: stats.alertas,
+                  tone: stats.alertas > 0 ? "text-red-500" : "text-black",
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-blendfort-fondo/50 border border-black/5 rounded-[1rem] md:rounded-[1.2rem] px-4 py-3.5 md:px-4 md:py-4 shadow-sm"
+                >
+                  <div className="w-5 h-[2px] bg-blendfort-naranja mb-3"></div>
+                  <p className="text-[7px] font-black uppercase tracking-[0.22em] opacity-35 mb-2">
+                    {item.label}
+                  </p>
+                  <h3 className={`text-base md:text-xl font-black tracking-tight ${item.tone}`}>
+                    {item.value}
+                  </h3>
+                </div>
+              ))}
             </div>
           )}
 
@@ -488,14 +611,20 @@ const CajaChicaView = ({ onBack }) => {
             <div className="relative overflow-hidden">
               <div className="rounded-[1.8rem] overflow-hidden border border-black/5">
                 <div className="hidden md:grid grid-cols-6 bg-blendfort-fondo/50 px-6 py-4 border-b border-black/5">
-                  {["Fecha", "Proyecto", "Residente", "Monto", "Saldo Anterior", "Estado Nuevo"].map((h) => (
+                  {["Fecha", "Proyecto", "Residente", "Monto", "Saldo Anterior", "Estado"].map((h) => (
                     <div key={h} className="text-[8px] font-black uppercase tracking-[0.25em] opacity-35">
                       {h}
                     </div>
                   ))}
                 </div>
 
-                <div className="divide-y divide-black/5 bg-white">
+                <div
+                  className={`divide-y divide-black/5 bg-white ${
+                    vistaCompactaMobileHistorial
+                      ? "max-h-[290px] overflow-y-auto md:max-h-none md:overflow-visible"
+                      : ""
+                  }`}
+                >
                   {historialFiltrado.length === 0 ? (
                     <div className="p-10 text-center">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/35">
@@ -503,59 +632,77 @@ const CajaChicaView = ({ onBack }) => {
                       </p>
                     </div>
                   ) : (
-                    historialFiltrado.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-0 px-5 md:px-6 py-5"
-                      >
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Fecha
-                          </p>
-                          <p className="text-[10px] font-black uppercase">{item.fechaDesembolso}</p>
-                        </div>
+                    historialFiltrado.map((item) => {
+                      const estadoVisual = getEstadoHistorialVisual(item);
 
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Proyecto
-                          </p>
-                          <p className="text-[10px] font-black uppercase">{item.proyecto}</p>
-                        </div>
+                      return (
+                        <div
+                          key={item.id}
+                          className="grid grid-cols-1 md:grid-cols-6 gap-3 md:gap-0 px-5 md:px-6 py-5"
+                        >
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Fecha
+                            </p>
+                            <p className="text-[10px] font-black uppercase">{item.fechaDesembolso}</p>
+                          </div>
 
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Residente
-                          </p>
-                          <p className="text-[10px] font-black uppercase">{item.residente || "SIN RESIDENTE"}</p>
-                        </div>
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Proyecto
+                            </p>
+                            <p className="text-[10px] font-black uppercase">{item.proyecto}</p>
+                          </div>
 
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Monto
-                          </p>
-                          <p className="text-[10px] font-black uppercase">{money(item.montoDesembolsado)}</p>
-                        </div>
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Residente
+                            </p>
+                            <p className="text-[10px] font-black uppercase">{item.residente || "SIN RESIDENTE"}</p>
+                          </div>
 
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Saldo Anterior
-                          </p>
-                          <p className="text-[10px] font-black uppercase">{money(item.saldoFinalAntesReposicion)}</p>
-                        </div>
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Monto
+                            </p>
+                            <p className="text-[10px] font-black uppercase">{money(item.montoDesembolsado)}</p>
+                          </div>
 
-                        <div>
-                          <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
-                            Estado Nuevo
-                          </p>
-                          <span className={`inline-flex px-3 py-2 rounded-full border text-[8px] font-black uppercase tracking-[0.22em] ${estadoTone(item.estadoNuevo)}`}>
-                            {item.estadoNuevo}
-                          </span>
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Saldo Anterior
+                            </p>
+                            <p
+                              className={`text-[10px] font-black uppercase ${
+                                Number(item.saldoFinalAntesReposicion) < 0 ? "text-red-600" : ""
+                              }`}
+                            >
+                              {money(item.saldoFinalAntesReposicion)}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
+                              Estado
+                            </p>
+                            <span className={`inline-flex px-3 py-2 rounded-full border text-[8px] font-black uppercase tracking-[0.22em] ${estadoVisual.tone}`}>
+                              {estadoVisual.label}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
+
+              {vistaCompactaMobileHistorial && historialFiltrado.length > 2 && (
+                <div className="md:hidden mt-3 text-center">
+                  <span className="text-[8px] font-black uppercase tracking-[0.22em] text-black/25">
+                    Desliza para ver más desembolsos
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

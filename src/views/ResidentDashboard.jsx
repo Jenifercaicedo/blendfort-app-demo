@@ -252,6 +252,10 @@ const ResidentDashboard = () => {
     );
   }, [getResumenCajaChica, proyectoActivoFinal, cajaChicaProyecto]);
 
+  const saldoCajaNegativo = Number(resumenCajaChica?.saldoActual || 0) < 0;
+  const cajaExcedida =
+    normalize(resumenCajaChica?.estado) === "EXCEDIDA" || saldoCajaNegativo;
+
   /* ===========================
      Acciones
   =========================== */
@@ -381,38 +385,38 @@ const ResidentDashboard = () => {
     <div className="min-h-screen bg-blendfort-fondo flex flex-col p-4 md:p-8 font-sans text-black overflow-x-hidden">
       {/* Header */}
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 md:mb-8">
-  <button
-    type="button"
-    onClick={() => {
-      window.location.href = "/";
-    }}
-    className="shrink-0 transition-transform active:scale-95"
-    aria-label="Ir al inicio"
-    title="Ir al inicio"
-  >
-    <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
-  </button>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          className="shrink-0 transition-transform active:scale-95"
+          aria-label="Ir al inicio"
+          title="Ir al inicio"
+        >
+          <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
+        </button>
 
-  <button
-    onClick={logout}
-    className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
-  >
-    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
-      Cerrar Sesión
-    </span>
-    <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
-      <svg
-        className="w-3.5 h-3.5 rotate-180"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth="3"
-      >
-        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-      </svg>
-    </div>
-  </button>
-</div>
+        <button
+          onClick={logout}
+          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
+        >
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
+            Cerrar Sesión
+          </span>
+          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
+            <svg
+              className="w-3.5 h-3.5 rotate-180"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </div>
+        </button>
+      </div>
 
       <div className="max-w-7xl mx-auto w-full flex-1">
         {/* Bienvenida + Card caja chica */}
@@ -473,7 +477,11 @@ const ResidentDashboard = () => {
 
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-1.5 h-7 bg-blendfort-naranja rounded-full"></div>
-                <h2 className="text-2xl md:text-3xl font-black tracking-tighter">
+                <h2
+                  className={`text-2xl md:text-3xl font-black tracking-tighter ${
+                    cajaExcedida ? "text-red-800" : "text-black"
+                  }`}
+                >
                   {money(resumenCajaChica?.gastadoActual || 0)}
                 </h2>
               </div>
@@ -496,9 +504,16 @@ const ResidentDashboard = () => {
                   <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
                     Saldo
                   </p>
-                  <p className="text-[10px] font-black">
-                    {money(resumenCajaChica?.saldoActual || 0)}
-                  </p>
+
+                  {saldoCajaNegativo ? (
+                    <span className="inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] text-red-800 bg-red-100 border-red-200">
+                      {money(resumenCajaChica?.saldoActual || 0)}
+                    </span>
+                  ) : (
+                    <p className="text-[10px] font-black">
+                      {money(resumenCajaChica?.saldoActual || 0)}
+                    </p>
+                  )}
                 </div>
 
                 <div>

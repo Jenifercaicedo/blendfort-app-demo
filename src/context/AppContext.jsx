@@ -785,7 +785,7 @@ export const AppProvider = ({ children }) => {
   const proyectoObj =
     (proyectos || []).find((p) => norm(p?.nombre) === proyectoN) || null;
 
-  // Buscar el estado actual en la base, no solo en React state
+  // Estado actual real de la caja
   const { data: cajaActual, error: cajaActualError } = await supabase
     .from("caja_chica_proyecto")
     .select("*")
@@ -800,7 +800,13 @@ export const AppProvider = ({ children }) => {
 
   const saldoAnterior = safeNum(cajaActual?.saldo_actual);
   const estadoAnterior = norm(cajaActual?.estado);
-  const estadoNuevoCalc = getCajaChicaEstado(monto, 0);
+
+  // ✅ Regla nueva:
+  // si hay saldo negativo, ese valor se arrastra como ya gastado
+  const deudaArrastrada = saldoAnterior < 0 ? Math.abs(saldoAnterior) : 0;
+
+  const gastadoNuevo = deudaArrastrada;
+  const estadoNuevoCalc = getCajaChicaEstado(monto, gastadoNuevo);
 
   const desembolsoFinal = {
     proyecto: proyectoN,
@@ -827,8 +833,8 @@ export const AppProvider = ({ children }) => {
     proyecto: proyectoN,
     residente: residenteAuto,
     monto_actual_asignado: monto,
-    gastado_actual: 0,
-    saldo_actual: monto,
+    gastado_actual: gastadoNuevo, // ✅ ya arrastra la deuda anterior
+    saldo_actual: estadoNuevoCalc.saldo, // ✅ monto - deudaArrastrada
     estado: estadoNuevoCalc.estado,
     fecha_ultimo_desembolso: fechaDesembolso,
     observacion: norm(payload?.observacion),
@@ -837,7 +843,6 @@ export const AppProvider = ({ children }) => {
     updated_at: new Date().toISOString(),
   };
 
-  // Upsert: si existe por proyecto, actualiza; si no existe, inserta
   const { data: cajaData, error: cajaError } = await supabase
     .from("caja_chica_proyecto")
     .upsert([cajaPayload], { onConflict: "proyecto" })
@@ -873,11 +878,13 @@ export const AppProvider = ({ children }) => {
 
   setCajaChicaProyecto((prev) => {
     const exists = (prev || []).some((c) => c.id === cajaNormalizada.id);
+
     if (exists) {
       return (prev || []).map((c) =>
         c.id === cajaNormalizada.id ? cajaNormalizada : c
       );
     }
+
     return [cajaNormalizada, ...(prev || [])];
   });
 
