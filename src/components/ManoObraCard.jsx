@@ -1,4 +1,3 @@
-// ManoObraCard.jsx
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import CustomSelect from "./CustomSelect";
 import { useAppContext } from "../context/AppContext";
@@ -160,7 +159,6 @@ const ManoObraCard = ({ onBack }) => {
       if (!todos && pE !== pA) return false;
       if (cat !== "MANO DE OBRA") return false;
 
-      // ANULADO nunca entra a nómina ni totales
       if (est === "ANULADO") return false;
 
       if (soloPendientes) {
@@ -278,6 +276,55 @@ const ManoObraCard = ({ onBack }) => {
     mostrarExito(`PAGO REGISTRADO · ${nombreN} · ${weekLabel(semanaActiva)}`, "success");
   };
 
+  const pagarProyectoCompleto = () => {
+    const proyectoN = norm(proyectoActivo);
+
+    if (!proyectoN || proyectoN === "TODOS") {
+      mostrarExito("SELECCIONA UN PROYECTO ESPECÍFICO PARA PAGO MASIVO", "info");
+      return;
+    }
+
+    const registrosAPagar = (egresos || []).filter((e) => {
+      const esMO = norm(e?.categoria) === "MANO DE OBRA";
+      const mismoProyecto = norm(e?.proyecto) === proyectoN;
+      const noAnulado = norm(e?.estado || "PENDIENTE") !== "ANULADO";
+      const noPagado =
+        norm(e?.estado || "PENDIENTE") !== "PAGADO" &&
+        norm(e?.estado || "PENDIENTE") !== "COMPLETADO";
+      const mismaSemana = semanaActiva ? getISOWeekKey(e?.fecha) === semanaActiva : true;
+
+      return esMO && mismoProyecto && noAnulado && noPagado && mismaSemana;
+    });
+
+    if (!registrosAPagar.length) {
+      mostrarExito(
+        semanaActiva
+          ? `NO HAY REGISTROS PENDIENTES PARA ${proyectoN} EN ${weekLabel(semanaActiva)}`
+          : `NO HAY REGISTROS PENDIENTES PARA ${proyectoN}`,
+        "info"
+      );
+      return;
+    }
+
+    const idsAPagar = new Set(registrosAPagar.map((r) => r.id));
+
+    updateManyEgresos((prev) =>
+      (prev || []).map((e) => {
+        if (idsAPagar.has(e.id)) {
+          return { ...e, estado: "PAGADO" };
+        }
+        return e;
+      })
+    );
+
+    mostrarExito(
+      semanaActiva
+        ? `PAGO MASIVO REGISTRADO · ${proyectoN} · ${weekLabel(semanaActiva)} · ${registrosAPagar.length} REGISTROS`
+        : `PAGO MASIVO REGISTRADO · ${proyectoN} · ${registrosAPagar.length} REGISTROS`,
+      "success"
+    );
+  };
+
   const limpiarFiltros = () => {
     setProyectoActivo("TODOS");
     setSemanaActiva("");
@@ -310,7 +357,7 @@ const ManoObraCard = ({ onBack }) => {
             </span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <button
               onClick={() => setShowFiltros((v) => !v)}
               type="button"
@@ -334,6 +381,21 @@ const ManoObraCard = ({ onBack }) => {
               {hayFiltros && (
                 <span className="ml-1 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
               )}
+            </button>
+
+            <button
+              onClick={pagarProyectoCompleto}
+              type="button"
+              className="bg-black text-white px-6 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-[0.25em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
+              title={
+                norm(proyectoActivo) === "TODOS"
+                  ? "Selecciona un proyecto específico"
+                  : semanaActiva
+                  ? `Pagar ${weekLabel(semanaActiva)}`
+                  : "Pagar todo el proyecto"
+              }
+            >
+              Pagar Proyecto
             </button>
 
             <button
