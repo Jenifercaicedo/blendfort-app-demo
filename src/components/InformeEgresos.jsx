@@ -89,6 +89,75 @@ const InformeEgresos = ({
     limpiarFiltros?.();
   };
 
+  const filtrosUI = (
+    <div className="bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02]">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <FilterSelect
+          label="Proyecto"
+          options={opcionesProyectos}
+          value={filtroProyecto}
+          onChange={setFiltroProyecto}
+          placeholder="TODOS..."
+        />
+
+        <FilterSelect
+          label="Residente"
+          options={opcionesResidentes}
+          value={filtroResidente}
+          onChange={setFiltroResidente}
+          placeholder="TODOS..."
+        />
+
+        <FilterSelect
+          label="Categoría"
+          options={opcionesCategorias}
+          value={filtroCategoria}
+          onChange={setFiltroCategoria}
+          placeholder="TODAS..."
+        />
+
+        <div className="space-y-1">
+          <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+            Fecha
+          </label>
+          <input
+            type="date"
+            value={filtroFecha}
+            onChange={(e) => setFiltroFecha(e.target.value)}
+            className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm"
+          />
+        </div>
+      </div>
+
+      {hayFiltros && (
+        <div className="mt-5 flex justify-start">
+          <button
+            onClick={limpiarTodo}
+            type="button"
+            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+          >
+            <svg
+              className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+              />
+            </svg>
+            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+              Limpiar Filtros
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
       <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
@@ -110,7 +179,7 @@ const InformeEgresos = ({
             <button
               type="button"
               onClick={() => setShowFiltros((v) => !v)}
-              className="group flex items-center gap-3 px-6 py-3 rounded-full bg-white border border-black/5 shadow-sm hover:border-blendfort-naranja transition-all active:scale-95"
+              className="md:hidden group flex items-center gap-3 px-6 py-3 rounded-full bg-white border border-black/5 shadow-sm hover:border-blendfort-naranja transition-all active:scale-95"
               aria-label="Filtros"
               title="Filtros"
             >
@@ -204,72 +273,15 @@ const InformeEgresos = ({
             </div>
           </div>
 
+          {/* FILTROS DESKTOP: SIEMPRE VISIBLES */}
+          <div className="hidden md:block mb-10">
+            {filtrosUI}
+          </div>
+
+          {/* FILTROS MOBILE: DESPLEGABLES */}
           {showFiltros && (
-            <div className="mb-10 bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <FilterSelect
-                  label="Proyecto"
-                  options={opcionesProyectos}
-                  value={filtroProyecto}
-                  onChange={setFiltroProyecto}
-                  placeholder="TODOS..."
-                />
-
-                <FilterSelect
-                  label="Residente"
-                  options={opcionesResidentes}
-                  value={filtroResidente}
-                  onChange={setFiltroResidente}
-                  placeholder="TODOS..."
-                />
-
-                <FilterSelect
-                  label="Categoría"
-                  options={opcionesCategorias}
-                  value={filtroCategoria}
-                  onChange={setFiltroCategoria}
-                  placeholder="TODAS..."
-                />
-
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
-                    Fecha
-                  </label>
-                  <input
-                    type="date"
-                    value={filtroFecha}
-                    onChange={(e) => setFiltroFecha(e.target.value)}
-                    className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm"
-                  />
-                </div>
-              </div>
-
-              {hayFiltros && (
-                <div className="mt-5 flex justify-start">
-                  <button
-                    onClick={limpiarTodo}
-                    type="button"
-                    className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-                      />
-                    </svg>
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
-                      Limpiar Filtros
-                    </span>
-                  </button>
-                </div>
-              )}
+            <div className="md:hidden mb-10 animate-in fade-in zoom-in duration-300">
+              {filtrosUI}
             </div>
           )}
 

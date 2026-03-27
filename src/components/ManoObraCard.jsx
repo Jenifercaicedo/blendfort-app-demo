@@ -92,8 +92,8 @@ const ManoObraCard = ({ onBack }) => {
     });
   }, [opcionesProyectos]);
 
-  const [showReporte, setShowReporte] = useState(false);
   const [showFiltros, setShowFiltros] = useState(false);
+  const [showReporte, setShowReporte] = useState(false);
   const [semanaActiva, setSemanaActiva] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
@@ -158,7 +158,6 @@ const ManoObraCard = ({ onBack }) => {
 
       if (!todos && pE !== pA) return false;
       if (cat !== "MANO DE OBRA") return false;
-
       if (est === "ANULADO") return false;
 
       if (soloPendientes) {
@@ -331,14 +330,100 @@ const ManoObraCard = ({ onBack }) => {
     setSoloPendientes(false);
   };
 
+  const filtrosPanel = (
+    <div className="bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CustomSelect
+          label="Proyecto"
+          options={opcionesProyectos}
+          value={proyectoActivo}
+          onChange={(val) => {
+            const next = String(val || "").trim();
+            setProyectoActivo(!next ? "TODOS" : next);
+            setSemanaActiva("");
+          }}
+          placeholder="TODOS"
+          allowCustom={false}
+        />
+
+        <CustomSelect
+          label="Semana"
+          options={opcionesSemanas.map((w) => weekLabel(w))}
+          value={semanaActiva ? weekLabel(semanaActiva) : ""}
+          onChange={(val) => {
+            const match = opcionesSemanas.find((k) => weekLabel(k) === val);
+            setSemanaActiva(match || "");
+          }}
+          placeholder={opcionesSemanas.length ? "TODAS..." : "SIN SEMANAS"}
+          allowCustom={false}
+          disabled={!opcionesSemanas.length}
+        />
+
+        <div className="space-y-1">
+          <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+            Pendientes
+          </label>
+          <button
+            type="button"
+            onClick={() => setSoloPendientes((v) => !v)}
+            className="w-full h-[53px] bg-white border border-black/5 rounded-2xl px-4 flex items-center justify-between shadow-sm transition-all hover:border-black/20"
+          >
+            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-black/50">
+              {soloPendientes ? "ACTIVO" : "DESACT."}
+            </span>
+            <div
+              className={`w-14 h-7 rounded-full transition-all relative ${
+                soloPendientes ? "bg-blendfort-naranja" : "bg-black/10"
+              }`}
+            >
+              <div
+                className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
+                  soloPendientes ? "left-8" : "left-1"
+                }`}
+              />
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {hayFiltros && (
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+          >
+            <svg
+              className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+
+            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+              Limpiar
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
       <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
         {/* TOP BAR */}
-        <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
+        <div className="flex justify-between items-center gap-3 p-4 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
           <button
             onClick={onBack}
-            className="flex items-center gap-3 group transition-all active:scale-95"
+            className="flex items-center gap-3 group transition-all active:scale-95 shrink-0"
             type="button"
           >
             <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white border border-black/5 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-sm">
@@ -357,17 +442,18 @@ const ManoObraCard = ({ onBack }) => {
             </span>
           </button>
 
-          <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0 whitespace-nowrap">
+            {/* Mobile: solo icono */}
             <button
               onClick={() => setShowFiltros((v) => !v)}
               type="button"
-              className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white border transition-all duration-300 active:scale-95 group shadow-sm hover:border-blendfort-naranja ${
+              className={`md:hidden relative w-11 h-11 rounded-2xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja flex items-center justify-center ${
                 hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"
               }`}
               title="Filtros"
             >
               <svg
-                className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja transition-all"
+                className="w-3.5 h-3.5 opacity-50"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -375,18 +461,15 @@ const ManoObraCard = ({ onBack }) => {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
               </svg>
-              <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.25em] text-black/50 group-hover:text-black">
-                Filtros
-              </span>
               {hayFiltros && (
-                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
               )}
             </button>
 
             <button
               onClick={pagarProyectoCompleto}
               type="button"
-              className="bg-black text-white px-6 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-[0.25em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
+              className="bg-black text-white px-3 md:px-6 py-2.5 rounded-2xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.25em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
               title={
                 norm(proyectoActivo) === "TODOS"
                   ? "Selecciona un proyecto específico"
@@ -401,7 +484,7 @@ const ManoObraCard = ({ onBack }) => {
             <button
               onClick={() => setShowReporte(true)}
               type="button"
-              className="bg-blendfort-naranja text-white px-6 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-[0.25em] hover:bg-black transition-all active:scale-95 shadow-sm"
+              className="bg-blendfort-naranja text-white px-3 md:px-6 py-2.5 rounded-2xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.25em] hover:bg-black transition-all active:scale-95 shadow-sm"
             >
               + Reporte
             </button>
@@ -409,6 +492,12 @@ const ManoObraCard = ({ onBack }) => {
         </div>
 
         <div className="p-8 md:p-14 relative">
+          {/* Desktop: filtros fijos */}
+          <div className="hidden md:block mb-10">{filtrosPanel}</div>
+
+          {/* Mobile: filtros desplegables */}
+          {showFiltros && <div className="md:hidden mb-10">{filtrosPanel}</div>}
+
           {/* Header */}
           <div className="mb-10">
             <div className="flex items-end justify-between gap-6 flex-wrap">
@@ -450,93 +539,6 @@ const ManoObraCard = ({ onBack }) => {
               </div>
             </div>
           </div>
-
-          {/* Filtros */}
-          {showFiltros && (
-            <div className="mb-10 bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <CustomSelect
-                  label="Proyecto"
-                  options={opcionesProyectos}
-                  value={proyectoActivo}
-                  onChange={(val) => {
-                    const next = String(val || "").trim();
-                    setProyectoActivo(!next ? "TODOS" : next);
-                    setSemanaActiva("");
-                  }}
-                  placeholder="TODOS"
-                  allowCustom={false}
-                />
-
-                <CustomSelect
-                  label="Semana"
-                  options={opcionesSemanas.map((w) => weekLabel(w))}
-                  value={semanaActiva ? weekLabel(semanaActiva) : ""}
-                  onChange={(val) => {
-                    const match = opcionesSemanas.find((k) => weekLabel(k) === val);
-                    setSemanaActiva(match || "");
-                  }}
-                  placeholder={opcionesSemanas.length ? "TODAS..." : "SIN SEMANAS"}
-                  allowCustom={false}
-                  disabled={!opcionesSemanas.length}
-                />
-
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
-                    Pendientes
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setSoloPendientes((v) => !v)}
-                    className="w-full h-[53px] bg-white border border-black/5 rounded-2xl px-4 flex items-center justify-between shadow-sm transition-all hover:border-black/20"
-                  >
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-black/50">
-                      {soloPendientes ? "ACTIVO" : "DESACT."}
-                    </span>
-                    <div
-                      className={`w-14 h-7 rounded-full transition-all relative ${
-                        soloPendientes ? "bg-blendfort-naranja" : "bg-black/10"
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
-                          soloPendientes ? "left-8" : "left-1"
-                        }`}
-                      />
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {hayFiltros && (
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={limpiarFiltros}
-                    className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
-                      Limpiar
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           <ManoObraTabla
             listaFinal={listaFinal}
