@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import CustomSelect from "./CustomSelect";
 
 const normalize = (s) =>
   String(s || "")
@@ -141,6 +142,7 @@ const ResidentManoObraModal = ({
   const [busqueda, setBusqueda] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("TODOS");
   const [filtroEstadoPago, setFiltroEstadoPago] = useState("TODOS");
+  const [showFiltrosMobile, setShowFiltrosMobile] = useState(false);
 
   useEffect(() => {
     if (!show) return;
@@ -164,6 +166,7 @@ const ResidentManoObraModal = ({
     setBusqueda("");
     setFiltroCargo("TODOS");
     setFiltroEstadoPago("TODOS");
+    setShowFiltrosMobile(false);
   }, [show, proyectoActivo]);
 
   const personalMap = useMemo(
@@ -205,7 +208,6 @@ const ResidentManoObraModal = ({
       totalPendiente,
       trabajadoresPlantilla: personalMap.size,
       trabajadoresConMovimiento,
-      registros: registrosMO.length,
     };
   }, [registrosMO, personalMap]);
 
@@ -219,24 +221,22 @@ const ResidentManoObraModal = ({
       if (!acumulado.has(nombreKey)) {
         acumulado.set(nombreKey, {
           key: nombreKey,
-          nombre:
-            String(
-              base?.nombre ||
-                reg?.empleado ||
-                reg?.trabajador ||
-                reg?.nombreEmpleado ||
-                reg?.nombreTrabajador ||
-                reg?.concepto ||
-                reg?.detalles ||
-                "SIN IDENTIFICAR"
-            ).toUpperCase(),
+          nombre: String(
+            base?.nombre ||
+              reg?.empleado ||
+              reg?.trabajador ||
+              reg?.nombreEmpleado ||
+              reg?.nombreTrabajador ||
+              reg?.concepto ||
+              reg?.detalles ||
+              "SIN IDENTIFICAR"
+          ).toUpperCase(),
           cargo: String(
             base?.cargo || reg?.cargo || reg?.rol || "SIN CARGO"
           ).toUpperCase(),
           estadoPersonal: String(base?.estadoPersonal || "ACTIVO").toUpperCase(),
           valorDia: Number(base?.valorDia || 0),
           valorHoraExtra: Number(base?.valorHoraExtra || 0),
-
           total: 0,
           pagado: 0,
           pendiente: 0,
@@ -303,6 +303,11 @@ const ResidentManoObraModal = ({
     return ["TODOS", ...unique];
   }, [filasBase]);
 
+  const opcionesEstadoPago = useMemo(
+    () => ["TODOS", "PAGADO", "PENDIENTE", "SIN MOVIMIENTOS"],
+    []
+  );
+
   const filasTrabajadores = useMemo(() => {
     let rows = [...filasBase];
 
@@ -347,6 +352,71 @@ const ResidentManoObraModal = ({
     setFiltroEstadoPago("TODOS");
   };
 
+  const filtrosPanel = (
+    <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-end">
+        <div className="lg:col-span-2">
+          <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
+            Buscar trabajador
+          </label>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="NOMBRE, CARGO O ESTADO..."
+            className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
+          />
+        </div>
+
+        <CustomSelect
+          label="Cargo"
+          options={opcionesCargo}
+          value={filtroCargo}
+          onChange={(val) => setFiltroCargo(String(val || "TODOS"))}
+          placeholder="TODOS"
+          allowCustom={false}
+        />
+
+        <CustomSelect
+          label="Estado pago"
+          options={opcionesEstadoPago}
+          value={filtroEstadoPago}
+          onChange={(val) => setFiltroEstadoPago(String(val || "TODOS"))}
+          placeholder="TODOS"
+          allowCustom={false}
+        />
+      </div>
+
+      {hayFiltrosActivos && (
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+          >
+            <svg
+              className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+
+            <span className="text-[8px] font-black uppercase tracking-[0.18em]">
+              Limpiar filtros
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   if (!show) return null;
 
   return (
@@ -374,26 +444,53 @@ const ResidentManoObraModal = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="shrink-0 w-11 h-11 rounded-2xl bg-black text-white hover:bg-blendfort-naranja transition-all active:scale-95 flex items-center justify-center"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="3"
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowFiltrosMobile((v) => !v)}
+                  className={`md:hidden relative flex items-center gap-2 px-4 h-11 rounded-2xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja ${
+                    hayFiltrosActivos ? "border-blendfort-naranja/40" : "border-black/5"
+                  }`}
+                  title="Filtros"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
+                  <svg
+                    className="w-3.5 h-3.5 opacity-50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+                  </svg>
+                  <span className="text-[8px] font-black uppercase tracking-[0.18em] text-black/60">
+                    Filtros
+                  </span>
+                  {hayFiltrosActivos && (
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="shrink-0 w-11 h-11 rounded-2xl bg-black text-white hover:bg-blendfort-naranja transition-all active:scale-95 flex items-center justify-center"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="h-[calc(92dvh-84px)] md:h-auto md:max-h-[calc(90vh-84px)] overflow-y-auto px-4 md:px-6 py-4 md:py-5">
-            <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
               <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
                 <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
                   Total Mano de Obra
@@ -429,94 +526,10 @@ const ResidentManoObraModal = ({
                   {resumen.trabajadoresPlantilla}
                 </p>
               </div>
-
-              <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
-                  Registros
-                </p>
-                <p className="text-lg md:text-xl font-black tracking-tight">
-                  {resumen.registros}
-                </p>
-              </div>
             </div>
 
-            <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div className="md:col-span-2">
-                  <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    Buscar trabajador
-                  </label>
-                  <input
-                    type="text"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="NOMBRE, CARGO O ESTADO..."
-                    className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    Cargo
-                  </label>
-                  <select
-                    value={filtroCargo}
-                    onChange={(e) => setFiltroCargo(e.target.value)}
-                    className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
-                  >
-                    {opcionesCargo.map((op) => (
-                      <option key={op} value={op}>
-                        {op}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    Estado pago
-                  </label>
-                  <select
-                    value={filtroEstadoPago}
-                    onChange={(e) => setFiltroEstadoPago(e.target.value)}
-                    className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
-                  >
-                    <option value="TODOS">TODOS</option>
-                    <option value="PAGADO">PAGADO</option>
-                    <option value="PENDIENTE">PENDIENTE</option>
-                    <option value="SIN MOVIMIENTOS">SIN MOVIMIENTOS</option>
-                  </select>
-                </div>
-              </div>
-
-              {hayFiltrosActivos && (
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={limpiarFiltros}
-                    className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-
-                    <span className="text-[8px] font-black uppercase tracking-[0.18em]">
-                      Limpiar filtros
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
+            <div className="hidden md:block">{filtrosPanel}</div>
+            {showFiltrosMobile && <div className="md:hidden">{filtrosPanel}</div>}
 
             <div className="md:hidden space-y-3">
               {filasTrabajadores.length === 0 ? (

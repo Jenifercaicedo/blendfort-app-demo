@@ -60,7 +60,20 @@ const InformeEgresos = ({
   const egresosFiltrados = useMemo(() => {
     return (egresos || []).filter((e) => {
       if (!filtroCategoria) return true;
-      return normalize(e?.categoria) === normalize(filtroCategoria);
+
+      const categoriaActual = normalize(e?.categoria);
+      const categoriaFiltro = normalize(filtroCategoria);
+
+      if (categoriaActual !== categoriaFiltro) return false;
+
+      // Si se filtra por MANO DE OBRA, solo mostrar lo contable:
+      // PAGADO o COMPLETADO
+      if (categoriaFiltro === "MANO DE OBRA") {
+        const estadoActual = normalize(e?.estado || "PENDIENTE");
+        return estadoActual === "PAGADO" || estadoActual === "COMPLETADO";
+      }
+
+      return true;
     });
   }, [egresos, filtroCategoria]);
 

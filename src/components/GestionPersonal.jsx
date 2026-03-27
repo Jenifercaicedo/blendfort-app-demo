@@ -266,16 +266,33 @@ const GestionPersonal = ({ onBack }) => {
             </p>
           </div>
 
-          <PersonalFilters
-            show={showFiltros}
-            queryNombre={queryNombre}
-            setQueryNombre={setQueryNombre}
-            filtroProyecto={filtroProyecto}
-            setFiltroProyecto={setFiltroProyecto}
-            opcionesProyectos={opcionesProyectos}
-            hayFiltros={hayFiltros}
-            limpiarFiltros={limpiarFiltros}
-          />
+          {/* FILTROS DESKTOP: SIEMPRE VISIBLES */}
+          <div className="hidden md:block mb-10">
+            <PersonalFilters
+              show={true}
+              queryNombre={queryNombre}
+              setQueryNombre={setQueryNombre}
+              filtroProyecto={filtroProyecto}
+              setFiltroProyecto={setFiltroProyecto}
+              opcionesProyectos={opcionesProyectos}
+              hayFiltros={hayFiltros}
+              limpiarFiltros={limpiarFiltros}
+            />
+          </div>
+
+          {/* FILTROS MOBILE: DESPLEGABLES */}
+          <div className="md:hidden mb-10">
+            <PersonalFilters
+              show={showFiltros}
+              queryNombre={queryNombre}
+              setQueryNombre={setQueryNombre}
+              filtroProyecto={filtroProyecto}
+              setFiltroProyecto={setFiltroProyecto}
+              opcionesProyectos={opcionesProyectos}
+              hayFiltros={hayFiltros}
+              limpiarFiltros={limpiarFiltros}
+            />
+          </div>
 
           <PersonalTable
             data={personalFiltrado}
