@@ -13,7 +13,13 @@ const normalize = (s) =>
 const shouldCountInTotals = (e) => {
   const cat = normalize(e?.categoria);
   const est = normalize(e?.estado || "PENDIENTE");
-  if (cat === "MANO DE OBRA") return est === "PAGADO" || est === "COMPLETADO";
+
+  if (est === "ANULADO") return false;
+
+  if (cat === "MANO DE OBRA") {
+    return est === "PAGADO" || est === "COMPLETADO";
+  }
+
   return true;
 };
 

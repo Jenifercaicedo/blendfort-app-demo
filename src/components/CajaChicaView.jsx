@@ -31,7 +31,6 @@ const CajaChicaView = ({ onBack }) => {
   const {
     proyectos,
     cajaChicaDesembolsos,
-    movimientosCajaChica,
     getResumenesCajaChica,
     registrarDesembolsoCajaChica,
   } = useAppContext();
@@ -54,8 +53,10 @@ const CajaChicaView = ({ onBack }) => {
   const [filtroFecha, setFiltroFecha] = useState("");
 
   const resumenes = useMemo(() => {
-    return getResumenesCajaChica();
-  }, [getResumenesCajaChica, proyectos, cajaChicaDesembolsos, movimientosCajaChica]);
+    return typeof getResumenesCajaChica === "function"
+      ? getResumenesCajaChica()
+      : [];
+  }, [getResumenesCajaChica, proyectos, cajaChicaDesembolsos]);
 
   const opcionesProyectos = useMemo(() => {
     return [...new Set((resumenes || []).map((r) => norm(r.proyecto)).filter(Boolean))].sort();
@@ -69,21 +70,32 @@ const CajaChicaView = ({ onBack }) => {
     return (resumenes || []).filter((r) => {
       const okProyecto = !filtroProyecto || norm(r.proyecto) === norm(filtroProyecto);
       const okEstado = !filtroEstado || norm(r.estado) === norm(filtroEstado);
-      const okFecha = !filtroFecha || String(r.fechaUltimoDesembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
+      const okFecha =
+        !filtroFecha ||
+        String(r.fechaUltimoDesembolso || "").slice(0, 10) ===
+          String(filtroFecha || "").slice(0, 10);
+
       return okProyecto && okEstado && okFecha;
     });
   }, [resumenes, filtroProyecto, filtroEstado, filtroFecha]);
 
   const stats = useMemo(() => {
-    const activos = (resumenes || []).filter((r) => Number(r.montoActualAsignado || 0) > 0).length;
+    const activos = (resumenes || []).filter(
+      (r) => Number(r.montoActualAsignado || 0) > 0
+    ).length;
 
     const totalDesembolsado = (cajaChicaDesembolsos || []).reduce(
       (acc, d) => acc + Number(d.montoDesembolsado || d.monto_desembolsado || 0),
       0
     );
 
-    const totalGastado = (movimientosCajaChica || []).reduce(
-      (acc, m) => acc + Number(m.valor || 0),
+    const totalGastado = (resumenes || []).reduce(
+      (acc, r) => acc + Number(r.gastadoActual || 0),
+      0
+    );
+
+    const totalSaldo = (resumenes || []).reduce(
+      (acc, r) => acc + Number(r.saldoActual || 0),
       0
     );
 
@@ -96,16 +108,19 @@ const CajaChicaView = ({ onBack }) => {
       activos,
       totalDesembolsado,
       totalGastado,
+      totalSaldo,
       alertas,
     };
-  }, [resumenes, cajaChicaDesembolsos, movimientosCajaChica]);
+  }, [resumenes, cajaChicaDesembolsos]);
 
   const historialFiltrado = useMemo(() => {
     return (cajaChicaDesembolsos || []).filter((d) => {
       const okProyecto = !filtroProyecto || norm(d.proyecto) === norm(filtroProyecto);
       const okFecha =
         !filtroFecha ||
-        String(d.fechaDesembolso || d.fecha_desembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
+        String(d.fechaDesembolso || d.fecha_desembolso || "").slice(0, 10) ===
+          String(filtroFecha || "").slice(0, 10);
+
       return okProyecto && okFecha;
     });
   }, [cajaChicaDesembolsos, filtroProyecto, filtroFecha]);

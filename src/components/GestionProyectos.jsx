@@ -23,9 +23,12 @@ const shouldCountInTotals = (e) => {
   const cat = normU(e?.categoria);
   const est = normU(e?.estado || "PENDIENTE");
 
+  if (est === "ANULADO") return false;
+
   if (cat === "MANO DE OBRA") {
     return est === "PAGADO" || est === "COMPLETADO";
   }
+
   return true;
 };
 
