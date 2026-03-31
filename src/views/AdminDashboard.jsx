@@ -410,7 +410,7 @@ const AdminDashboard = () => {
       <img
         src={logo}
         alt="Blendfort"
-        className="h-14 sm:h-16 md:h-20 lg:h-24 w-auto object-contain"
+        className="h-16 sm:h-20 md:h-28 lg:h-32 xl:h36  w-auto object-contain"
       />
     </button>
 
