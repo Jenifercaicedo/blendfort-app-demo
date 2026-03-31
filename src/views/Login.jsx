@@ -140,16 +140,13 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-blendfort-fondo px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-6 lg:px-8 lg:py-8 text-black flex items-center justify-center">
       <div className="relative w-full max-w-7xl overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-black/5 bg-white shadow-[0_25px_80px_rgba(17,24,39,0.10)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="relative overflow-hidden bg-[#f7f7f3] px-5 pt-6 pb-16 sm:px-7 sm:pt-8 sm:pb-20 md:px-10 md:pt-10 lg:px-12 lg:py-12">
-            <div className="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-[#FCB017]/18 blur-2xl" />
-            <div className="pointer-events-none absolute right-[-80px] top-[16%] h-72 w-72 rounded-full bg-[#D8D8D8]/45 blur-3xl" />
-            <div className="pointer-events-none absolute bottom-[-80px] left-[18%] h-52 w-52 rounded-full bg-[#E09826]/18 blur-3xl" />
-            <div className="pointer-events-none absolute right-8 bottom-10 h-24 w-24 rounded-[2rem] border border-black/5 bg-white/40 rotate-12" />
-            <div className="pointer-events-none absolute left-8 top-24 h-16 w-16 rounded-[1.5rem] border border-black/5 bg-white/50 -rotate-12" />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="relative overflow-hidden px-5 pt-6 pb-10 sm:px-7 sm:pt-8 sm:pb-12 md:px-10 md:pt-10 lg:px-12 lg:py-12 bg-[linear-gradient(135deg,#ffffff_0%,#fffaf0_55%,#fff4db_100%)]">
+            <div className="pointer-events-none absolute left-[-60px] top-[-70px] h-56 w-56 rounded-full bg-blendfort-naranja/10 blur-3xl" />
+            <div className="pointer-events-none absolute right-[-80px] bottom-[-100px] h-72 w-72 rounded-full bg-blendfort-naranja/8 blur-3xl" />
 
             <div className="relative z-10 flex h-full flex-col">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-white/80 px-3 py-2 backdrop-blur-md shadow-sm">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-black/8 bg-white/85 px-3 py-2 shadow-sm backdrop-blur">
                 <span className="h-2.5 w-2.5 rounded-full bg-blendfort-naranja" />
                 <span className="text-[10px] font-black uppercase tracking-[0.22em] text-black/55">
                   Sistema interno Blendfort
@@ -157,15 +154,15 @@ const Login = () => {
               </div>
 
               <div className="mt-8 sm:mt-10 lg:mt-12 max-w-xl">
-                <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.24em] text-black/45 mb-3">
+                <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.24em] text-black/42 mb-3">
                   Constructora · Control operativo
                 </p>
 
-                <h2 className="text-[2rem] leading-[0.95] sm:text-[2.6rem] md:text-[3.2rem] font-black tracking-[-0.05em] uppercase text-black max-w-[12ch]">
+                <h2 className="font-display text-[1.85rem] leading-[0.96] sm:text-[2.45rem] md:text-[3rem] font-black tracking-[-0.055em] uppercase text-black max-w-[11ch]">
                   Control total para cada proyecto
                 </h2>
 
-                <p className="mt-4 max-w-md text-sm sm:text-[15px] md:text-base leading-relaxed text-black/60 font-medium">
+                <p className="mt-4 max-w-md text-sm sm:text-[15px] md:text-base leading-relaxed text-black/58 font-medium">
                   Gestiona egresos, residentes y operación de obra desde una
                   sola plataforma con la identidad y orden de Blendfort.
                 </p>
@@ -184,46 +181,55 @@ const Login = () => {
               </div>
 
               <div className="mt-8 sm:mt-10 lg:mt-auto">
-                <div className="relative w-full max-w-[560px] rounded-[2rem] border border-black/5 bg-white/75 p-4 sm:p-5 md:p-6 backdrop-blur-xl shadow-[0_20px_50px_rgba(17,24,39,0.08)]">
-                  <div className="absolute -left-3 top-10 hidden sm:block h-12 w-12 rounded-2xl bg-[#FCB017]/90 shadow-lg" />
-                  <div className="absolute -right-3 bottom-10 hidden sm:block h-10 w-10 rounded-xl bg-black/90 shadow-lg" />
-
-                  <div className="rounded-[1.6rem] border border-black/5 bg-[#fbfbf8] p-4 sm:p-5 md:p-6">
-                    <div className="rounded-[1.5rem] border border-black/5 bg-white px-4 py-5 sm:px-5 sm:py-6 shadow-sm">
+                <div className="w-full max-w-[460px] rounded-[1.8rem] border border-black/5 bg-white/78 p-5 sm:p-6 shadow-[0_18px_40px_rgba(17,24,39,0.06)] backdrop-blur">
+                  <div className="flex items-center gap-4">
+                    <div className="shrink-0 rounded-[1.35rem] border border-black/5 bg-[#f8f8f5] p-3 shadow-sm">
                       <img
                         src={logo}
                         alt="Logo Blendfort"
-                        className="h-20 sm:h-24 md:h-28 w-auto object-contain mx-auto"
+                        className="h-12 w-auto object-contain"
                       />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
-                      <div className="rounded-[1.25rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-black/40">
-                          Estado
-                        </p>
-                        <p className="mt-1 text-[11px] sm:text-xs font-black uppercase text-black">
-                          Activo
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-black/40">
+                        Plataforma interna
+                      </p>
+                      <h3 className="mt-1 text-[1rem] sm:text-[1.05rem] font-black uppercase tracking-[-0.03em] text-black">
+                        Blendfort
+                      </h3>
+                      <p className="mt-1 text-[12px] sm:text-[13px] text-black/55 font-medium">
+                        Acceso ordenado para residentes y administración.
+                      </p>
+                    </div>
+                  </div>
 
-                      <div className="rounded-[1.25rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-black/40">
-                          Diseño
-                        </p>
-                        <p className="mt-1 text-[11px] sm:text-xs font-black uppercase text-black">
-                          Premium
-                        </p>
-                      </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2.5">
+                    <div className="rounded-[1rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-black/40">
+                        Estado
+                      </p>
+                      <p className="mt-1 text-[11px] font-black uppercase text-black">
+                        Activo
+                      </p>
+                    </div>
 
-                      <div className="rounded-[1.25rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-black/40">
-                          Acceso
-                        </p>
-                        <p className="mt-1 text-[11px] sm:text-xs font-black uppercase text-black">
-                          Seguro
-                        </p>
-                      </div>
+                    <div className="rounded-[1rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-black/40">
+                        Diseño
+                      </p>
+                      <p className="mt-1 text-[11px] font-black uppercase text-black">
+                        Limpio
+                      </p>
+                    </div>
+
+                    <div className="rounded-[1rem] bg-white border border-black/5 px-3 py-3 shadow-sm">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-black/40">
+                        Acceso
+                      </p>
+                      <p className="mt-1 text-[11px] font-black uppercase text-black">
+                        Seguro
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -231,14 +237,14 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="relative z-20 -mt-10 sm:-mt-12 lg:mt-0 px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 lg:px-10 lg:py-10 flex items-center">
-            <div className="w-full rounded-[1.8rem] md:rounded-[2.2rem] border border-black/5 bg-white px-5 py-6 sm:px-7 sm:py-8 md:px-8 md:py-9 shadow-[0_18px_45px_rgba(17,24,39,0.10)] lg:shadow-none">
+          <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 lg:px-10 lg:py-10 flex items-center bg-white">
+            <div className="w-full rounded-[1.8rem] md:rounded-[2.2rem] border border-black/5 bg-white px-5 py-6 sm:px-7 sm:py-8 md:px-8 md:py-9 shadow-[0_18px_45px_rgba(17,24,39,0.08)]">
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.22em] text-black/40 mb-2">
                     Acceso al sistema
                   </p>
-                  <h1 className="text-[1.8rem] sm:text-[2rem] md:text-[2.15rem] font-black tracking-[-0.05em] uppercase leading-none text-black">
+                  <h1 className="font-display text-[1.75rem] sm:text-[1.95rem] md:text-[2.1rem] font-black tracking-[-0.05em] uppercase leading-none text-black">
                     Blendfort
                   </h1>
                   <p className="mt-2 text-sm text-black/55 font-medium">

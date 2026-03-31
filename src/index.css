@@ -194,10 +194,10 @@
 
   .bf-eyebrow {
     font-family: var(--font-display);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.28em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-blendfort-texto-suave);
   }
@@ -224,10 +224,10 @@
 
   .bf-detail-label {
     font-family: var(--font-display);
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.24em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-blendfort-texto-suave);
   }
@@ -288,10 +288,10 @@
     border-radius: var(--radius-blendfort-button);
     box-shadow: var(--shadow-blendfort-soft);
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
     transition:
       transform 180ms ease,
       box-shadow 180ms ease,
@@ -318,10 +318,10 @@
     border-radius: var(--radius-blendfort-button);
     box-shadow: var(--shadow-blendfort-soft);
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
     transition:
       transform 180ms ease,
       box-shadow 180ms ease,
@@ -343,10 +343,10 @@
     padding: 0.45rem 0.8rem;
     border-radius: 999px;
     border: 1px solid var(--color-blendfort-borde);
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: none;
     font-family: var(--font-sans);
   }
 
@@ -403,16 +403,16 @@
 
   .bf-eyebrow,
   .bf-detail-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.22em;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
   }
 
   .bf-filter-button,
   .bf-clear-filters-button {
     min-height: 42px;
     padding: 0.7rem 0.9rem;
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
   }
 }
 
