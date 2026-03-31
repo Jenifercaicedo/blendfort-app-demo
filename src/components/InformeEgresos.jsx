@@ -9,33 +9,6 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const FilterFunnelIcon = ({ className = "w-4 h-4" }) => {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M3.25 4.5C3.25 3.81 3.81 3.25 4.5 3.25h15c.69 0 1.25.56 1.25 1.25 0 .31-.11.6-.31.83L14.5 12.2v6.05c0 .45-.24.86-.64 1.08l-2.5 1.43c-.83.47-1.86-.12-1.86-1.08V12.2L3.56 5.33c-.2-.23-.31-.52-.31-.83Z" />
-    </svg>
-  );
-};
-
-const FilterClearIcon = ({ className = "w-4 h-4" }) => {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path
-        d="M3.75 5.25c0-.83.67-1.5 1.5-1.5h13.5c.83 0 1.5.67 1.5 1.5 0 .36-.13.71-.36.98L14 12.9v4.85c0 .53-.28 1.03-.74 1.29l-2 1.14c-.67.38-1.51-.1-1.51-.87V12.9L4.11 6.23c-.23-.27-.36-.62-.36-.98Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M16.5 8.5l4 4m0-4-4 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-};
-
 // Regla única:
 // - ANULADO no suma
 // - MANO DE OBRA solo suma si está PAGADO o COMPLETADO
@@ -75,7 +48,9 @@ const InformeEgresos = ({
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
   const opcionesCategorias = useMemo(() => {
-    const unique = [...new Set((egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean))];
+    const unique = [...new Set(
+      (egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean)
+    )];
 
     const sinMO = unique.filter((c) => c !== "MANO DE OBRA").sort();
 
@@ -174,9 +149,21 @@ const InformeEgresos = ({
           <button
             onClick={limpiarTodo}
             type="button"
-            className="group flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-[#fffaf0] border border-blendfort-naranja/25 text-[#a16207] transition-all duration-300 active:scale-95 hover:bg-[#fff4db] hover:border-blendfort-naranja/40 shadow-sm"
+            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
           >
-            <FilterClearIcon className="w-4 h-4 opacity-80 group-hover:opacity-100 transition-all duration-300" />
+            <svg
+              className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+              />
+            </svg>
             <span className="text-[8px] font-black uppercase tracking-[0.25em]">
               Limpiar Filtros
             </span>
@@ -198,7 +185,13 @@ const InformeEgresos = ({
             aria-label="Volver"
             title="Volver"
           >
-            <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+            <svg
+              className="w-4 h-4 rotate-180"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
               <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </button>
@@ -207,22 +200,48 @@ const InformeEgresos = ({
             <button
               type="button"
               onClick={() => setShowFiltros((v) => !v)}
-              className={`md:hidden group relative flex items-center gap-3 px-6 py-3 rounded-full shadow-sm transition-all active:scale-95 ${
-                showFiltros || hayFiltros
-                  ? "bg-[#fffaf0] border border-blendfort-naranja/40 text-[#a16207]"
-                  : "bg-white border border-blendfort-naranja/25 text-black/60 hover:bg-[#fffaf0] hover:border-blendfort-naranja/40 hover:text-[#a16207]"
+              className={`md:hidden group relative flex items-center gap-3 px-5 py-3 rounded-full border shadow-sm transition-all duration-300 active:scale-95 ${
+                showFiltros
+                  ? "bg-[#fff4db] border-blendfort-naranja/45 text-[#a16207] shadow-[0_8px_20px_rgba(245,158,11,0.12)]"
+                  : hayFiltros
+                  ? "bg-[#fffaf0] border-blendfort-naranja/35 text-[#a16207] shadow-[0_6px_16px_rgba(245,158,11,0.08)]"
+                  : "bg-white border-blendfort-naranja/20 text-black/55 hover:bg-[#fffaf0] hover:border-blendfort-naranja/35 hover:text-[#a16207]"
               }`}
               aria-label="Filtros"
               title="Filtros"
             >
-              <div className="relative">
-                <FilterFunnelIcon className="w-4 h-4 transition-colors" />
+              <div className="relative flex items-center justify-center">
+                <div
+                  className={`absolute inset-0 rounded-full blur-md transition-opacity duration-300 ${
+                    showFiltros || hayFiltros ? "opacity-100 bg-blendfort-naranja/10" : "opacity-0"
+                  }`}
+                />
+                <svg
+                  className={`relative w-4 h-4 transition-colors duration-300 ${
+                    showFiltros || hayFiltros
+                      ? "text-blendfort-naranja"
+                      : "text-black/40 group-hover:text-blendfort-naranja"
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+                </svg>
+
                 {hayFiltros && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm border border-white" />
                 )}
               </div>
 
-              <span className="text-[9px] font-black uppercase tracking-[0.35em] transition-colors">
+              <span
+                className={`text-[9px] font-black uppercase tracking-[0.32em] transition-colors duration-300 ${
+                  showFiltros || hayFiltros
+                    ? "text-[#a16207]"
+                    : "text-black/55 group-hover:text-[#a16207]"
+                }`}
+              >
                 FILTROS
               </span>
             </button>
@@ -235,7 +254,9 @@ const InformeEgresos = ({
               title="Nuevo egreso"
             >
               <span className="text-base font-black leading-none">+</span>
-              <span className="text-[9px] font-black uppercase tracking-[0.35em]">NUEVO</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.35em]">
+                NUEVO
+              </span>
             </button>
           </div>
         </div>
@@ -298,9 +319,7 @@ const InformeEgresos = ({
           </div>
 
           {/* FILTROS DESKTOP: SIEMPRE VISIBLES */}
-          <div className="hidden md:block mb-10">
-            {filtrosUI}
-          </div>
+          <div className="hidden md:block mb-10">{filtrosUI}</div>
 
           {/* FILTROS MOBILE: DESPLEGABLES */}
           {showFiltros && (
