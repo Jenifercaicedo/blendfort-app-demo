@@ -7,7 +7,13 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TODOS..." }) => {
+const FilterSelect = ({
+  label,
+  options = [],
+  value,
+  onChange,
+  placeholder = "TODOS...",
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef(null);
@@ -46,10 +52,13 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
     close();
   };
 
+  const hasValue = Boolean(value);
+  const isActive = isOpen || hasValue;
+
   return (
-    <div className="space-y-1 relative" ref={containerRef}>
+    <div className="relative space-y-1" ref={containerRef}>
       {label && (
-        <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+        <label className="ml-3 md:ml-4 font-display text-[8px] font-black uppercase tracking-[0.22em] text-black/40">
           {label}
         </label>
       )}
@@ -57,30 +66,35 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
       <button
         type="button"
         onClick={() => (isOpen ? close() : open())}
-        className={`w-full bg-white px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black uppercase flex justify-between items-center border transition-all h-[54px] ${
-          value ? "border-black/10 shadow-sm text-black" : "border-black/5 text-black/50"
-        } hover:border-blendfort-naranja`}
+        className={`w-full h-[54px] rounded-[1.1rem] md:rounded-2xl px-4 py-3.5 md:p-4 flex items-center justify-between gap-3 text-left font-ui text-[16px] md:text-[10px] font-extrabold uppercase transition-all duration-200 shadow-sm ${
+          isActive
+            ? "bg-[#fffaf0] text-black border border-blendfort-naranja/35"
+            : "bg-white text-black/55 border border-blendfort-naranja/18"
+        } hover:bg-[#fffaf0] hover:border-blendfort-naranja/40`}
       >
         <span className="truncate">{value || placeholder}</span>
 
         <svg
-          className={`w-3 h-3 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+          className={`w-3.5 h-3.5 shrink-0 transition-transform duration-300 ${
+            isOpen ? "rotate-180 text-blendfort-naranja" : "text-black/45"
+          }`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth="4"
+          strokeWidth="3.2"
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute z-[200] top-full left-0 w-full mt-2 bg-white rounded-[1.5rem] shadow-2xl border border-black/5 overflow-hidden animate-in fade-in zoom-in duration-200">
-          <div className="p-3 border-b border-black/5 bg-blendfort-fondo/40">
+        <div className="absolute left-0 top-full z-[200] mt-2 w-full overflow-hidden rounded-[1.5rem] border border-blendfort-naranja/20 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="border-b border-blendfort-naranja/10 bg-[#fffaf0] p-3">
             <input
               ref={inputRef}
               autoFocus
-              className="w-full bg-white px-3 py-3 rounded-xl text-[16px] md:text-[10px] font-bold uppercase outline-none border border-black/5 focus:border-black/20 transition-all"
+              className="w-full rounded-xl border border-blendfort-naranja/18 bg-white px-3 py-3 font-ui text-[16px] md:text-[10px] font-bold uppercase outline-none transition-all focus:border-blendfort-naranja/35"
               placeholder="Escribe para buscar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -94,26 +108,34 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
                 onChange("");
                 close();
               }}
-              className="w-full text-left p-4 text-[16px] md:text-[10px] font-black uppercase text-black/40 hover:bg-black/5 border-b border-black/5 transition-colors"
+              className="w-full border-b border-black/5 px-4 py-4 text-left font-ui text-[16px] md:text-[10px] font-extrabold uppercase text-black/45 transition-colors hover:bg-[#fffaf0] hover:text-[#a16207]"
             >
               • Mostrar Todos
             </button>
 
             {filteredOptions.length === 0 ? (
-              <div className="p-4 text-[16px] md:text-[10px] font-black uppercase text-black/30">
+              <div className="px-4 py-4 font-ui text-[16px] md:text-[10px] font-extrabold uppercase text-black/30">
                 Sin resultados
               </div>
             ) : (
-              filteredOptions.map((opt, i) => (
-                <button
-                  key={`${opt}-${i}`}
-                  type="button"
-                  onClick={() => pick(opt)}
-                  className="w-full text-left p-4 text-[16px] md:text-[10px] font-black uppercase hover:bg-black hover:text-white cursor-pointer transition-colors"
-                >
-                  {opt}
-                </button>
-              ))
+              filteredOptions.map((opt, i) => {
+                const selected = value === opt;
+
+                return (
+                  <button
+                    key={`${opt}-${i}`}
+                    type="button"
+                    onClick={() => pick(opt)}
+                    className={`w-full px-4 py-4 text-left font-ui text-[16px] md:text-[10px] font-extrabold uppercase transition-all ${
+                      selected
+                        ? "bg-[#fff4db] text-[#92400e]"
+                        : "text-black/75 hover:bg-[#fffaf0] hover:text-[#a16207]"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

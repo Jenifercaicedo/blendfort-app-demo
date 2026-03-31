@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -12,7 +13,10 @@
   --color-blendfort-danger: #dc2626;
   --color-blendfort-warning: #d97706;
 
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --color-blendfort-head-soft: #fffaf0;
+  --color-blendfort-head-soft-2: #fff4db;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
   --shadow-blendfort-card: 0 8px 30px rgba(17, 24, 39, 0.06);
@@ -82,6 +86,7 @@
 
   button {
     cursor: pointer;
+    font-family: var(--font-sans);
   }
 
   button:disabled {
@@ -94,6 +99,7 @@
     background: #fff;
     border: 1px solid var(--color-blendfort-borde);
     color: var(--color-blendfort-texto);
+    font-family: var(--font-sans);
     transition:
       border-color 180ms ease,
       box-shadow 180ms ease,
@@ -163,13 +169,65 @@
     font-family: var(--font-display);
     letter-spacing: -0.04em;
     color: var(--color-blendfort-texto);
+    font-weight: 800;
+    line-height: 1.04;
+    font-size: clamp(1.12rem, 1.1vw + 0.9rem, 1.7rem);
+  }
+
+  .bf-card-title {
+    font-family: var(--font-display);
+    letter-spacing: -0.04em;
+    color: var(--color-blendfort-texto);
+    font-weight: 800;
+    line-height: 1.05;
+    font-size: clamp(1rem, 0.9vw + 0.85rem, 1.32rem);
+  }
+
+  .bf-modal-title {
+    font-family: var(--font-display);
+    letter-spacing: -0.04em;
+    color: var(--color-blendfort-texto);
+    font-weight: 800;
+    line-height: 1.05;
+    font-size: clamp(1rem, 0.7vw + 0.88rem, 1.2rem);
   }
 
   .bf-eyebrow {
+    font-family: var(--font-display);
     font-size: 0.7rem;
     line-height: 1;
     font-weight: 800;
     letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-blendfort-texto-suave);
+  }
+
+  .bf-detail-head {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 244, 219, 0.88) 0%,
+      rgba(255, 250, 240, 0.92) 45%,
+      rgba(255, 255, 255, 1) 100%
+    );
+    border-bottom: 1px solid rgba(245, 158, 11, 0.18);
+  }
+
+  .bf-detail-head-soft {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 244, 219, 0.78) 0%,
+      rgba(255, 250, 240, 0.92) 22%,
+      rgba(255, 255, 255, 1) 100%
+    );
+    border-bottom: 1px solid rgba(245, 158, 11, 0.16);
+  }
+
+  .bf-detail-label {
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
     color: var(--color-blendfort-texto-suave);
   }
@@ -180,6 +238,7 @@
     border-radius: var(--radius-blendfort-input);
     min-height: 52px;
     box-shadow: var(--shadow-blendfort-soft);
+    font-family: var(--font-sans);
   }
 
   .bf-button-primary {
@@ -217,6 +276,66 @@
     background: #fff;
   }
 
+  .bf-filter-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+    background: #fffaf0;
+    color: #a16207;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-blendfort-button);
+    box-shadow: var(--shadow-blendfort-soft);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  .bf-filter-button:hover {
+    background: #fff4db;
+    border-color: rgba(245, 158, 11, 0.42);
+    color: #92400e;
+  }
+
+  .bf-clear-filters-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+    background: #fffaf0;
+    color: #a16207;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-blendfort-button);
+    box-shadow: var(--shadow-blendfort-soft);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  .bf-clear-filters-button:hover {
+    background: #fff4db;
+    border-color: rgba(245, 158, 11, 0.34);
+    color: #92400e;
+  }
+
   .bf-pill {
     display: inline-flex;
     align-items: center;
@@ -228,6 +347,7 @@
     font-weight: 800;
     letter-spacing: 0.16em;
     text-transform: uppercase;
+    font-family: var(--font-sans);
   }
 
   .bf-table-shell {
@@ -259,6 +379,40 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@media (max-width: 768px) {
+  .bf-section-title {
+    font-size: 1.08rem;
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+  }
+
+  .bf-card-title {
+    font-size: 0.98rem;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .bf-modal-title {
+    font-size: 0.96rem;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .bf-eyebrow,
+  .bf-detail-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+  }
+
+  .bf-filter-button,
+  .bf-clear-filters-button {
+    min-height: 42px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
   }
 }
 

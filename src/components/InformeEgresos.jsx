@@ -9,6 +9,33 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+const FilterFunnelIcon = ({ className = "w-4 h-4" }) => {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M3.25 4.5C3.25 3.81 3.81 3.25 4.5 3.25h15c.69 0 1.25.56 1.25 1.25 0 .31-.11.6-.31.83L14.5 12.2v6.05c0 .45-.24.86-.64 1.08l-2.5 1.43c-.83.47-1.86-.12-1.86-1.08V12.2L3.56 5.33c-.2-.23-.31-.52-.31-.83Z" />
+    </svg>
+  );
+};
+
+const FilterClearIcon = ({ className = "w-4 h-4" }) => {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M3.75 5.25c0-.83.67-1.5 1.5-1.5h13.5c.83 0 1.5.67 1.5 1.5 0 .36-.13.71-.36.98L14 12.9v4.85c0 .53-.28 1.03-.74 1.29l-2 1.14c-.67.38-1.51-.1-1.51-.87V12.9L4.11 6.23c-.23-.27-.36-.62-.36-.98Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.5 8.5l4 4m0-4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+};
+
 // Regla única:
 // - ANULADO no suma
 // - MANO DE OBRA solo suma si está PAGADO o COMPLETADO
@@ -147,21 +174,9 @@ const InformeEgresos = ({
           <button
             onClick={limpiarTodo}
             type="button"
-            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+            className="group flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-[#fffaf0] border border-blendfort-naranja/25 text-[#a16207] transition-all duration-300 active:scale-95 hover:bg-[#fff4db] hover:border-blendfort-naranja/40 shadow-sm"
           >
-            <svg
-              className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
+            <FilterClearIcon className="w-4 h-4 opacity-80 group-hover:opacity-100 transition-all duration-300" />
             <span className="text-[8px] font-black uppercase tracking-[0.25em]">
               Limpiar Filtros
             </span>
@@ -192,26 +207,22 @@ const InformeEgresos = ({
             <button
               type="button"
               onClick={() => setShowFiltros((v) => !v)}
-              className="md:hidden group flex items-center gap-3 px-6 py-3 rounded-full bg-white border border-black/5 shadow-sm hover:border-blendfort-naranja transition-all active:scale-95"
+              className={`md:hidden group relative flex items-center gap-3 px-6 py-3 rounded-full shadow-sm transition-all active:scale-95 ${
+                showFiltros || hayFiltros
+                  ? "bg-[#fffaf0] border border-blendfort-naranja/40 text-[#a16207]"
+                  : "bg-white border border-blendfort-naranja/25 text-black/60 hover:bg-[#fffaf0] hover:border-blendfort-naranja/40 hover:text-[#a16207]"
+              }`}
               aria-label="Filtros"
               title="Filtros"
             >
               <div className="relative">
-                <svg
-                  className="w-4 h-4 text-black/40 group-hover:text-black transition-colors"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-                </svg>
+                <FilterFunnelIcon className="w-4 h-4 transition-colors" />
                 {hayFiltros && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />
                 )}
               </div>
 
-              <span className="text-[9px] font-black uppercase tracking-[0.35em] text-black/50 group-hover:text-black transition-colors">
+              <span className="text-[9px] font-black uppercase tracking-[0.35em] transition-colors">
                 FILTROS
               </span>
             </button>
