@@ -394,7 +394,7 @@ const ResidentDashboard = () => {
           aria-label="Ir al inicio"
           title="Ir al inicio"
         >
-          <img src={logo} alt="Blendfort" className="h-8 md:h-11 w-auto object-contain" />
+          <img src={logo} alt="Blendfort" className="h-24 sm:h-26 md:h-30 lg:h-38 xl:h36  w-auto object-contain" />
         </button>
 
         <button
