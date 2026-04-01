@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESIDENTE_PASSWORD = "Blendfort2026";
 
 const normalize = (s) =>
@@ -37,20 +35,39 @@ const rolesPermitidos = new Set([
   "ARQ.",
 ]);
 
-const admin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
   try {
-    const { nombre } = req.body || {};
+  
+
+    const supabaseUrl =
+      process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl) {
+      return res.status(500).json({ error: "Falta VITE_SUPABASE_URL" });
+    }
+
+    if (!serviceRoleKey) {
+      return res
+        .status(500)
+        .json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" });
+    }
+
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+
+    const { nombre } = body;
     const nombreLimpio = String(nombre || "").trim();
 
     if (!nombreLimpio) {
@@ -74,10 +91,13 @@ export default async function handler(req, res) {
     );
 
     if (!emp) {
-      return res.status(403).json({ error: "No está registrado en gestión personal" });
+      return res
+        .status(403)
+        .json({ error: "No está registrado en gestión personal" });
     }
 
     const rol = normalize(emp?.rol);
+
     if (!rolesPermitidos.has(rol)) {
       return res.status(403).json({ error: "Rol sin acceso a residente" });
     }
@@ -107,10 +127,11 @@ export default async function handler(req, res) {
     // 3) Asegurar usuario Auth
     const email = buildResidentEmail(nombreLimpio);
 
-    const { data: listData, error: listError } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
+    const { data: listData, error: listError } =
+      await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
 
     if (listError) {
       throw listError;
