@@ -1,4 +1,3 @@
-// PersonalFormModal.jsx
 import React from "react";
 import CustomSelect from "./CustomSelect";
 
@@ -32,7 +31,6 @@ const PersonalFormModal = ({
   const aplicarTipo = (next, tipo) => {
     const updated = { ...next, tipo };
 
-    // coherencia de campos
     if (tipo === "OFICINA") {
       updated.valorDia = "";
       if (updated.salarioMensual === undefined) updated.salarioMensual = "";
@@ -70,7 +68,6 @@ const PersonalFormModal = ({
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
         <div className="bg-white w-full max-w-2xl rounded-[2.4rem] md:rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-black/5 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto animate-in zoom-in-95 duration-300">
-          {/* Header */}
           <div className="relative pt-8 md:pt-12 px-6 md:px-12 pb-5 md:pb-6 border-b border-black/5">
             <div className="space-y-2 pr-12">
               <div className="flex items-center gap-2">
@@ -106,9 +103,7 @@ const PersonalFormModal = ({
             </button>
           </div>
 
-          {/* Body */}
           <form onSubmit={onSave} className="p-6 pt-6 md:p-12 md:pt-8 space-y-6 md:space-y-8">
-            {/* Identificación */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <div className="space-y-1 md:col-span-2">
                 <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
@@ -149,7 +144,7 @@ const PersonalFormModal = ({
                 />
               </div>
 
-              <div className="space-y-1 md:col-span-2">
+              <div className="space-y-1">
                 <CustomSelect
                   label="Tipo"
                   options={["CAMPO", "OFICINA"]}
@@ -157,13 +152,27 @@ const PersonalFormModal = ({
                   onChange={setTipo}
                   placeholder="SELECCIONAR..."
                 />
-                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 ml-3 md:ml-4 mt-2">
+              </div>
+
+              <div className="space-y-1">
+                <CustomSelect
+                  label="Estado"
+                  options={["ACTIVO", "INACTIVO"]}
+                  value={empleado.estado || "ACTIVO"}
+                  onChange={(val) =>
+                    setEmpleado({ ...empleado, estado: String(val || "ACTIVO") })
+                  }
+                  placeholder="SELECCIONAR..."
+                />
+              </div>
+
+              <div className="space-y-1 md:col-span-2">
+                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 ml-3 md:ml-4 mt-1">
                   El rol recomienda el tipo, pero puedes ajustarlo manualmente
                 </div>
               </div>
             </div>
 
-            {/* Asignación */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <CustomSelect
                 label="Proyecto"
@@ -186,7 +195,6 @@ const PersonalFormModal = ({
               </div>
             </div>
 
-            {/* Valores */}
             <div className="bg-blendfort-fondo p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.5rem] border border-black/5 space-y-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="text-[8px] font-black uppercase tracking-[0.4em] text-black/30">
@@ -268,7 +276,6 @@ const PersonalFormModal = ({
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               className="w-full bg-black text-white py-5 md:py-7 rounded-full font-black text-[15px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.5em] hover:bg-blendfort-naranja hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 md:gap-4"

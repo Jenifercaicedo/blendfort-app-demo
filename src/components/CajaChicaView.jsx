@@ -39,11 +39,10 @@ const estadoHistorialTone = (estado) => {
 
 const CajaChicaView = ({ onBack }) => {
   const {
-    proyectos,
     cajaChicaDesembolsos,
     movimientosCajaChica,
-    getResumenesCajaChica,
-    registrarDesembolsoCajaChica,
+    getResumenesCajaChicaResidente,
+    registrarDesembolsoCajaChicaResidente,
   } = useAppContext();
 
   const [showModal, setShowModal] = useState(false);
@@ -52,23 +51,22 @@ const CajaChicaView = ({ onBack }) => {
   const [mensajeExito, setMensajeExito] = useState(false);
 
   const [data, setData] = useState({
-    proyecto: "",
     residente: "",
     fechaDesembolso: hoyISO(),
     monto: "",
     observacion: "",
   });
 
-  const [filtroProyecto, setFiltroProyecto] = useState("");
+  const [filtroResidente, setFiltroResidente] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
 
   const resumenes = useMemo(() => {
-    return getResumenesCajaChica();
-  }, [getResumenesCajaChica, proyectos, cajaChicaDesembolsos, movimientosCajaChica]);
+    return getResumenesCajaChicaResidente();
+  }, [getResumenesCajaChicaResidente, cajaChicaDesembolsos, movimientosCajaChica]);
 
-  const opcionesProyectos = useMemo(() => {
-    return [...new Set((resumenes || []).map((r) => norm(r.proyecto)).filter(Boolean))].sort();
+  const opcionesResidentes = useMemo(() => {
+    return [...new Set((resumenes || []).map((r) => norm(r.residente)).filter(Boolean))].sort();
   }, [resumenes]);
 
   const opcionesEstado = useMemo(() => {
@@ -77,15 +75,20 @@ const CajaChicaView = ({ onBack }) => {
 
   const resumenesFiltrados = useMemo(() => {
     return (resumenes || []).filter((r) => {
-      const okProyecto = !filtroProyecto || norm(r.proyecto) === norm(filtroProyecto);
-      const okEstado = !filtroEstado || norm(r.estado) === norm(filtroEstado);
+      const okResidente =
+        !filtroResidente || norm(r.residente) === norm(filtroResidente);
+
+      const okEstado =
+        !filtroEstado || norm(r.estado) === norm(filtroEstado);
+
       const okFecha =
         !filtroFecha ||
-        String(r.fechaUltimoDesembolso || "").slice(0, 10) === String(filtroFecha || "").slice(0, 10);
+        String(r.fechaUltimoDesembolso || "").slice(0, 10) ===
+          String(filtroFecha || "").slice(0, 10);
 
-      return okProyecto && okEstado && okFecha;
+      return okResidente && okEstado && okFecha;
     });
-  }, [resumenes, filtroProyecto, filtroEstado, filtroFecha]);
+  }, [resumenes, filtroResidente, filtroEstado, filtroFecha]);
 
   const stats = useMemo(() => {
     const activos = (resumenes || []).filter(
@@ -123,31 +126,33 @@ const CajaChicaView = ({ onBack }) => {
 
   const historialFiltrado = useMemo(() => {
     return (cajaChicaDesembolsos || []).filter((d) => {
-      const okProyecto = !filtroProyecto || norm(d.proyecto) === norm(filtroProyecto);
+      const okResidente =
+        !filtroResidente || norm(d.residente) === norm(filtroResidente);
+
       const okFecha =
         !filtroFecha ||
         String(d.fechaDesembolso || d.fecha_desembolso || "").slice(0, 10) ===
           String(filtroFecha || "").slice(0, 10);
 
-      return okProyecto && okFecha;
+      return okResidente && okFecha;
     });
-  }, [cajaChicaDesembolsos, filtroProyecto, filtroFecha]);
+  }, [cajaChicaDesembolsos, filtroResidente, filtroFecha]);
 
   const hayFiltros = useMemo(
-    () => Boolean(filtroProyecto || filtroEstado || filtroFecha),
-    [filtroProyecto, filtroEstado, filtroFecha]
+    () => Boolean(filtroResidente || filtroEstado || filtroFecha),
+    [filtroResidente, filtroEstado, filtroFecha]
   );
 
   const vistaCompactaMobileHistorial = useMemo(
-    () => !filtroProyecto && !filtroEstado && !filtroFecha,
-    [filtroProyecto, filtroEstado, filtroFecha]
+    () => !filtroResidente && !filtroEstado && !filtroFecha,
+    [filtroResidente, filtroEstado, filtroFecha]
   );
 
-  const latestDesembolsoPorProyecto = useMemo(() => {
+  const latestDesembolsoPorResidente = useMemo(() => {
     const map = new Map();
 
     for (const item of cajaChicaDesembolsos || []) {
-      const key = norm(item?.proyecto);
+      const key = norm(item?.residente);
       if (!key) continue;
 
       const current = map.get(key);
@@ -179,8 +184,8 @@ const CajaChicaView = ({ onBack }) => {
   }, [cajaChicaDesembolsos]);
 
   const getEstadoHistorialVisual = (item) => {
-    const proyectoKey = norm(item?.proyecto);
-    const latest = latestDesembolsoPorProyecto.get(proyectoKey);
+    const residenteKey = norm(item?.residente);
+    const latest = latestDesembolsoPorResidente.get(residenteKey);
 
     const esVigente = latest && String(latest.id) === String(item.id);
 
@@ -200,7 +205,7 @@ const CajaChicaView = ({ onBack }) => {
   };
 
   const limpiarFiltros = () => {
-    setFiltroProyecto("");
+    setFiltroResidente("");
     setFiltroEstado("");
     setFiltroFecha("");
   };
@@ -209,7 +214,6 @@ const CajaChicaView = ({ onBack }) => {
     setShowModal(false);
     setMensajeExito(false);
     setData({
-      proyecto: "",
       residente: "",
       fechaDesembolso: hoyISO(),
       monto: "",
@@ -221,10 +225,10 @@ const CajaChicaView = ({ onBack }) => {
     e.preventDefault();
 
     try {
-      if (!norm(data.proyecto)) return;
+      if (!norm(data.residente)) return;
       if (!Number(data.monto || 0)) return;
 
-      await registrarDesembolsoCajaChica(data);
+      await registrarDesembolsoCajaChicaResidente(data);
       setMensajeExito(true);
 
       setTimeout(() => {
@@ -239,7 +243,6 @@ const CajaChicaView = ({ onBack }) => {
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
       <div className="bg-white rounded-[2.2rem] md:rounded-[2.8rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        {/* HEADER */}
         <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-white">
           <button
             onClick={onBack}
@@ -277,7 +280,9 @@ const CajaChicaView = ({ onBack }) => {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
                 </svg>
-                {hayFiltros && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />}
+                {hayFiltros && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm" />
+                )}
               </div>
             </button>
 
@@ -317,7 +322,6 @@ const CajaChicaView = ({ onBack }) => {
               type="button"
               onClick={() => {
                 setData({
-                  proyecto: "",
                   residente: "",
                   fechaDesembolso: hoyISO(),
                   monto: "",
@@ -342,7 +346,7 @@ const CajaChicaView = ({ onBack }) => {
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
+                  <div className="w-4 h-[2px] bg-blendfort-naranja" />
                   <span className="text-[7px] md:text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
                     Cash Control
                   </span>
@@ -359,14 +363,13 @@ const CajaChicaView = ({ onBack }) => {
             </div>
           </div>
 
-          {/* FILTROS DESKTOP SIEMPRE VISIBLES */}
           <div className="hidden md:block mb-8 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] border border-black/[0.02]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <CustomSelect
-                label="Proyecto"
-                options={opcionesProyectos}
-                value={filtroProyecto}
-                onChange={setFiltroProyecto}
+                label="Residente"
+                options={opcionesResidentes}
+                value={filtroResidente}
+                onChange={setFiltroResidente}
                 placeholder="TODOS..."
                 allowCustom={false}
               />
@@ -403,21 +406,22 @@ const CajaChicaView = ({ onBack }) => {
                   <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                   </svg>
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar Filtros</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+                    Limpiar Filtros
+                  </span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* FILTROS MOBILE DESPLEGABLES */}
           {showFiltros && (
             <div className="md:hidden mb-8 bg-blendfort-fondo/50 p-5 rounded-[1.8rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
               <div className="grid grid-cols-1 gap-4">
                 <CustomSelect
-                  label="Proyecto"
-                  options={opcionesProyectos}
-                  value={filtroProyecto}
-                  onChange={setFiltroProyecto}
+                  label="Residente"
+                  options={opcionesResidentes}
+                  value={filtroResidente}
+                  onChange={setFiltroResidente}
                   placeholder="TODOS..."
                   allowCustom={false}
                 />
@@ -454,14 +458,15 @@ const CajaChicaView = ({ onBack }) => {
                     <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">Limpiar Filtros</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em]">
+                      Limpiar Filtros
+                    </span>
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* CARDS GENERALES SOLO SI NO ESTÁ RESUMEN */}
           {!showResumen && (
             <div className="mb-8 grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
               {[
@@ -469,7 +474,7 @@ const CajaChicaView = ({ onBack }) => {
                 { label: "Total Desembolsado", value: money(stats.totalDesembolsado), tone: "text-black" },
                 { label: "Total Gastado", value: money(stats.totalGastado), tone: "text-black" },
                 {
-                  label: "Proyectos en Alerta",
+                  label: "Residentes en Alerta",
                   value: stats.alertas,
                   tone: stats.alertas > 0 ? "text-red-500" : "text-black",
                 },
@@ -478,7 +483,7 @@ const CajaChicaView = ({ onBack }) => {
                   key={i}
                   className="bg-blendfort-fondo/50 border border-black/5 rounded-[1rem] md:rounded-[1.2rem] px-4 py-3.5 md:px-4 md:py-4 shadow-sm"
                 >
-                  <div className="w-5 h-[2px] bg-blendfort-naranja mb-3"></div>
+                  <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
                   <p className="text-[7px] font-black uppercase tracking-[0.22em] opacity-35 mb-2">
                     {item.label}
                   </p>
@@ -490,14 +495,13 @@ const CajaChicaView = ({ onBack }) => {
             </div>
           )}
 
-          {/* RESUMEN DESPLEGABLE */}
           {showResumen && (
             <div className="mb-8 animate-in fade-in zoom-in duration-300">
               <div className="bg-blendfort-fondo/35 border border-black/5 rounded-[1.6rem] p-4 md:p-5">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
+                  <div className="w-4 h-[2px] bg-blendfort-naranja" />
                   <span className="text-[8px] font-black uppercase tracking-[0.3em] text-black/35">
-                    Project Summary
+                    Resident Summary
                   </span>
                 </div>
 
@@ -512,19 +516,19 @@ const CajaChicaView = ({ onBack }) => {
                     <div className="space-y-4">
                       {resumenesFiltrados.map((item, i) => (
                         <div
-                          key={`${item.proyecto}-${i}`}
+                          key={`${item.residente}-${i}`}
                           className="bg-white rounded-[1.2rem] border border-black/5 p-5"
                         >
                           <div className="flex items-start justify-between gap-4 mb-4">
                             <div className="min-w-0">
                               <p className="text-[8px] font-black uppercase tracking-[0.25em] opacity-35 mb-2">
-                                Proyecto
+                                Residente
                               </p>
                               <h4 className="text-lg md:text-xl font-black uppercase tracking-tight leading-none break-words">
-                                {item.proyecto || "SIN PROYECTO"}
+                                {item.residente || "SIN RESIDENTE"}
                               </h4>
                               <p className="text-[9px] font-black uppercase tracking-[0.18em] opacity-35 mt-2">
-                                {item.residente || "SIN RESIDENTE"}
+                                CAJA CHICA GENERAL
                               </p>
                             </div>
 
@@ -584,7 +588,6 @@ const CajaChicaView = ({ onBack }) => {
                               type="button"
                               onClick={() => {
                                 setData({
-                                  proyecto: item.proyecto,
                                   residente: item.residente,
                                   fechaDesembolso: hoyISO(),
                                   monto: "",
@@ -606,7 +609,6 @@ const CajaChicaView = ({ onBack }) => {
             </div>
           )}
 
-          {/* HISTORIAL SOLO SI NO ESTÁ RESUMEN */}
           {!showResumen && (
             <div className="relative overflow-hidden">
               <div className="rounded-[1.8rem] overflow-hidden border border-black/5">
@@ -644,28 +646,36 @@ const CajaChicaView = ({ onBack }) => {
                             <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
                               Fecha
                             </p>
-                            <p className="text-[10px] font-black uppercase">{item.fechaDesembolso}</p>
+                            <p className="text-[10px] font-black uppercase">
+                              {item.fechaDesembolso}
+                            </p>
                           </div>
 
                           <div>
                             <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
                               Proyecto
                             </p>
-                            <p className="text-[10px] font-black uppercase">{item.proyecto}</p>
+                            <p className="text-[10px] font-black uppercase">
+                              {item.proyecto || "GENERAL"}
+                            </p>
                           </div>
 
                           <div>
                             <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
                               Residente
                             </p>
-                            <p className="text-[10px] font-black uppercase">{item.residente || "SIN RESIDENTE"}</p>
+                            <p className="text-[10px] font-black uppercase">
+                              {item.residente || "SIN RESIDENTE"}
+                            </p>
                           </div>
 
                           <div>
                             <p className="md:hidden text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">
                               Monto
                             </p>
-                            <p className="text-[10px] font-black uppercase">{money(item.montoDesembolsado)}</p>
+                            <p className="text-[10px] font-black uppercase">
+                              {money(item.montoDesembolsado)}
+                            </p>
                           </div>
 
                           <div>

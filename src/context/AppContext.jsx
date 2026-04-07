@@ -2,6 +2,24 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { supabase } from "../lib/supabase";
 
 const AppContext = createContext();
+import {
+  normalizeEgreso,
+  normalizePersonal,
+  normalizeCajaChicaProyecto,
+  normalizeCajaChicaDesembolso,
+  normalizeMovimientoCajaChica,
+  normalizeCajaChicaResidente,
+} from "../utils/normalizers";
+import {
+  cargarCajaChicaResidenteDB,
+  getCajaChicaResidenteByNombreLocal,
+  getResumenCajaChicaResidenteLocal,
+  getResumenesCajaChicaResidenteLocal,
+  registrarDesembolsoCajaChicaResidenteDB,
+  registrarMovimientoCajaChicaResidenteDB,
+  ajustarCajaChicaResidentePorDeltaDB,
+  revertirMovimientoCajaChicaResidentePorEgresoDB,
+} from "../features/cajaChica/cajaChicaResidente";
 
 /* ===========================
    Helpers
@@ -107,6 +125,7 @@ export const AppProvider = ({ children }) => {
   const [cajaChicaProyecto, setCajaChicaProyecto] = useState([]);
   const [cajaChicaDesembolsos, setCajaChicaDesembolsos] = useState([]);
   const [movimientosCajaChica, setMovimientosCajaChica] = useState([]);
+  const [cajaChicaResidente, setCajaChicaResidente] = useState([]);
 
   const [loadingProyectos, setLoadingProyectos] = useState(true);
   const [loadingEgresos, setLoadingEgresos] = useState(true);
@@ -114,10 +133,13 @@ export const AppProvider = ({ children }) => {
   const [loadingCajaChicaProyecto, setLoadingCajaChicaProyecto] = useState(true);
   const [loadingCajaChicaDesembolsos, setLoadingCajaChicaDesembolsos] = useState(true);
   const [loadingMovimientosCajaChica, setLoadingMovimientosCajaChica] = useState(true);
+  const [loadingCajaChicaResidente, setLoadingCajaChicaResidente] = useState(true);
 
   const recalcularCajaChicaProyecto = async (proyecto) => {
   const proyectoN = norm(proyecto);
   if (!proyectoN) return null;
+
+
 
   const { data: caja, error: cajaError } = await supabase
     .from("caja_chica_proyecto")
@@ -178,6 +200,80 @@ export const AppProvider = ({ children }) => {
   };
 };
 
+const recalcularCajaChicaResidente = async (residente) => {
+  const residenteN = norm(residente);
+  if (!residenteN) return null;
+
+  const { data: caja, error: cajaError } = await supabase
+    .from("caja_chica_residente")
+    .select("*")
+    .eq("residente", residenteN)
+    .maybeSingle();
+
+  if (cajaError) throw cajaError;
+  if (!caja?.id) return null;
+
+  const { data: egresosCaja, error: egresosCajaError } = await supabase
+    .from("egresos")
+    .select("valor, estado, fuente_fondos, residente")
+    .eq("residente", residenteN)
+    .eq("fuente_fondos", "CAJA_CHICA");
+
+  if (egresosCajaError) throw egresosCajaError;
+
+  const gastadoActual = (egresosCaja || []).reduce((acc, eg) => {
+    const estado = norm(eg?.estado || "PENDIENTE");
+    if (estado === "ANULADO") return acc;
+    return acc + safeNum(eg?.valor);
+  }, 0);
+
+  const estadoCalc = getCajaChicaEstado(
+    safeNum(caja.monto_actual_asignado),
+    gastadoActual
+  );
+
+  const { data: cajaData, error: updateError } = await supabase
+    .from("caja_chica_residente")
+    .update({
+      gastado_actual: gastadoActual,
+      saldo_actual: estadoCalc.saldo,
+      estado: estadoCalc.estado,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", caja.id)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  const normalizada = normalizeCajaChicaResidente(cajaData);
+
+  setCajaChicaResidente((prev) => {
+    const existe = (prev || []).some((c) => c.id === normalizada.id);
+
+    if (!existe) {
+      return [normalizada, ...(prev || [])];
+    }
+
+    return (prev || []).map((c) =>
+      c.id === normalizada.id ? normalizada : c
+    );
+  });
+
+  return normalizada;
+};
+
+
+const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
+  const cajaActualizada = await ajustarCajaChicaResidentePorDeltaDB({
+    residente,
+    delta,
+  });
+
+  await cargarCajaChicaResidente();
+
+  return cajaActualizada;
+};
 
   /* ===========================
      Sesión Supabase + sesión app
@@ -385,12 +481,13 @@ export const AppProvider = ({ children }) => {
       if (error) throw error;
 
       const normalizados = (data || []).map((p) => ({
-        ...p,
-        valorDia: p.valor_dia ?? p.valorDia ?? 0,
-        valorHoraExtra: p.valor_hora_extra ?? p.valorHoraExtra ?? 0,
-        salarioMensual: p.salario_mensual ?? p.salarioMensual ?? 0,
-        fechaContratacion: p.fecha_contratacion ?? p.fechaContratacion ?? "",
-      }));
+  ...p,
+  valorDia: p.valor_dia ?? p.valorDia ?? 0,
+  valorHoraExtra: p.valor_hora_extra ?? p.valorHoraExtra ?? 0,
+  salarioMensual: p.salario_mensual ?? p.salarioMensual ?? 0,
+  fechaContratacion: p.fecha_contratacion ?? p.fechaContratacion ?? "",
+  estado: p.estado ?? "ACTIVO",
+}));
 
       setPersonal(normalizados);
     } catch (error) {
@@ -433,6 +530,18 @@ export const AppProvider = ({ children }) => {
       setLoadingCajaChicaProyecto(false);
     }
   };
+
+  const cargarCajaChicaResidente = async () => {
+  try {
+    setLoadingCajaChicaResidente(true);
+    const normalizados = await cargarCajaChicaResidenteDB();
+    setCajaChicaResidente(normalizados);
+  } catch (error) {
+    console.error("Error cargando caja chica por residente:", error);
+  } finally {
+    setLoadingCajaChicaResidente(false);
+  }
+};
 
   const cargarCajaChicaDesembolsos = async () => {
     try {
@@ -506,6 +615,7 @@ export const AppProvider = ({ children }) => {
     setEgresos([]);
     setPersonal([]);
     setCajaChicaProyecto([]);
+    setCajaChicaResidente([]);
     setCajaChicaDesembolsos([]);
     setMovimientosCajaChica([]);
 
@@ -513,6 +623,7 @@ export const AppProvider = ({ children }) => {
     setLoadingEgresos(false);
     setLoadingPersonal(false);
     setLoadingCajaChicaProyecto(false);
+    setLoadingCajaChicaResidente(false);
     setLoadingCajaChicaDesembolsos(false);
     setLoadingMovimientosCajaChica(false);
     return;
@@ -522,6 +633,7 @@ export const AppProvider = ({ children }) => {
   cargarEgresos();
   cargarPersonal();
   cargarCajaChicaProyecto();
+  cargarCajaChicaResidente();
   cargarCajaChicaDesembolsos();
   cargarMovimientosCajaChica();
 }, [authLoading, usuario]);
@@ -657,6 +769,33 @@ export const AppProvider = ({ children }) => {
     return normalizado;
   };
 
+    const toggleEstadoPersonal = async (id, nextEstado) => {
+    const estadoFinal = norm(nextEstado || "ACTIVO");
+
+    const { data, error } = await supabase
+      .from("personal")
+      .update({
+        estado: estadoFinal,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const normalizado = {
+      ...data,
+      valorDia: data.valor_dia ?? 0,
+      valorHoraExtra: data.valor_hora_extra ?? 0,
+      salarioMensual: data.salario_mensual ?? 0,
+      fechaContratacion: data.fecha_contratacion ?? "",
+      estado: data.estado ?? "ACTIVO",
+    };
+
+    setPersonal((prev) => (prev || []).map((p) => (p.id === id ? normalizado : p)));
+    return normalizado;
+  };
+
   const deletePersonal = async (id) => {
     const { error } = await supabase
       .from("personal")
@@ -667,6 +806,114 @@ export const AppProvider = ({ children }) => {
 
     setPersonal((prev) => (prev || []).filter((p) => p.id !== id));
   };
+
+    /* ===========================
+     PERSONAL AGRUPADO
+  =========================== */
+  const agruparPersonal = (lista = []) => {
+    const map = new Map();
+
+    for (const row of lista || []) {
+      const nombreKey = norm(row?.nombre);
+      if (!nombreKey) continue;
+
+      const asignacion = {
+        id: row?.id,
+        nombre: norm(row?.nombre),
+        cargo: norm(row?.cargo),
+        proyecto: norm(row?.proyecto),
+        tipo: norm(row?.tipo || "CAMPO"),
+        rol: norm(row?.rol || "OPERARIO"),
+        estado: norm(row?.estado || "ACTIVO"),
+        valorDia: safeNum(row?.valorDia ?? row?.valor_dia),
+        salarioMensual: safeNum(row?.salarioMensual ?? row?.salario_mensual),
+        valorHoraExtra: safeNum(row?.valorHoraExtra ?? row?.valor_hora_extra),
+        fechaContratacion:
+          row?.fechaContratacion || row?.fecha_contratacion || "",
+        raw: row,
+      };
+
+      if (!map.has(nombreKey)) {
+        map.set(nombreKey, {
+          key: nombreKey,
+          nombre: norm(row?.nombre),
+          fechaContratacion:
+            row?.fechaContratacion || row?.fecha_contratacion || "",
+          asignaciones: [],
+        });
+      }
+
+      const grupo = map.get(nombreKey);
+      grupo.asignaciones.push(asignacion);
+
+      if (
+        !grupo.fechaContratacion &&
+        (row?.fechaContratacion || row?.fecha_contratacion)
+      ) {
+        grupo.fechaContratacion =
+          row?.fechaContratacion || row?.fecha_contratacion || "";
+      }
+    }
+
+    const grouped = Array.from(map.values()).map((grupo) => {
+      const asignaciones = [...grupo.asignaciones].sort((a, b) => {
+        const aAct = a.estado === "ACTIVO" ? 0 : 1;
+        const bAct = b.estado === "ACTIVO" ? 0 : 1;
+        if (aAct !== bAct) return aAct - bAct;
+        return String(a.proyecto || "").localeCompare(String(b.proyecto || ""));
+      });
+
+      const activas = asignaciones.filter((a) => a.estado === "ACTIVO");
+      const inactivas = asignaciones.filter((a) => a.estado !== "ACTIVO");
+
+      const proyectos = [...new Set(asignaciones.map((a) => a.proyecto).filter(Boolean))];
+      const cargos = [...new Set(asignaciones.map((a) => a.cargo).filter(Boolean))];
+      const roles = [...new Set(asignaciones.map((a) => a.rol).filter(Boolean))];
+      const tipos = [...new Set(asignaciones.map((a) => a.tipo).filter(Boolean))];
+
+      const referencia =
+        activas[0] || asignaciones[0] || null;
+
+      return {
+        key: grupo.key,
+        nombre: grupo.nombre,
+        fechaContratacion: grupo.fechaContratacion || "",
+        asignaciones,
+        totalAsignaciones: asignaciones.length,
+        asignacionesActivas: activas.length,
+        asignacionesInactivas: inactivas.length,
+        proyectos,
+        cargos,
+        roles,
+        tipos,
+        cargoPrincipal: referencia?.cargo || "",
+        rolPrincipal: referencia?.rol || "",
+        tipoPrincipal: referencia?.tipo || "",
+        valorDiaPrincipal: safeNum(referencia?.valorDia),
+        salarioMensualPrincipal: safeNum(referencia?.salarioMensual),
+        valorHoraExtraPrincipal: safeNum(referencia?.valorHoraExtra),
+      };
+    });
+
+    return grouped.sort((a, b) =>
+      String(a.nombre || "").localeCompare(String(b.nombre || ""))
+    );
+  };
+
+  const getPersonalAgrupado = () => {
+    return agruparPersonal(personal || []);
+  };
+
+  const getEmpleadoAgrupado = (nombre) => {
+    const nombreKey = norm(nombre);
+    return agruparPersonal(personal || []).find((e) => e.key === nombreKey) || null;
+  };
+
+  const getAsignacionesPorEmpleado = (nombre) => {
+    const empleado = getEmpleadoAgrupado(nombre);
+    return empleado?.asignaciones || [];
+  };
+
 
   /* ===========================
      Proyectos asignados
@@ -729,6 +976,19 @@ export const AppProvider = ({ children }) => {
     const p = norm(proyecto);
     return (cajaChicaProyecto || []).find((c) => norm(c.proyecto) === p) || null;
   };
+
+  const getCajaChicaResidenteByNombre = (residente) => {
+  return getCajaChicaResidenteByNombreLocal(cajaChicaResidente, residente);
+};
+
+
+const getResumenCajaChicaResidente = (residente) => {
+  return getResumenCajaChicaResidenteLocal(cajaChicaResidente, residente);
+};
+
+const getResumenesCajaChicaResidente = () => {
+  return getResumenesCajaChicaResidenteLocal(cajaChicaResidente);
+};
 
   const getResumenCajaChica = (proyecto) => {
     const caja = getCajaChicaProyectoByProyecto(proyecto);
@@ -896,6 +1156,22 @@ export const AppProvider = ({ children }) => {
   };
 };
 
+const registrarDesembolsoCajaChicaResidente = async (payload, customActor) => {
+  const a = customActor || actor;
+
+  const result = await registrarDesembolsoCajaChicaResidenteDB({
+    payload,
+    actor: a,
+  });
+
+  await Promise.all([
+    cargarCajaChicaResidente(),
+    cargarCajaChicaDesembolsos(),
+  ]);
+
+  return result;
+};
+
   /* ===========================
      CAJA CHICA: MOVIMIENTO
   =========================== */
@@ -1007,6 +1283,22 @@ export const AppProvider = ({ children }) => {
   };
 };
 
+const registrarMovimientoCajaChicaResidente = async (payload, customActor) => {
+  const a = customActor || actor;
+
+  const result = await registrarMovimientoCajaChicaResidenteDB({
+    payload,
+    actor: a,
+  });
+
+  await Promise.all([
+    cargarCajaChicaResidente(),
+    cargarMovimientosCajaChica(),
+  ]);
+
+  return result;
+};
+
   /* ===========================
      CRUD EGRESOS
   =========================== */
@@ -1077,9 +1369,10 @@ export const AppProvider = ({ children }) => {
  // Caja chica: intentar descontar, pero sin romper el egreso si falla
 if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
   try {
-    await registrarMovimientoCajaChica(
+    await registrarMovimientoCajaChicaResidente(
       {
         egresoId: normalizado.id,
+        residente: normalizado.residente || a?.name,
         proyecto: normalizado.proyecto,
         fecha: normalizado.fecha,
         concepto: normalizado.concepto,
@@ -1090,7 +1383,7 @@ if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
     );
   } catch (movError) {
     console.error(
-      "El egreso se guardó, pero falló el movimiento de caja chica:",
+      "El egreso se guardó, pero falló el movimiento de caja chica del residente:",
       movError?.message,
       movError?.details,
       movError?.hint,
@@ -1318,6 +1611,7 @@ await Promise.all([
   }
 
   const proyectoActual = norm(egresoActual?.proyecto);
+  const residenteActual = norm(egresoActual?.residente);
 
   const { data, error } = await supabase
     .from("egresos")
@@ -1340,13 +1634,36 @@ await Promise.all([
   const fuenteActual = norm(egresoActual?.fuente_fondos ?? "GENERAL");
 
   if (fuenteActual === "CAJA_CHICA") {
-    await recalcularCajaChicaProyecto(proyectoActual);
+  const { data: movimientoActual, error: movimientoActualError } = await supabase
+    .from("movimientos_caja_chica")
+    .select("*")
+    .eq("egreso_id", id)
+    .maybeSingle();
 
-    await Promise.all([
-      cargarCajaChicaProyecto(),
-      cargarMovimientosCajaChica(),
-    ]);
+  if (movimientoActualError) throw movimientoActualError;
+
+  if (movimientoActual?.id) {
+    const valorMovimiento = safeNum(movimientoActual.valor);
+
+    const { error: deleteMovimientoError } = await supabase
+      .from("movimientos_caja_chica")
+      .delete()
+      .eq("id", movimientoActual.id);
+
+    if (deleteMovimientoError) throw deleteMovimientoError;
+
+    await ajustarCajaChicaResidentePorDelta(
+      residenteActual,
+      -valorMovimiento
+    );
   }
+
+  await Promise.all([
+    cargarCajaChicaProyecto(),
+    cargarCajaChicaResidente(),
+    cargarMovimientosCajaChica(),
+  ]);
+}
 
   const normalizado = {
     ...data,
@@ -1450,7 +1767,11 @@ await Promise.all([
         cargarPersonal,
         addPersonal,
         updatePersonal,
+        toggleEstadoPersonal,
         deletePersonal,
+        getPersonalAgrupado,
+        getEmpleadoAgrupado,
+        getAsignacionesPorEmpleado,
 
         cargarCajaChicaProyecto,
         cargarCajaChicaDesembolsos,
@@ -1460,6 +1781,20 @@ await Promise.all([
         getResumenesCajaChica,
         registrarDesembolsoCajaChica,
         registrarMovimientoCajaChica,
+
+
+
+        cajaChicaResidente,
+setCajaChicaResidente,
+loadingCajaChicaResidente,
+cargarCajaChicaResidente,
+getCajaChicaResidenteByNombre,
+getResumenCajaChicaResidente,
+getResumenesCajaChicaResidente,
+recalcularCajaChicaResidente,
+registrarDesembolsoCajaChicaResidente,
+registrarMovimientoCajaChicaResidente,
+ajustarCajaChicaResidentePorDelta,
       }}
     >
       {children}

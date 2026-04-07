@@ -33,6 +33,7 @@ const buildDefaultEmpleado = () => ({
   salarioMensual: "",
   valorHoraExtra: "",
   rol: "OPERARIO",
+  estado: "ACTIVO",
 });
 
 /* ===========================
@@ -43,20 +44,19 @@ const GestionPersonal = ({ onBack }) => {
   const nombreInputRef = useRef(null);
 
   const {
-    personal,
     proyectos,
+    personal,
     addPersonal,
     updatePersonal,
+    toggleEstadoPersonal,
     deletePersonal,
+    getPersonalAgrupado,
   } = useAppContext();
-
-  /* ===========================
-     Estados UI
-  =========================== */
 
   const [showFiltros, setShowFiltros] = useState(false);
   const [queryNombre, setQueryNombre] = useState("");
   const [filtroProyecto, setFiltroProyecto] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editandoEmpleado, setEditandoEmpleado] = useState(null);
@@ -70,9 +70,8 @@ const GestionPersonal = ({ onBack }) => {
 
   const [idAEliminar, setIdAEliminar] = useState(null);
 
-  /* ===========================
-     Derivados
-  =========================== */
+  const [modoAsignacion, setModoAsignacion] = useState("normal");
+  const [empleadoOrigenMovimiento, setEmpleadoOrigenMovimiento] = useState(null);
 
   const opcionesProyectos = useMemo(() => {
     const fromContext = (proyectos || []).map((p) => p?.nombre).filter(Boolean);
@@ -80,31 +79,51 @@ const GestionPersonal = ({ onBack }) => {
     return [...new Set([...fromContext, ...fromPersonal])].sort();
   }, [proyectos, personal]);
 
-  const personalFiltrado = useMemo(() => {
-    const q = normalize(queryNombre);
-    let base = personal || [];
+  const opcionesEstado = useMemo(() => ["ACTIVO", "INACTIVO"], []);
+
+  const personalAgrupado = useMemo(() => {
+    const grouped =
+      typeof getPersonalAgrupado === "function" ? getPersonalAgrupado() : [];
+
+    let base = grouped;
 
     if (filtroProyecto) {
-      base = base.filter((e) => (e.proyecto || "") === filtroProyecto);
+      const proyectoN = String(filtroProyecto || "").toUpperCase();
+      base = base.filter((emp) =>
+        (emp.asignaciones || []).some(
+          (a) => String(a?.proyecto || "").toUpperCase() === proyectoN
+        )
+      );
     }
 
-    if (q) {
-      base = base.filter((e) => normalize(e.nombre).includes(q));
+    if (filtroEstado) {
+      const estadoN = String(filtroEstado || "").toUpperCase();
+      base = base.filter((emp) =>
+        (emp.asignaciones || []).some(
+          (a) => String(a?.estado || "ACTIVO").toUpperCase() === estadoN
+        )
+      );
     }
 
-    return [...base].sort((a, b) => normalize(a.nombre).localeCompare(normalize(b.nombre)));
-  }, [personal, filtroProyecto, queryNombre]);
+    if (queryNombre.trim()) {
+      const q = normalize(queryNombre);
+      base = base.filter((emp) => {
+        const nombreOk = normalize(emp?.nombre).includes(q);
+        const cargoOk = (emp?.cargos || []).some((c) => normalize(c).includes(q));
+        const proyectoOk = (emp?.proyectos || []).some((p) => normalize(p).includes(q));
+        return nombreOk || cargoOk || proyectoOk;
+      });
+    }
 
-  const hayFiltros = Boolean(queryNombre || filtroProyecto);
+    return base;
+  }, [getPersonalAgrupado, filtroProyecto, filtroEstado, queryNombre]);
+
+  const hayFiltros = Boolean(queryNombre || filtroProyecto || filtroEstado);
 
   const modalConfirmarId = useMemo(() => {
     if (!idAEliminar) return null;
     return `PERSONAL:${idAEliminar}`;
   }, [idAEliminar]);
-
-  /* ===========================
-     Modal UX
-  =========================== */
 
   useEffect(() => {
     if (!showModal) return;
@@ -129,19 +148,78 @@ const GestionPersonal = ({ onBack }) => {
     };
   }, [showModal]);
 
-  /* ===========================
-     Acciones
-  =========================== */
+  const resetModoAsignacion = () => {
+    setModoAsignacion("normal");
+    setEmpleadoOrigenMovimiento(null);
+  };
 
   const abrirModalNuevo = () => {
     setNuevoEmpleado(buildDefaultEmpleado());
     setEditandoEmpleado(null);
+    resetModoAsignacion();
     setShowModal(true);
   };
 
-  const abrirModalEditar = (emp) => {
-    setNuevoEmpleado({ ...buildDefaultEmpleado(), ...emp });
-    setEditandoEmpleado(emp);
+  const abrirModalEditar = (asignacion) => {
+    setNuevoEmpleado({
+      ...buildDefaultEmpleado(),
+      ...asignacion,
+      estado: asignacion?.estado || "ACTIVO",
+    });
+    setEditandoEmpleado(asignacion);
+    resetModoAsignacion();
+    setShowModal(true);
+  };
+
+  const abrirAsignacionProyecto = (empleadoAgrupado) => {
+    if (!empleadoAgrupado) return;
+
+    const referencia =
+      (empleadoAgrupado.asignaciones || []).find((a) => a.estado === "ACTIVO") ||
+      empleadoAgrupado.asignaciones?.[0] ||
+      null;
+
+    setNuevoEmpleado({
+      ...buildDefaultEmpleado(),
+      nombre: empleadoAgrupado?.nombre || "",
+      cargo: referencia?.cargo || "",
+      proyecto: "",
+      tipo: referencia?.tipo || "CAMPO",
+      fechaContratacion: empleadoAgrupado?.fechaContratacion || "",
+      valorDia: referencia?.valorDia ?? "",
+      salarioMensual: referencia?.salarioMensual ?? "",
+      valorHoraExtra: referencia?.valorHoraExtra ?? "",
+      rol: referencia?.rol || "OPERARIO",
+      estado: "ACTIVO",
+    });
+
+    setEditandoEmpleado(null);
+    setModoAsignacion("duplicar");
+    setEmpleadoOrigenMovimiento(null);
+    setDetalleEmpleado(null);
+    setShowModal(true);
+  };
+
+  const abrirMoverProyecto = (asignacion) => {
+    if (!asignacion) return;
+
+    setNuevoEmpleado({
+      ...buildDefaultEmpleado(),
+      nombre: asignacion?.nombre || "",
+      cargo: asignacion?.cargo || "",
+      proyecto: "",
+      tipo: asignacion?.tipo || "CAMPO",
+      fechaContratacion: asignacion?.fechaContratacion || "",
+      valorDia: asignacion?.valorDia ?? "",
+      salarioMensual: asignacion?.salarioMensual ?? "",
+      valorHoraExtra: asignacion?.valorHoraExtra ?? "",
+      rol: asignacion?.rol || "OPERARIO",
+      estado: "ACTIVO",
+    });
+
+    setEditandoEmpleado(null);
+    setModoAsignacion("mover");
+    setEmpleadoOrigenMovimiento(asignacion);
     setShowModal(true);
   };
 
@@ -175,6 +253,7 @@ const GestionPersonal = ({ onBack }) => {
         proyecto: String(nuevoEmpleado.proyecto || "").toUpperCase(),
         tipo: nuevoEmpleado.tipo || "CAMPO",
         rol: nuevoEmpleado.rol || "OPERARIO",
+        estado: String(nuevoEmpleado.estado || "ACTIVO").toUpperCase(),
       };
 
       if (existeDuplicado(payload)) {
@@ -188,18 +267,54 @@ const GestionPersonal = ({ onBack }) => {
 
       if (editandoEmpleado) {
         await updatePersonal(payload.id, payload);
-        setModalExito({ show: true, mensaje: "EMPLEADO ACTUALIZADO" });
+        setModalExito({ show: true, mensaje: "ASIGNACIÓN ACTUALIZADA" });
+      } else if (modoAsignacion === "mover" && empleadoOrigenMovimiento?.id) {
+        await addPersonal({
+          ...payload,
+          estado: "ACTIVO",
+        });
+
+        await toggleEstadoPersonal(empleadoOrigenMovimiento.id, "INACTIVO");
+
+        setModalExito({ show: true, mensaje: "EMPLEADO MOVIDO DE PROYECTO" });
       } else {
         await addPersonal(payload);
-        setModalExito({ show: true, mensaje: "EMPLEADO CREADO" });
+        setModalExito({
+          show: true,
+          mensaje:
+            modoAsignacion === "duplicar" ? "ASIGNACIÓN CREADA" : "EMPLEADO CREADO",
+        });
       }
 
+      resetModoAsignacion();
       setShowModal(false);
     } catch (error) {
       console.error("Error guardando empleado:", error);
       setToast({
         show: true,
         mensaje: "NO SE PUDO GUARDAR EL EMPLEADO",
+        tipo: "error",
+      });
+    }
+  };
+
+  const toggleEstadoRapido = async (asignacion) => {
+    try {
+      const actual = String(asignacion?.estado || "ACTIVO").toUpperCase();
+      const next = actual === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+
+      await toggleEstadoPersonal(asignacion.id, next);
+
+      setToast({
+        show: true,
+        mensaje: next === "ACTIVO" ? "ASIGNACIÓN ACTIVADA" : "ASIGNACIÓN INACTIVADA",
+        tipo: "exito",
+      });
+    } catch (error) {
+      console.error("Error cambiando estado:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO CAMBIAR EL ESTADO",
         tipo: "error",
       });
     }
@@ -213,17 +328,13 @@ const GestionPersonal = ({ onBack }) => {
     try {
       await deletePersonal(idAEliminar);
 
-      if (detalleEmpleado?.id === idAEliminar) {
-        setDetalleEmpleado(null);
-      }
-
       setIdAEliminar(null);
-      setModalExito({ show: true, mensaje: "EMPLEADO ELIMINADO" });
+      setModalExito({ show: true, mensaje: "ASIGNACIÓN ELIMINADA" });
     } catch (error) {
       console.error("Error eliminando empleado:", error);
       setToast({
         show: true,
-        mensaje: "NO SE PUDO ELIMINAR EL EMPLEADO",
+        mensaje: "NO SE PUDO ELIMINAR EL REGISTRO",
         tipo: "error",
       });
     }
@@ -232,11 +343,8 @@ const GestionPersonal = ({ onBack }) => {
   const limpiarFiltros = () => {
     setQueryNombre("");
     setFiltroProyecto("");
+    setFiltroEstado("");
   };
-
-  /* ===========================
-     Render
-  =========================== */
 
   return (
     <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
@@ -262,11 +370,10 @@ const GestionPersonal = ({ onBack }) => {
             </h3>
 
             <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-3">
-              {personalFiltrado.length} Registros encontrados
+              {personalAgrupado.length} Empleados encontrados
             </p>
           </div>
 
-          {/* FILTROS DESKTOP: SIEMPRE VISIBLES */}
           <div className="hidden md:block mb-10">
             <PersonalFilters
               show={true}
@@ -275,12 +382,14 @@ const GestionPersonal = ({ onBack }) => {
               filtroProyecto={filtroProyecto}
               setFiltroProyecto={setFiltroProyecto}
               opcionesProyectos={opcionesProyectos}
+              filtroEstado={filtroEstado}
+              setFiltroEstado={setFiltroEstado}
+              opcionesEstado={opcionesEstado}
               hayFiltros={hayFiltros}
               limpiarFiltros={limpiarFiltros}
             />
           </div>
 
-          {/* FILTROS MOBILE: DESPLEGABLES */}
           <div className="md:hidden mb-10">
             <PersonalFilters
               show={showFiltros}
@@ -289,16 +398,17 @@ const GestionPersonal = ({ onBack }) => {
               filtroProyecto={filtroProyecto}
               setFiltroProyecto={setFiltroProyecto}
               opcionesProyectos={opcionesProyectos}
+              filtroEstado={filtroEstado}
+              setFiltroEstado={setFiltroEstado}
+              opcionesEstado={opcionesEstado}
               hayFiltros={hayFiltros}
               limpiarFiltros={limpiarFiltros}
             />
           </div>
 
           <PersonalTable
-            data={personalFiltrado}
+            data={personalAgrupado}
             onOpenDetalle={setDetalleEmpleado}
-            onEdit={abrirModalEditar}
-            onDelete={solicitarEliminar}
             onNew={abrirModalNuevo}
           />
         </div>
@@ -306,7 +416,10 @@ const GestionPersonal = ({ onBack }) => {
 
       <PersonalFormModal
         show={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setShowModal(false);
+          resetModoAsignacion();
+        }}
         onSave={guardarEmpleado}
         editando={Boolean(editandoEmpleado)}
         empleado={nuevoEmpleado}
@@ -318,11 +431,11 @@ const GestionPersonal = ({ onBack }) => {
       <PersonalDetailModal
         empleado={detalleEmpleado}
         onClose={() => setDetalleEmpleado(null)}
-        onEdit={() => {
-          abrirModalEditar(detalleEmpleado);
-          setDetalleEmpleado(null);
-        }}
-        onDelete={() => solicitarEliminar(detalleEmpleado?.id)}
+        onEdit={abrirModalEditar}
+        onAsignarProyecto={() => abrirAsignacionProyecto(detalleEmpleado)}
+        onMoverProyecto={abrirMoverProyecto}
+        onToggleEstado={toggleEstadoRapido}
+        onDelete={(id) => solicitarEliminar(id)}
       />
 
       <ModalConfirmar

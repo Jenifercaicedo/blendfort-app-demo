@@ -37,6 +37,7 @@ const ReporteDiarioModal = ({
   onSuccess,
   mode = "create",
   reporteInicial = null,
+  onOpenLista,
 }) => {
   const { personal, addReporteDiario, updateReporteDiario } = useAppContext();
 
@@ -84,6 +85,9 @@ const ReporteDiarioModal = ({
         const tipo = normU(p?.tipo || "CAMPO");
         if (tipo === "OFICINA") return false;
 
+        const estado = normU(p?.estado || "ACTIVO");
+        if (estado !== "ACTIVO") return false;
+
         const pEmp = normU(p?.proyecto);
         if (pAct && pEmp !== pAct) return false;
 
@@ -104,8 +108,12 @@ const ReporteDiarioModal = ({
   const empleadoObj = useMemo(() => {
     const pick = normU(form.empleado);
     if (!pick) return null;
-    return (personal || []).find((p) => normU(p?.nombre) === pick) || null;
-  }, [form.empleado, personal]);
+    return (personal || []).find(
+      (p) =>
+        normU(p?.nombre) === pick &&
+        normU(p?.proyecto) === normU(proyectoActivo)
+    ) || null;
+  }, [form.empleado, personal, proyectoActivo]);
 
   useEffect(() => {
     if (!show) return;
@@ -115,8 +123,14 @@ const ReporteDiarioModal = ({
         fecha: reporteInicial.fecha || todayISO(),
         empleado: normU(reporteInicial.concepto || ""),
         asistio: reporteInicial.asistio === false ? false : true,
-        horasExtras: String(reporteInicial.numHorasExtras ?? reporteInicial.num_horas_extras ?? ""),
-        bonos: String(reporteInicial.valoresPendientes ?? reporteInicial.valores_pendientes ?? ""),
+        horasExtras: String(
+          reporteInicial.numHorasExtras ?? reporteInicial.num_horas_extras ?? ""
+        ),
+        bonos: String(
+          reporteInicial.valoresPendientes ??
+            reporteInicial.valores_pendientes ??
+            ""
+        ),
         descuentos: String(reporteInicial.descuentos ?? ""),
         observacion: normU(reporteInicial.detalles || ""),
       });
@@ -164,7 +178,8 @@ const ReporteDiarioModal = ({
       const bonos = asistio ? num0(form.bonos) : 0;
       const desc = asistio ? num0(form.descuentos) : 0;
 
-      const totalCalc = asistio ? valorDia + horas * valorHoraExtra + bonos - desc : 0;
+      const totalCalc =
+        asistio ? valorDia + horas * valorHoraExtra + bonos - desc : 0;
       const total = Math.max(0, totalCalc);
 
       const payloadBase = {
@@ -239,6 +254,27 @@ const ReporteDiarioModal = ({
                 {normU(proyectoActivo || "SIN PROYECTO")}
               </p>
 
+              {!esEdicion && (
+                <div className="pt-3">
+                  <div className="grid grid-cols-2 gap-2 md:w-fit">
+                    <button
+                      type="button"
+                      onClick={onOpenLista}
+                      className="h-10 px-4 rounded-2xl bg-blendfort-fondo text-black/60 hover:bg-black hover:text-white font-black text-[8px] uppercase tracking-[0.18em] transition-all"
+                    >
+                      Lista
+                    </button>
+
+                    <button
+                      type="button"
+                      className="h-10 px-4 rounded-2xl bg-black text-white font-black text-[8px] uppercase tracking-[0.18em] shadow-sm"
+                    >
+                      Individual
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {esEdicion && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/10">
@@ -279,7 +315,10 @@ const ReporteDiarioModal = ({
           </div>
 
           {/* BODY */}
-          <form onSubmit={guardar} className="p-5 pt-5 md:p-12 md:pt-8 space-y-5 md:space-y-8">
+          <form
+            onSubmit={guardar}
+            className="p-5 pt-5 md:p-12 md:pt-8 space-y-5 md:space-y-8"
+          >
             {esAnulado && (
               <div className="px-5 py-4 rounded-[1.4rem] bg-red-50 border border-red-100">
                 <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.22em] text-red-700">
@@ -308,7 +347,11 @@ const ReporteDiarioModal = ({
                 options={operarios}
                 value={form.empleado}
                 onChange={(val) => setForm({ ...form, empleado: val })}
-                placeholder={operarios.length ? "BUSCAR..." : "NO HAY OPERARIOS EN ESTE PROYECTO"}
+                placeholder={
+                  operarios.length
+                    ? "BUSCAR..."
+                    : "NO HAY OPERARIOS ACTIVOS EN ESTE PROYECTO"
+                }
                 allowCustom={false}
                 disabled={!operarios.length || esAnulado}
               />
@@ -319,7 +362,9 @@ const ReporteDiarioModal = ({
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-2 h-2 rounded-full shrink-0 ${
-                      form.asistio ? "bg-blendfort-naranja animate-pulse" : "bg-black/20"
+                      form.asistio
+                        ? "bg-blendfort-naranja animate-pulse"
+                        : "bg-black/20"
                     }`}
                   />
                   <span className="text-[9px] font-black uppercase tracking-[0.18em] md:tracking-widest opacity-40 leading-tight">
@@ -355,7 +400,9 @@ const ReporteDiarioModal = ({
                     disabled={!form.asistio || esAnulado}
                     className="w-full bg-white px-3 py-3.5 md:p-4 rounded-[0.95rem] md:rounded-xl text-[16px] md:text-[10px] font-black outline-none text-center disabled:opacity-50"
                     value={form.horasExtras}
-                    onChange={(e) => setForm({ ...form, horasExtras: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, horasExtras: e.target.value })
+                    }
                   />
                 </div>
 
@@ -369,7 +416,9 @@ const ReporteDiarioModal = ({
                     disabled={!form.asistio || esAnulado}
                     className="w-full bg-white px-3 py-3.5 md:p-4 rounded-[0.95rem] md:rounded-xl text-[16px] md:text-[10px] font-black outline-none text-center disabled:opacity-50"
                     value={form.bonos}
-                    onChange={(e) => setForm({ ...form, bonos: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, bonos: e.target.value })
+                    }
                   />
                 </div>
 
@@ -383,7 +432,9 @@ const ReporteDiarioModal = ({
                     disabled={!form.asistio || esAnulado}
                     className="w-full bg-white px-3 py-3.5 md:p-4 rounded-[0.95rem] md:rounded-xl text-[16px] md:text-[10px] font-black outline-none text-center disabled:opacity-50"
                     value={form.descuentos}
-                    onChange={(e) => setForm({ ...form, descuentos: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, descuentos: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -398,7 +449,9 @@ const ReporteDiarioModal = ({
                 disabled={esAnulado}
                 className="w-full bg-blendfort-fondo px-4 py-4 md:p-5 rounded-[1.3rem] md:rounded-[2rem] text-[16px] md:text-[11px] font-black uppercase outline-none h-24 md:h-20 resize-none border border-transparent focus:bg-white focus:border-black/5 transition-all disabled:opacity-60"
                 value={form.observacion}
-                onChange={(e) => setForm({ ...form, observacion: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, observacion: e.target.value })
+                }
               />
             </div>
 

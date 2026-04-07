@@ -7,6 +7,7 @@ import ModalConfirmar from "../components/ModalConfirmar";
 import ModalEgreso from "../components/ModalEgreso";
 import ModalExito from "../components/ModalExito";
 import ReporteDiarioModal from "../components/ReporteDiarioModal";
+import ReporteDiarioListaModal from "../components/ReporteDiarioListaModal";
 import CustomSelect from "../components/CustomSelect";
 import ResidentManoObraModal from "../components/ResidentManoObraModal";
 
@@ -46,8 +47,8 @@ const ResidentDashboard = () => {
     addEgreso,
     updateEgreso,
     deleteEgreso,
-    cajaChicaProyecto,
-    getResumenCajaChica,
+    cajaChicaResidente,
+    getResumenCajaChicaResidente,
     canEditEgreso,
     canDeleteEgreso,
   } = useAppContext();
@@ -126,6 +127,7 @@ const ResidentDashboard = () => {
   const [idAEliminar, setIdAEliminar] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
   const [showReporteDiario, setShowReporteDiario] = useState(false);
+  const [showReporteDiarioLista, setShowReporteDiarioLista] = useState(false);
   const [showManoObraModal, setShowManoObraModal] = useState(false);
 
   const [modalExito, setModalExito] = useState({ show: false, mensaje: "" });
@@ -193,7 +195,6 @@ const ResidentDashboard = () => {
     });
   }, [registrosScope, filtroCategoria, filtroFecha]);
 
-  // TOTAL proyecto (solo suma MANO DE OBRA si está PAGADO/COMPLETADO)
   const totalMes = useMemo(() => {
     return (registrosScope || []).reduce((acc, curr) => {
       const cat = normalize(curr?.categoria);
@@ -229,7 +230,7 @@ const ResidentDashboard = () => {
      Resumen Caja Chica
   =========================== */
   const resumenCajaChica = useMemo(() => {
-    if (!proyectoActivoFinal || typeof getResumenCajaChica !== "function") {
+    if (!nombreUsuario || typeof getResumenCajaChicaResidente !== "function") {
       return {
         existe: false,
         montoActualAsignado: 0,
@@ -241,7 +242,7 @@ const ResidentDashboard = () => {
     }
 
     return (
-      getResumenCajaChica(proyectoActivoFinal) || {
+      getResumenCajaChicaResidente(nombreUsuario) || {
         existe: false,
         montoActualAsignado: 0,
         gastadoActual: 0,
@@ -250,7 +251,7 @@ const ResidentDashboard = () => {
         fechaUltimoDesembolso: "",
       }
     );
-  }, [getResumenCajaChica, proyectoActivoFinal, cajaChicaProyecto]);
+  }, [getResumenCajaChicaResidente, nombreUsuario, cajaChicaResidente]);
 
   const saldoCajaNegativo = Number(resumenCajaChica?.saldoActual || 0) < 0;
   const cajaExcedida =
@@ -270,6 +271,26 @@ const ResidentDashboard = () => {
       tipoRegistro: "EGRESO",
     });
     setShowModalNuevo(true);
+  };
+
+  const abrirReporteLista = () => {
+    if (!tieneProyectosAsignados || !proyectoActivoFinal) {
+      mostrarExito("NO TIENES UN PROYECTO ACTIVO ASIGNADO");
+      return;
+    }
+
+    setShowReporteDiario(false);
+    setShowReporteDiarioLista(true);
+  };
+
+  const abrirReporteIndividual = () => {
+    if (!tieneProyectosAsignados || !proyectoActivoFinal) {
+      mostrarExito("NO TIENES UN PROYECTO ACTIVO ASIGNADO");
+      return;
+    }
+
+    setShowReporteDiarioLista(false);
+    setShowReporteDiario(true);
   };
 
   const abrirManoObra = () => {
@@ -314,7 +335,6 @@ const ResidentDashboard = () => {
 
       const categoriaFinal = normalize(nuevoEgreso.categoria);
 
-      // Mano de obra no descuenta caja chica
       const fuenteFondosFinal =
         categoriaFinal === "MANO DE OBRA" ? "GENERAL" : "CAJA_CHICA";
 
@@ -383,7 +403,6 @@ const ResidentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-blendfort-fondo flex flex-col p-4 md:p-8 font-sans text-black overflow-x-hidden">
-      {/* Header */}
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 md:mb-8">
         <button
           type="button"
@@ -394,7 +413,11 @@ const ResidentDashboard = () => {
           aria-label="Ir al inicio"
           title="Ir al inicio"
         >
-          <img src={logo} alt="Blendfort" className="h-24 sm:h-26 md:h-30 lg:h-38 xl:h36  w-auto object-contain" />
+          <img
+            src={logo}
+            alt="Blendfort"
+            className="h-24 sm:h-26 md:h-30 lg:h-38 xl:h36  w-auto object-contain"
+          />
         </button>
 
         <button
@@ -419,7 +442,6 @@ const ResidentDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full flex-1">
-        {/* Bienvenida + Card caja chica */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start mb-6">
           <div className="flex flex-col items-center lg:items-start space-y-3 w-full">
             <div className="text-center lg:text-left">
@@ -472,11 +494,11 @@ const ResidentDashboard = () => {
           <div className="flex justify-center lg:justify-end">
             <div className="bg-white border border-black/[0.05] p-4 md:p-5 rounded-[1.4rem] md:rounded-[1.6rem] shadow-sm w-full max-w-sm">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2.5">
-                Caja Chica
+                Caja Chica General
               </p>
 
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-1.5 h-7 bg-blendfort-naranja rounded-full"></div>
+                <div className="w-1.5 h-7 bg-blendfort-naranja rounded-full" />
                 <h2
                   className={`text-2xl md:text-3xl font-black tracking-tighter ${
                     cajaExcedida ? "text-red-800" : "text-black"
@@ -487,7 +509,7 @@ const ResidentDashboard = () => {
               </div>
 
               <p className="text-[8px] font-black uppercase tracking-[0.14em] text-black/35 mb-4">
-                Gastado del fondo asignado
+                Gastado del fondo general asignado
               </p>
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
@@ -542,13 +564,11 @@ const ResidentDashboard = () => {
           </div>
         </div>
 
-        {/* Card maestra */}
         <div className="bg-white rounded-[1.8rem] md:rounded-[2.2rem] border border-black/5 shadow-xl overflow-hidden">
-          {/* Top bar */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 md:p-5 border-b border-black/5 bg-blendfort-fondo/30">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
+                <div className="w-4 h-[2px] bg-blendfort-naranja" />
                 <span className="text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.28em]">
                   Resident Console
                 </span>
@@ -592,7 +612,7 @@ const ResidentDashboard = () => {
 
                 <button
                   type="button"
-                  onClick={() => setShowReporteDiario(true)}
+                  onClick={abrirReporteLista}
                   className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-blendfort-naranja text-white
                     font-black text-[9px] uppercase tracking-[0.16em]
                     hover:bg-black transition-all active:scale-95 shadow-sm
@@ -621,7 +641,6 @@ const ResidentDashboard = () => {
             </div>
           </div>
 
-          {/* Filtros */}
           {showFiltros && (
             <div className="p-4 md:p-5 border-b border-black/5 animate-in fade-in zoom-in duration-300">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -666,7 +685,6 @@ const ResidentDashboard = () => {
             </div>
           )}
 
-          {/* Tabla */}
           <div className="p-3 md:p-5">
             <TablaEgresos
               registros={registrosFiltrados}
@@ -696,11 +714,24 @@ const ResidentDashboard = () => {
         opcionesCategorias={opcionesCategorias}
       />
 
+      <ReporteDiarioListaModal
+        show={showReporteDiarioLista}
+        onClose={() => setShowReporteDiarioLista(false)}
+        proyectoActivo={proyectoActivoFinal}
+        registradoPor={nombreUsuario}
+        onOpenIndividual={abrirReporteIndividual}
+        onSuccess={(msg) => {
+          mostrarExito(msg || "REPORTES GUARDADOS");
+          setShowReporteDiarioLista(false);
+        }}
+      />
+
       <ReporteDiarioModal
         show={showReporteDiario}
         onClose={() => setShowReporteDiario(false)}
         proyectoActivo={proyectoActivoFinal}
         registradoPor={nombreUsuario}
+        onOpenLista={abrirReporteLista}
         onSuccess={(msg) => {
           mostrarExito(msg || "REPORTE GUARDADO");
           setShowReporteDiario(false);

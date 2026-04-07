@@ -124,8 +124,14 @@ const Login = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-blendfort-fondo flex items-center justify-center p-6">
-        <div className="bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-center border border-black/5">
+      <div className="relative min-h-screen overflow-hidden bg-[#f8f6f1] flex items-center justify-center p-6">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-blendfort-naranja/20 blur-3xl" />
+          <div className="absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-amber-200/30 blur-3xl" />
+          <div className="absolute -bottom-20 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-orange-100/30 blur-3xl" />
+        </div>
+
+        <div className="relative bg-white/90 backdrop-blur-md w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-center border border-white/60">
           <div className="flex items-center justify-center gap-3">
             <div className="w-2 h-2 rounded-full bg-blendfort-naranja animate-pulse"></div>
             <p className="font-black uppercase tracking-[0.22em] text-black/50 text-[11px]">
@@ -138,13 +144,21 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-blendfort-fondo flex flex-col items-center justify-center p-5 md:p-6 text-black">
-      <div className="bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] px-6 py-8 md:px-10 md:py-10 shadow-2xl text-center border border-black/5">
+    <div className="relative min-h-screen overflow-hidden bg-[#f8f6f1] flex flex-col items-center justify-center p-5 md:p-6 text-black">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-80px] left-[-60px] h-[260px] w-[260px] rounded-full bg-blendfort-naranja/20 blur-3xl md:h-[340px] md:w-[340px]" />
+        <div className="absolute top-[18%] right-[-80px] h-[240px] w-[240px] rounded-full bg-amber-200/30 blur-3xl md:h-[320px] md:w-[320px]" />
+        <div className="absolute bottom-[-100px] left-[8%] h-[220px] w-[220px] rounded-full bg-orange-100/30 blur-3xl md:h-[280px] md:w-[280px]" />
+        <div className="absolute bottom-[-120px] right-[10%] h-[260px] w-[260px] rounded-full bg-yellow-100/30 blur-3xl md:h-[320px] md:w-[320px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0.08)_45%,transparent_75%)]" />
+      </div>
+
+      <div className="relative bg-white/88 backdrop-blur-xl w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] px-6 py-8 md:px-10 md:py-10 shadow-[0_30px_80px_rgba(0,0,0,0.10)] text-center border border-white/70">
         <div className="mb-6 md:mb-8 flex justify-center">
           <img
             src={logo}
             alt="Logo Blendfort"
-            className="h-32 md:h-44 w-auto object-contain"
+            className="h-32 md:h-44 w-auto object-contain drop-shadow-[0_8px_20px_rgba(245,158,11,0.12)]"
           />
         </div>
 
