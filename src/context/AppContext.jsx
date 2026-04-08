@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-
-const AppContext = createContext();
 import {
   normalizeEgreso,
   normalizePersonal,
@@ -20,6 +18,8 @@ import {
   ajustarCajaChicaResidentePorDeltaDB,
   revertirMovimientoCajaChicaResidentePorEgresoDB,
 } from "../features/cajaChica/cajaChicaResidente";
+
+const AppContext = createContext();
 
 /* ===========================
    Helpers
@@ -135,145 +135,135 @@ export const AppProvider = ({ children }) => {
   const [loadingMovimientosCajaChica, setLoadingMovimientosCajaChica] = useState(true);
   const [loadingCajaChicaResidente, setLoadingCajaChicaResidente] = useState(true);
 
-  const recalcularCajaChicaProyecto = async (proyecto) => {
-  const proyectoN = norm(proyecto);
-  if (!proyectoN) return null;
+  /* ===========================
+     CAJA CHICA RESIDENTE
+     AppContext decide si afecta.
+     La DB recalcula saldo/estado.
+  =========================== */
+  const shouldAffectResidentCajaChica = (egreso) => {
+    const fuenteFondos = norm(egreso?.fuenteFondos ?? egreso?.fuente_fondos);
+    const categoria = norm(egreso?.categoria);
+    const tipoRegistro = norm(egreso?.tipoRegistro ?? egreso?.tipo_registro);
+    const estado = norm(egreso?.estado || "PENDIENTE");
 
+    if (estado === "ANULADO") return false;
+    if (fuenteFondos !== "CAJA_CHICA") return false;
+    if (categoria === "MANO DE OBRA") return false;
+    if (tipoRegistro === "REPORTE_DIARIO") return false;
 
-
-  const { data: caja, error: cajaError } = await supabase
-    .from("caja_chica_proyecto")
-    .select("*")
-    .eq("proyecto", proyectoN)
-    .maybeSingle();
-
-  if (cajaError) throw cajaError;
-  if (!caja?.id) return null;
-
-  // La fuente de verdad ahora serán los EGRESOS reales del proyecto
-  const { data: egresosCaja, error: egresosCajaError } = await supabase
-    .from("egresos")
-    .select("valor, estado, fuente_fondos, proyecto")
-    .eq("proyecto", proyectoN)
-    .eq("fuente_fondos", "CAJA_CHICA");
-
-  if (egresosCajaError) throw egresosCajaError;
-
-  const gastadoActual = (egresosCaja || []).reduce((acc, eg) => {
-    const estado = norm(eg?.estado || "PENDIENTE");
-
-    // Si en el futuro manejas ANULADO, no lo suma
-    if (estado === "ANULADO") return acc;
-
-    return acc + safeNum(eg?.valor);
-  }, 0);
-
-  const estadoCalc = getCajaChicaEstado(
-    safeNum(caja.monto_actual_asignado),
-    gastadoActual
-  );
-
-  const { data: cajaData, error: updateError } = await supabase
-    .from("caja_chica_proyecto")
-    .update({
-      gastado_actual: gastadoActual,
-      saldo_actual: estadoCalc.saldo,
-      estado: estadoCalc.estado,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", caja.id)
-    .select()
-    .single();
-
-  if (updateError) throw updateError;
-
-  return {
-    ...cajaData,
-    proyecto: norm(cajaData.proyecto),
-    residente: norm(cajaData.residente),
-    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
-    gastadoActual: safeNum(cajaData.gastado_actual),
-    saldoActual: safeNum(cajaData.saldo_actual),
-    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
-    creadoPor: cajaData.creado_por ?? "",
-    creadoPorRol: cajaData.creado_por_rol ?? "",
+    return true;
   };
-};
 
-const recalcularCajaChicaResidente = async (residente) => {
-  const residenteN = norm(residente);
-  if (!residenteN) return null;
+  const resolveResidentNameForCaja = (egreso) => {
+    return (
+      egreso?.residente ||
+      egreso?.creadoPorNombre ||
+      egreso?.creado_por_nombre ||
+      nombreUsuario ||
+      ""
+    )
+      .toString()
+      .trim();
+  };
 
-  const { data: caja, error: cajaError } = await supabase
-    .from("caja_chica_residente")
-    .select("*")
-    .eq("residente", residenteN)
-    .maybeSingle();
+  const reconcileMovimientoCajaChicaResidente = async (egreso, customActor) => {
+    const a = customActor || actor;
+    if (!egreso?.id) return;
 
-  if (cajaError) throw cajaError;
-  if (!caja?.id) return null;
+    await revertirMovimientoCajaChicaResidentePorEgresoDB(egreso.id);
 
-  const { data: egresosCaja, error: egresosCajaError } = await supabase
-    .from("egresos")
-    .select("valor, estado, fuente_fondos, residente")
-    .eq("residente", residenteN)
-    .eq("fuente_fondos", "CAJA_CHICA");
-
-  if (egresosCajaError) throw egresosCajaError;
-
-  const gastadoActual = (egresosCaja || []).reduce((acc, eg) => {
-    const estado = norm(eg?.estado || "PENDIENTE");
-    if (estado === "ANULADO") return acc;
-    return acc + safeNum(eg?.valor);
-  }, 0);
-
-  const estadoCalc = getCajaChicaEstado(
-    safeNum(caja.monto_actual_asignado),
-    gastadoActual
-  );
-
-  const { data: cajaData, error: updateError } = await supabase
-    .from("caja_chica_residente")
-    .update({
-      gastado_actual: gastadoActual,
-      saldo_actual: estadoCalc.saldo,
-      estado: estadoCalc.estado,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", caja.id)
-    .select()
-    .single();
-
-  if (updateError) throw updateError;
-
-  const normalizada = normalizeCajaChicaResidente(cajaData);
-
-  setCajaChicaResidente((prev) => {
-    const existe = (prev || []).some((c) => c.id === normalizada.id);
-
-    if (!existe) {
-      return [normalizada, ...(prev || [])];
+    if (!shouldAffectResidentCajaChica(egreso)) {
+      await Promise.all([cargarCajaChicaResidente(), cargarMovimientosCajaChica()]);
+      return;
     }
 
-    return (prev || []).map((c) =>
-      c.id === normalizada.id ? normalizada : c
+    await registrarMovimientoCajaChicaResidenteDB({
+      payload: {
+        egresoId: egreso.id,
+        residente: resolveResidentNameForCaja(egreso),
+        proyecto: egreso.proyecto,
+        fecha: egreso.fecha,
+        concepto: egreso.concepto,
+        categoria: egreso.categoria,
+        valor: safeNum(egreso.valor),
+      },
+      actor: a,
+    });
+
+    await Promise.all([cargarCajaChicaResidente(), cargarMovimientosCajaChica()]);
+  };
+
+  const recalcularCajaChicaProyecto = async (proyecto) => {
+    const proyectoN = norm(proyecto);
+    if (!proyectoN) return null;
+
+    const { data: caja, error: cajaError } = await supabase
+      .from("caja_chica_proyecto")
+      .select("*")
+      .eq("proyecto", proyectoN)
+      .maybeSingle();
+
+    if (cajaError) throw cajaError;
+    if (!caja?.id) return null;
+
+    const { data: egresosCaja, error: egresosCajaError } = await supabase
+      .from("egresos")
+      .select("valor, estado, fuente_fondos, proyecto, categoria, tipo_registro")
+      .eq("proyecto", proyectoN)
+      .eq("fuente_fondos", "CAJA_CHICA");
+
+    if (egresosCajaError) throw egresosCajaError;
+
+    const gastadoActual = (egresosCaja || []).reduce((acc, eg) => {
+      const estado = norm(eg?.estado || "PENDIENTE");
+      const categoria = norm(eg?.categoria);
+      const tipoRegistro = norm(eg?.tipo_registro);
+
+      if (estado === "ANULADO") return acc;
+      if (categoria === "MANO DE OBRA") return acc;
+      if (tipoRegistro === "REPORTE_DIARIO") return acc;
+
+      return acc + safeNum(eg?.valor);
+    }, 0);
+
+    const estadoCalc = getCajaChicaEstado(
+      safeNum(caja.monto_actual_asignado),
+      gastadoActual
     );
-  });
 
-  return normalizada;
-};
+    const { data: cajaData, error: updateError } = await supabase
+      .from("caja_chica_proyecto")
+      .update({
+        gastado_actual: gastadoActual,
+        saldo_actual: estadoCalc.saldo,
+        estado: estadoCalc.estado,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", caja.id)
+      .select()
+      .single();
 
+    if (updateError) throw updateError;
 
-const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
-  const cajaActualizada = await ajustarCajaChicaResidentePorDeltaDB({
-    residente,
-    delta,
-  });
+    return normalizeCajaChicaProyecto(cajaData);
+  };
 
-  await cargarCajaChicaResidente();
+  const recalcularCajaChicaResidente = async (residente) => {
+    const normalizados = await cargarCajaChicaResidenteDB();
+    setCajaChicaResidente(normalizados);
+    return getCajaChicaResidenteByNombreLocal(normalizados, residente);
+  };
 
-  return cajaActualizada;
-};
+  const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
+    const cajaActualizada = await ajustarCajaChicaResidentePorDeltaDB({
+      residente,
+      delta,
+    });
+
+    await cargarCajaChicaResidente();
+
+    return cajaActualizada;
+  };
 
   /* ===========================
      Sesión Supabase + sesión app
@@ -439,25 +429,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
       if (error) throw error;
 
-      const normalizados = (data || []).map((e) => ({
-        ...e,
-        metodoPago: e.metodo_pago ?? e.metodoPago ?? "",
-        pagadoPor: e.pagado_por ?? e.pagadoPor ?? "",
-        tieneFactura:
-          typeof e.tiene_factura === "boolean"
-            ? e.tiene_factura
-            : e.factura === "si",
-        tipoRegistro: e.tipo_registro ?? e.tipoRegistro ?? "EGRESO",
-        numHorasExtras: e.num_horas_extras ?? e.numHorasExtras ?? 0,
-        valoresPendientes: e.valores_pendientes ?? e.valoresPendientes ?? 0,
-        creadoPor: e.creado_por ?? e.creadoPor ?? "",
-        creadoPorRol: e.creado_por_rol ?? e.creadoPorRol ?? "",
-        creadoPorNombre: e.creado_por_nombre ?? e.creadoPorNombre ?? "",
-        actualizadoPor: e.actualizado_por ?? e.actualizadoPor ?? "",
-        actualizadoPorRol: e.actualizado_por_rol ?? e.actualizadoPorRol ?? "",
-        fuenteFondos: e.fuente_fondos ?? e.fuenteFondos ?? "GENERAL",
-      }));
-
+      const normalizados = (data || []).map((e) => normalizeEgreso(e));
       setEgresos(normalizados);
     } catch (error) {
       console.error("Error cargando egresos:", error);
@@ -480,15 +452,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
       if (error) throw error;
 
-      const normalizados = (data || []).map((p) => ({
-  ...p,
-  valorDia: p.valor_dia ?? p.valorDia ?? 0,
-  valorHoraExtra: p.valor_hora_extra ?? p.valorHoraExtra ?? 0,
-  salarioMensual: p.salario_mensual ?? p.salarioMensual ?? 0,
-  fechaContratacion: p.fecha_contratacion ?? p.fechaContratacion ?? "",
-  estado: p.estado ?? "ACTIVO",
-}));
-
+      const normalizados = (data || []).map((p) => normalizePersonal(p));
       setPersonal(normalizados);
     } catch (error) {
       console.error("Error cargando personal:", error);
@@ -511,18 +475,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
       if (error) throw error;
 
-      const normalizados = (data || []).map((c) => ({
-        ...c,
-        proyecto: norm(c.proyecto),
-        residente: norm(c.residente),
-        montoActualAsignado: safeNum(c.monto_actual_asignado),
-        gastadoActual: safeNum(c.gastado_actual),
-        saldoActual: safeNum(c.saldo_actual),
-        fechaUltimoDesembolso: c.fecha_ultimo_desembolso || "",
-        creadoPor: c.creado_por ?? "",
-        creadoPorRol: c.creado_por_rol ?? "",
-      }));
-
+      const normalizados = (data || []).map((c) => normalizeCajaChicaProyecto(c));
       setCajaChicaProyecto(normalizados);
     } catch (error) {
       console.error("Error cargando caja chica por proyecto:", error);
@@ -532,16 +485,16 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
   };
 
   const cargarCajaChicaResidente = async () => {
-  try {
-    setLoadingCajaChicaResidente(true);
-    const normalizados = await cargarCajaChicaResidenteDB();
-    setCajaChicaResidente(normalizados);
-  } catch (error) {
-    console.error("Error cargando caja chica por residente:", error);
-  } finally {
-    setLoadingCajaChicaResidente(false);
-  }
-};
+    try {
+      setLoadingCajaChicaResidente(true);
+      const normalizados = await cargarCajaChicaResidenteDB();
+      setCajaChicaResidente(normalizados);
+    } catch (error) {
+      console.error("Error cargando caja chica por residente:", error);
+    } finally {
+      setLoadingCajaChicaResidente(false);
+    }
+  };
 
   const cargarCajaChicaDesembolsos = async () => {
     try {
@@ -555,19 +508,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
       if (error) throw error;
 
-      const normalizados = (data || []).map((d) => ({
-        ...d,
-        proyecto: norm(d.proyecto),
-        residente: norm(d.residente),
-        fechaDesembolso: d.fecha_desembolso || "",
-        montoDesembolsado: safeNum(d.monto_desembolsado),
-        saldoFinalAntesReposicion: safeNum(d.saldo_final_antes_reposicion),
-        estadoAntes: norm(d.estado_antes),
-        estadoNuevo: norm(d.estado_nuevo),
-        creadoPor: d.creado_por ?? "",
-        creadoPorRol: d.creado_por_rol ?? "",
-      }));
-
+      const normalizados = (data || []).map((d) => normalizeCajaChicaDesembolso(d));
       setCajaChicaDesembolsos(normalizados);
     } catch (error) {
       console.error("Error cargando desembolsos de caja chica:", error);
@@ -588,17 +529,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
       if (error) throw error;
 
-      const normalizados = (data || []).map((m) => ({
-        ...m,
-        proyecto: norm(m.proyecto),
-        fecha: m.fecha || "",
-        concepto: norm(m.concepto),
-        categoria: norm(m.categoria),
-        valor: safeNum(m.valor),
-        creadoPor: m.creado_por ?? "",
-        creadoPorRol: m.creado_por_rol ?? "",
-      }));
-
+      const normalizados = (data || []).map((m) => normalizeMovimientoCajaChica(m));
       setMovimientosCajaChica(normalizados);
     } catch (error) {
       console.error("Error cargando movimientos de caja chica:", error);
@@ -608,35 +539,35 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
   };
 
   useEffect(() => {
-  if (authLoading) return;
+    if (authLoading) return;
 
-  if (!usuario) {
-    setProyectos([]);
-    setEgresos([]);
-    setPersonal([]);
-    setCajaChicaProyecto([]);
-    setCajaChicaResidente([]);
-    setCajaChicaDesembolsos([]);
-    setMovimientosCajaChica([]);
+    if (!usuario) {
+      setProyectos([]);
+      setEgresos([]);
+      setPersonal([]);
+      setCajaChicaProyecto([]);
+      setCajaChicaResidente([]);
+      setCajaChicaDesembolsos([]);
+      setMovimientosCajaChica([]);
 
-    setLoadingProyectos(false);
-    setLoadingEgresos(false);
-    setLoadingPersonal(false);
-    setLoadingCajaChicaProyecto(false);
-    setLoadingCajaChicaResidente(false);
-    setLoadingCajaChicaDesembolsos(false);
-    setLoadingMovimientosCajaChica(false);
-    return;
-  }
+      setLoadingProyectos(false);
+      setLoadingEgresos(false);
+      setLoadingPersonal(false);
+      setLoadingCajaChicaProyecto(false);
+      setLoadingCajaChicaResidente(false);
+      setLoadingCajaChicaDesembolsos(false);
+      setLoadingMovimientosCajaChica(false);
+      return;
+    }
 
-  cargarProyectos();
-  cargarEgresos();
-  cargarPersonal();
-  cargarCajaChicaProyecto();
-  cargarCajaChicaResidente();
-  cargarCajaChicaDesembolsos();
-  cargarMovimientosCajaChica();
-}, [authLoading, usuario]);
+    cargarProyectos();
+    cargarEgresos();
+    cargarPersonal();
+    cargarCajaChicaProyecto();
+    cargarCajaChicaResidente();
+    cargarCajaChicaDesembolsos();
+    cargarMovimientosCajaChica();
+  }, [authLoading, usuario]);
 
   /* ===========================
      CRUD PROYECTOS
@@ -687,10 +618,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
   };
 
   const deleteProyecto = async (id) => {
-    const { error } = await supabase
-      .from("proyectos")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("proyectos").delete().eq("id", id);
 
     if (error) throw error;
 
@@ -722,14 +650,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
     if (error) throw error;
 
-    const normalizado = {
-      ...data,
-      valorDia: data.valor_dia ?? 0,
-      valorHoraExtra: data.valor_hora_extra ?? 0,
-      salarioMensual: data.salario_mensual ?? 0,
-      fechaContratacion: data.fecha_contratacion ?? "",
-    };
-
+    const normalizado = normalizePersonal(data);
     setPersonal((prev) => [normalizado, ...(prev || [])]);
     return normalizado;
   };
@@ -757,19 +678,12 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
     if (error) throw error;
 
-    const normalizado = {
-      ...data,
-      valorDia: data.valor_dia ?? 0,
-      valorHoraExtra: data.valor_hora_extra ?? 0,
-      salarioMensual: data.salario_mensual ?? 0,
-      fechaContratacion: data.fecha_contratacion ?? "",
-    };
-
+    const normalizado = normalizePersonal(data);
     setPersonal((prev) => (prev || []).map((p) => (p.id === id ? normalizado : p)));
     return normalizado;
   };
 
-    const toggleEstadoPersonal = async (id, nextEstado) => {
+  const toggleEstadoPersonal = async (id, nextEstado) => {
     const estadoFinal = norm(nextEstado || "ACTIVO");
 
     const { data, error } = await supabase
@@ -783,31 +697,20 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
 
     if (error) throw error;
 
-    const normalizado = {
-      ...data,
-      valorDia: data.valor_dia ?? 0,
-      valorHoraExtra: data.valor_hora_extra ?? 0,
-      salarioMensual: data.salario_mensual ?? 0,
-      fechaContratacion: data.fecha_contratacion ?? "",
-      estado: data.estado ?? "ACTIVO",
-    };
-
+    const normalizado = normalizePersonal(data);
     setPersonal((prev) => (prev || []).map((p) => (p.id === id ? normalizado : p)));
     return normalizado;
   };
 
   const deletePersonal = async (id) => {
-    const { error } = await supabase
-      .from("personal")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("personal").delete().eq("id", id);
 
     if (error) throw error;
 
     setPersonal((prev) => (prev || []).filter((p) => p.id !== id));
   };
 
-    /* ===========================
+  /* ===========================
      PERSONAL AGRUPADO
   =========================== */
   const agruparPersonal = (lista = []) => {
@@ -828,8 +731,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
         valorDia: safeNum(row?.valorDia ?? row?.valor_dia),
         salarioMensual: safeNum(row?.salarioMensual ?? row?.salario_mensual),
         valorHoraExtra: safeNum(row?.valorHoraExtra ?? row?.valor_hora_extra),
-        fechaContratacion:
-          row?.fechaContratacion || row?.fecha_contratacion || "",
+        fechaContratacion: row?.fechaContratacion || row?.fecha_contratacion || "",
         raw: row,
       };
 
@@ -837,8 +739,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
         map.set(nombreKey, {
           key: nombreKey,
           nombre: norm(row?.nombre),
-          fechaContratacion:
-            row?.fechaContratacion || row?.fecha_contratacion || "",
+          fechaContratacion: row?.fechaContratacion || row?.fecha_contratacion || "",
           asignaciones: [],
         });
       }
@@ -846,12 +747,8 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
       const grupo = map.get(nombreKey);
       grupo.asignaciones.push(asignacion);
 
-      if (
-        !grupo.fechaContratacion &&
-        (row?.fechaContratacion || row?.fecha_contratacion)
-      ) {
-        grupo.fechaContratacion =
-          row?.fechaContratacion || row?.fecha_contratacion || "";
+      if (!grupo.fechaContratacion && (row?.fechaContratacion || row?.fecha_contratacion)) {
+        grupo.fechaContratacion = row?.fechaContratacion || row?.fecha_contratacion || "";
       }
     }
 
@@ -871,8 +768,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
       const roles = [...new Set(asignaciones.map((a) => a.rol).filter(Boolean))];
       const tipos = [...new Set(asignaciones.map((a) => a.tipo).filter(Boolean))];
 
-      const referencia =
-        activas[0] || asignaciones[0] || null;
+      const referencia = activas[0] || asignaciones[0] || null;
 
       return {
         key: grupo.key,
@@ -895,9 +791,7 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
       };
     });
 
-    return grouped.sort((a, b) =>
-      String(a.nombre || "").localeCompare(String(b.nombre || ""))
-    );
+    return grouped.sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")));
   };
 
   const getPersonalAgrupado = () => {
@@ -913,7 +807,6 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
     const empleado = getEmpleadoAgrupado(nombre);
     return empleado?.asignaciones || [];
   };
-
 
   /* ===========================
      Proyectos asignados
@@ -939,35 +832,35 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
   /* ===========================
      Permisos
   =========================== */
- const canEditEgreso = (egreso, customActor) => {
-  const a = customActor || actor;
-  if (!egreso) return false;
+  const canEditEgreso = (egreso, customActor) => {
+    const a = customActor || actor;
+    if (!egreso) return false;
 
-  const estado = norm(egreso?.estado || "PENDIENTE");
-  if (estado === "ANULADO") return false;
+    const estado = norm(egreso?.estado || "PENDIENTE");
+    if (estado === "ANULADO") return false;
 
-  if (a?.role === "ADMIN") return true;
+    if (a?.role === "ADMIN") return true;
 
-  const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
-  const creador = norm(egreso?.creadoPor || egreso?.creado_por);
+    const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
+    const creador = norm(egreso?.creadoPor || egreso?.creado_por);
 
-  return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
-};
+    return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
+  };
 
   const canDeleteEgreso = (egreso, customActor) => {
-  const a = customActor || actor;
-  if (!egreso) return false;
+    const a = customActor || actor;
+    if (!egreso) return false;
 
-  const estado = norm(egreso?.estado || "PENDIENTE");
-  if (estado === "ANULADO") return false;
+    const estado = norm(egreso?.estado || "PENDIENTE");
+    if (estado === "ANULADO") return false;
 
-  if (a?.role === "ADMIN") return true;
+    if (a?.role === "ADMIN") return true;
 
-  const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
-  const creador = norm(egreso?.creadoPor || egreso?.creado_por);
+    const creadorRol = norm(egreso?.creadoPorRol || egreso?.creado_por_rol);
+    const creador = norm(egreso?.creadoPor || egreso?.creado_por);
 
-  return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
-};
+    return a?.role === "RESIDENTE" && creadorRol === "RESIDENTE" && creador === norm(a?.name);
+  };
 
   /* ===========================
      HELPERS CAJA CHICA
@@ -978,17 +871,16 @@ const ajustarCajaChicaResidentePorDelta = async (residente, delta) => {
   };
 
   const getCajaChicaResidenteByNombre = (residente) => {
-  return getCajaChicaResidenteByNombreLocal(cajaChicaResidente, residente);
-};
+    return getCajaChicaResidenteByNombreLocal(cajaChicaResidente, residente);
+  };
 
+  const getResumenCajaChicaResidente = (residente) => {
+    return getResumenCajaChicaResidenteLocal(cajaChicaResidente, residente);
+  };
 
-const getResumenCajaChicaResidente = (residente) => {
-  return getResumenCajaChicaResidenteLocal(cajaChicaResidente, residente);
-};
-
-const getResumenesCajaChicaResidente = () => {
-  return getResumenesCajaChicaResidenteLocal(cajaChicaResidente);
-};
+  const getResumenesCajaChicaResidente = () => {
+    return getResumenesCajaChicaResidenteLocal(cajaChicaResidente);
+  };
 
   const getResumenCajaChica = (proyecto) => {
     const caja = getCajaChicaProyectoByProyecto(proyecto);
@@ -1031,663 +923,397 @@ const getResumenesCajaChicaResidente = () => {
   /* ===========================
      CAJA CHICA: DESEMBOLSO
   =========================== */
+  const registrarDesembolsoCajaChicaResidente = async (payload, customActor) => {
+    const a = customActor || actor;
+
+    const result = await registrarDesembolsoCajaChicaResidenteDB({
+      payload,
+      actor: a,
+    });
+
+    await Promise.all([
+      cargarCajaChicaResidente(),
+      cargarCajaChicaDesembolsos(),
+      cargarCajaChicaProyecto(),
+    ]);
+
+    return result;
+  };
+
   const registrarDesembolsoCajaChica = async (payload, customActor) => {
-  const a = customActor || actor;
+    const residenteN = norm(payload?.residente);
 
-  const proyectoN = norm(payload?.proyecto);
-  const fechaDesembolso = ensureISODate(
-    payload?.fechaDesembolso || payload?.fecha_desembolso
-  );
-  const monto = safeNum(
-    payload?.monto ?? payload?.montoDesembolsado ?? payload?.monto_desembolsado
-  );
-
-  const proyectoObj =
-    (proyectos || []).find((p) => norm(p?.nombre) === proyectoN) || null;
-
-  // Estado actual real de la caja
-  const { data: cajaActual, error: cajaActualError } = await supabase
-    .from("caja_chica_proyecto")
-    .select("*")
-    .eq("proyecto", proyectoN)
-    .maybeSingle();
-
-  if (cajaActualError) throw cajaActualError;
-
-  const residenteAuto = norm(
-    payload?.residente || cajaActual?.residente || proyectoObj?.residente
-  );
-
-  const saldoAnterior = safeNum(cajaActual?.saldo_actual);
-  const estadoAnterior = norm(cajaActual?.estado);
-
-  // ✅ Regla nueva:
-  // si hay saldo negativo, ese valor se arrastra como ya gastado
-  const deudaArrastrada = saldoAnterior < 0 ? Math.abs(saldoAnterior) : 0;
-
-  const gastadoNuevo = deudaArrastrada;
-  const estadoNuevoCalc = getCajaChicaEstado(monto, gastadoNuevo);
-
-  const desembolsoFinal = {
-    proyecto: proyectoN,
-    residente: residenteAuto,
-    fecha_desembolso: fechaDesembolso,
-    monto_desembolsado: monto,
-    saldo_final_antes_reposicion: saldoAnterior,
-    estado_antes: estadoAnterior || "SIN FONDO",
-    estado_nuevo: estadoNuevoCalc.estado,
-    observacion: norm(payload?.observacion),
-    creado_por: norm(a?.name),
-    creado_por_rol: norm(a?.role),
-  };
-
-  const { data: desembolsoData, error: desembolsoError } = await supabase
-    .from("caja_chica_desembolsos")
-    .insert([desembolsoFinal])
-    .select()
-    .single();
-
-  if (desembolsoError) throw desembolsoError;
-
-  const cajaPayload = {
-    proyecto: proyectoN,
-    residente: residenteAuto,
-    monto_actual_asignado: monto,
-    gastado_actual: gastadoNuevo, // ✅ ya arrastra la deuda anterior
-    saldo_actual: estadoNuevoCalc.saldo, // ✅ monto - deudaArrastrada
-    estado: estadoNuevoCalc.estado,
-    fecha_ultimo_desembolso: fechaDesembolso,
-    observacion: norm(payload?.observacion),
-    creado_por: norm(a?.name),
-    creado_por_rol: norm(a?.role),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: cajaData, error: cajaError } = await supabase
-    .from("caja_chica_proyecto")
-    .upsert([cajaPayload], { onConflict: "proyecto" })
-    .select()
-    .single();
-
-  if (cajaError) throw cajaError;
-
-  const cajaNormalizada = {
-    ...cajaData,
-    proyecto: norm(cajaData.proyecto),
-    residente: norm(cajaData.residente),
-    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
-    gastadoActual: safeNum(cajaData.gastado_actual),
-    saldoActual: safeNum(cajaData.saldo_actual),
-    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
-    creadoPor: cajaData.creado_por ?? "",
-    creadoPorRol: cajaData.creado_por_rol ?? "",
-  };
-
-  const desembolsoNormalizado = {
-    ...desembolsoData,
-    proyecto: norm(desembolsoData.proyecto),
-    residente: norm(desembolsoData.residente),
-    fechaDesembolso: desembolsoData.fecha_desembolso || "",
-    montoDesembolsado: safeNum(desembolsoData.monto_desembolsado),
-    saldoFinalAntesReposicion: safeNum(desembolsoData.saldo_final_antes_reposicion),
-    estadoAntes: norm(desembolsoData.estado_antes),
-    estadoNuevo: norm(desembolsoData.estado_nuevo),
-    creadoPor: desembolsoData.creado_por ?? "",
-    creadoPorRol: desembolsoData.creado_por_rol ?? "",
-  };
-
-  setCajaChicaProyecto((prev) => {
-    const exists = (prev || []).some((c) => c.id === cajaNormalizada.id);
-
-    if (exists) {
-      return (prev || []).map((c) =>
-        c.id === cajaNormalizada.id ? cajaNormalizada : c
-      );
+    // Si viene residente, usamos el flujo correcto por residente
+    if (residenteN) {
+      return registrarDesembolsoCajaChicaResidente(payload, customActor);
     }
 
-    return [cajaNormalizada, ...(prev || [])];
-  });
+    // Fallback legacy por proyecto
+    const a = customActor || actor;
 
-  setCajaChicaDesembolsos((prev) => [desembolsoNormalizado, ...(prev || [])]);
+    const proyectoN = norm(payload?.proyecto);
+    const fechaDesembolso = ensureISODate(
+      payload?.fechaDesembolso || payload?.fecha_desembolso
+    );
+    const monto = safeNum(
+      payload?.monto ?? payload?.montoDesembolsado ?? payload?.monto_desembolsado
+    );
 
-  return {
-    caja: cajaNormalizada,
-    desembolso: desembolsoNormalizado,
+    const proyectoObj =
+      (proyectos || []).find((p) => norm(p?.nombre) === proyectoN) || null;
+
+    const { data: cajaActual, error: cajaActualError } = await supabase
+      .from("caja_chica_proyecto")
+      .select("*")
+      .eq("proyecto", proyectoN)
+      .maybeSingle();
+
+    if (cajaActualError) throw cajaActualError;
+
+    const residenteAuto = norm(
+      payload?.residente || cajaActual?.residente || proyectoObj?.residente
+    );
+
+    const saldoAnterior = safeNum(cajaActual?.saldo_actual);
+    const estadoAnterior = norm(cajaActual?.estado);
+
+    const deudaArrastrada = saldoAnterior < 0 ? Math.abs(saldoAnterior) : 0;
+    const gastadoNuevo = deudaArrastrada;
+    const estadoNuevoCalc = getCajaChicaEstado(monto, gastadoNuevo);
+
+    const desembolsoFinal = {
+      proyecto: proyectoN,
+      residente: residenteAuto,
+      fecha_desembolso: fechaDesembolso,
+      monto_desembolsado: monto,
+      saldo_final_antes_reposicion: saldoAnterior,
+      estado_antes: estadoAnterior || "SIN FONDO",
+      estado_nuevo: estadoNuevoCalc.estado,
+      observacion: norm(payload?.observacion),
+      creado_por: norm(a?.name),
+      creado_por_rol: norm(a?.role),
+    };
+
+    const { data: desembolsoData, error: desembolsoError } = await supabase
+      .from("caja_chica_desembolsos")
+      .insert([desembolsoFinal])
+      .select()
+      .single();
+
+    if (desembolsoError) throw desembolsoError;
+
+    const cajaPayload = {
+      proyecto: proyectoN,
+      residente: residenteAuto,
+      monto_actual_asignado: monto,
+      gastado_actual: gastadoNuevo,
+      saldo_actual: estadoNuevoCalc.saldo,
+      estado: estadoNuevoCalc.estado,
+      fecha_ultimo_desembolso: fechaDesembolso,
+      observacion: norm(payload?.observacion),
+      creado_por: norm(a?.name),
+      creado_por_rol: norm(a?.role),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: cajaData, error: cajaError } = await supabase
+      .from("caja_chica_proyecto")
+      .upsert([cajaPayload], { onConflict: "proyecto" })
+      .select()
+      .single();
+
+    if (cajaError) throw cajaError;
+
+    const cajaNormalizada = normalizeCajaChicaProyecto(cajaData);
+    const desembolsoNormalizado = normalizeCajaChicaDesembolso(desembolsoData);
+
+    setCajaChicaProyecto((prev) => {
+      const exists = (prev || []).some((c) => c.id === cajaNormalizada.id);
+
+      if (exists) {
+        return (prev || []).map((c) =>
+          c.id === cajaNormalizada.id ? cajaNormalizada : c
+        );
+      }
+
+      return [cajaNormalizada, ...(prev || [])];
+    });
+
+    setCajaChicaDesembolsos((prev) => [desembolsoNormalizado, ...(prev || [])]);
+
+    return {
+      caja: cajaNormalizada,
+      desembolso: desembolsoNormalizado,
+    };
   };
-};
-
-const registrarDesembolsoCajaChicaResidente = async (payload, customActor) => {
-  const a = customActor || actor;
-
-  const result = await registrarDesembolsoCajaChicaResidenteDB({
-    payload,
-    actor: a,
-  });
-
-  await Promise.all([
-    cargarCajaChicaResidente(),
-    cargarCajaChicaDesembolsos(),
-  ]);
-
-  return result;
-};
 
   /* ===========================
      CAJA CHICA: MOVIMIENTO
   =========================== */
   const registrarMovimientoCajaChica = async (payload, customActor) => {
-  const a = customActor || actor;
+    const a = customActor || actor;
 
-  const proyectoN = norm(payload?.proyecto);
+    const proyectoN = norm(payload?.proyecto);
 
-  // 1) Buscar la caja chica real en la base, no en el estado local
-  const { data: caja, error: cajaLookupError } = await supabase
-    .from("caja_chica_proyecto")
-    .select("*")
-    .eq("proyecto", proyectoN)
-    .maybeSingle();
+    const { data: caja, error: cajaLookupError } = await supabase
+      .from("caja_chica_proyecto")
+      .select("*")
+      .eq("proyecto", proyectoN)
+      .maybeSingle();
 
-  if (cajaLookupError) throw cajaLookupError;
+    if (cajaLookupError) throw cajaLookupError;
 
-  if (!caja?.id) {
-    throw new Error("Este proyecto no tiene caja chica activa.");
-  }
-
-  const valorMovimiento = safeNum(payload?.valor);
-  const fechaMovimiento = ensureISODate(payload?.fecha);
-
-  const movimientoFinal = {
-    caja_chica_proyecto_id: caja.id,
-    egreso_id: payload?.egresoId ?? payload?.egreso_id ?? null,
-    proyecto: proyectoN,
-    fecha: fechaMovimiento,
-    concepto: norm(payload?.concepto),
-    categoria: norm(payload?.categoria),
-    valor: valorMovimiento,
-    creado_por: norm(a?.name),
-    creado_por_rol: norm(a?.role),
-  };
-
-  const { data: movData, error: movError } = await supabase
-    .from("movimientos_caja_chica")
-    .insert([movimientoFinal])
-    .select()
-    .single();
-
-  if (movError) throw movError;
-
-  const nuevoGastado =
-    safeNum(caja.gastado_actual) + valorMovimiento;
-
-  const estadoCalc = getCajaChicaEstado(
-    safeNum(caja.monto_actual_asignado),
-    nuevoGastado
-  );
-
-  const updateCaja = {
-    gastado_actual: nuevoGastado,
-    saldo_actual: estadoCalc.saldo,
-    estado: estadoCalc.estado,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: cajaData, error: cajaError } = await supabase
-    .from("caja_chica_proyecto")
-    .update(updateCaja)
-    .eq("id", caja.id)
-    .select()
-    .single();
-
-  if (cajaError) throw cajaError;
-
-  const movimientoNormalizado = {
-    ...movData,
-    proyecto: norm(movData.proyecto),
-    fecha: movData.fecha || "",
-    concepto: norm(movData.concepto),
-    categoria: norm(movData.categoria),
-    valor: safeNum(movData.valor),
-    creadoPor: movData.creado_por ?? "",
-    creadoPorRol: movData.creado_por_rol ?? "",
-  };
-
-  const cajaNormalizada = {
-    ...cajaData,
-    proyecto: norm(cajaData.proyecto),
-    residente: norm(cajaData.residente),
-    montoActualAsignado: safeNum(cajaData.monto_actual_asignado),
-    gastadoActual: safeNum(cajaData.gastado_actual),
-    saldoActual: safeNum(cajaData.saldo_actual),
-    fechaUltimoDesembolso: cajaData.fecha_ultimo_desembolso || "",
-    creadoPor: cajaData.creado_por ?? "",
-    creadoPorRol: cajaData.creado_por_rol ?? "",
-  };
-
-  setMovimientosCajaChica((prev) => [movimientoNormalizado, ...(prev || [])]);
-
-  setCajaChicaProyecto((prev) => {
-    const existe = (prev || []).some((c) => c.id === cajaNormalizada.id);
-
-    if (!existe) {
-      return [cajaNormalizada, ...(prev || [])];
+    if (!caja?.id) {
+      throw new Error("Este proyecto no tiene caja chica activa.");
     }
 
-    return (prev || []).map((c) =>
-      c.id === cajaNormalizada.id ? cajaNormalizada : c
+    const valorMovimiento = safeNum(payload?.valor);
+    const fechaMovimiento = ensureISODate(payload?.fecha);
+
+    const movimientoFinal = {
+      caja_chica_proyecto_id: caja.id,
+      egreso_id: payload?.egresoId ?? payload?.egreso_id ?? null,
+      proyecto: proyectoN,
+      fecha: fechaMovimiento,
+      concepto: norm(payload?.concepto),
+      categoria: norm(payload?.categoria),
+      valor: valorMovimiento,
+      creado_por: norm(a?.name),
+      creado_por_rol: norm(a?.role),
+    };
+
+    const { data: movData, error: movError } = await supabase
+      .from("movimientos_caja_chica")
+      .insert([movimientoFinal])
+      .select()
+      .single();
+
+    if (movError) throw movError;
+
+    const nuevoGastado = safeNum(caja.gastado_actual) + valorMovimiento;
+
+    const estadoCalc = getCajaChicaEstado(
+      safeNum(caja.monto_actual_asignado),
+      nuevoGastado
     );
-  });
 
-  return {
-    movimiento: movimientoNormalizado,
-    caja: cajaNormalizada,
+    const updateCaja = {
+      gastado_actual: nuevoGastado,
+      saldo_actual: estadoCalc.saldo,
+      estado: estadoCalc.estado,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: cajaData, error: cajaError } = await supabase
+      .from("caja_chica_proyecto")
+      .update(updateCaja)
+      .eq("id", caja.id)
+      .select()
+      .single();
+
+    if (cajaError) throw cajaError;
+
+    const movimientoNormalizado = normalizeMovimientoCajaChica(movData);
+    const cajaNormalizada = normalizeCajaChicaProyecto(cajaData);
+
+    setMovimientosCajaChica((prev) => [movimientoNormalizado, ...(prev || [])]);
+
+    setCajaChicaProyecto((prev) => {
+      const existe = (prev || []).some((c) => c.id === cajaNormalizada.id);
+
+      if (!existe) {
+        return [cajaNormalizada, ...(prev || [])];
+      }
+
+      return (prev || []).map((c) =>
+        c.id === cajaNormalizada.id ? cajaNormalizada : c
+      );
+    });
+
+    return {
+      movimiento: movimientoNormalizado,
+      caja: cajaNormalizada,
+    };
   };
-};
 
-const registrarMovimientoCajaChicaResidente = async (payload, customActor) => {
-  const a = customActor || actor;
+  const registrarMovimientoCajaChicaResidente = async (payload, customActor) => {
+    const a = customActor || actor;
 
-  const result = await registrarMovimientoCajaChicaResidenteDB({
-    payload,
-    actor: a,
-  });
+    const result = await registrarMovimientoCajaChicaResidenteDB({
+      payload,
+      actor: a,
+    });
 
-  await Promise.all([
-    cargarCajaChicaResidente(),
-    cargarMovimientosCajaChica(),
-  ]);
+    await Promise.all([cargarCajaChicaResidente(), cargarMovimientosCajaChica()]);
 
-  return result;
-};
+    return result;
+  };
 
   /* ===========================
      CRUD EGRESOS
   =========================== */
   const addEgreso = async (payload, customActor) => {
-  const a = customActor || actor;
+    const a = customActor || actor;
 
-  const egresoFinal = {
-    proyecto: norm(payload?.proyecto),
-    residente: norm(payload?.residente),
-    fecha: ensureISODate(payload?.fecha),
-    categoria: norm(payload?.categoria),
-    lugar: norm(payload?.lugar),
-    concepto: norm(payload?.concepto),
-    detalles: norm(payload?.detalles),
+    const egresoFinal = {
+      proyecto: norm(payload?.proyecto),
+      residente: norm(payload?.residente),
+      fecha: ensureISODate(payload?.fecha),
+      categoria: norm(payload?.categoria),
+      lugar: norm(payload?.lugar),
+      concepto: norm(payload?.concepto),
+      detalles: norm(payload?.detalles),
 
-    metodo_pago: norm(payload?.metodoPago || payload?.metodo_pago),
-    pagado_por: norm(payload?.pagadoPor || payload?.pagado_por),
+      metodo_pago: norm(payload?.metodoPago || payload?.metodo_pago),
+      pagado_por: norm(payload?.pagadoPor || payload?.pagado_por),
 
-    valor: safeNum(payload?.valor),
-    tiene_factura: Boolean(payload?.tieneFactura ?? payload?.tiene_factura),
-    factura: payload?.tieneFactura || payload?.tiene_factura ? "si" : "",
-    estado: norm(payload?.estado || "PENDIENTE"),
-    tipo_registro: norm(payload?.tipoRegistro || payload?.tipo_registro || "EGRESO"),
-    fuente_fondos: norm(payload?.fuenteFondos || payload?.fuente_fondos || "GENERAL"),
+      valor: safeNum(payload?.valor),
+      tiene_factura: Boolean(payload?.tieneFactura ?? payload?.tiene_factura),
+      factura: payload?.tieneFactura || payload?.tiene_factura ? "si" : "",
+      estado: norm(payload?.estado || "PENDIENTE"),
+      tipo_registro: norm(payload?.tipoRegistro || payload?.tipo_registro || "EGRESO"),
+      fuente_fondos: norm(payload?.fuenteFondos || payload?.fuente_fondos || "GENERAL"),
 
-    cargo: norm(payload?.cargo),
-    asistio: typeof payload?.asistio === "boolean" ? payload.asistio : null,
-    num_horas_extras: safeNum(payload?.numHorasExtras ?? payload?.num_horas_extras),
-    valores_pendientes: safeNum(payload?.valoresPendientes ?? payload?.valores_pendientes),
-    descuentos: safeNum(payload?.descuentos),
+      cargo: norm(payload?.cargo),
+      asistio: typeof payload?.asistio === "boolean" ? payload.asistio : null,
+      num_horas_extras: safeNum(payload?.numHorasExtras ?? payload?.num_horas_extras),
+      valores_pendientes: safeNum(payload?.valoresPendientes ?? payload?.valores_pendientes),
+      descuentos: safeNum(payload?.descuentos),
 
-    creado_por: norm(a?.name),
-    creado_por_rol: norm(a?.role),
-    creado_por_nombre: norm(a?.display),
-    actualizado_por: norm(a?.name),
-    actualizado_por_rol: norm(a?.role),
-  };
-
-  const { data, error } = await supabase
-    .from("egresos")
-    .insert([egresoFinal])
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  const normalizado = {
-    ...data,
-    metodoPago: data.metodo_pago ?? "",
-    pagadoPor: data.pagado_por ?? "",
-    tieneFactura:
-      typeof data.tiene_factura === "boolean"
-        ? data.tiene_factura
-        : data.factura === "si",
-    tipoRegistro: data.tipo_registro ?? "EGRESO",
-    numHorasExtras: data.num_horas_extras ?? 0,
-    valoresPendientes: data.valores_pendientes ?? 0,
-    creadoPor: data.creado_por ?? "",
-    creadoPorRol: data.creado_por_rol ?? "",
-    creadoPorNombre: data.creado_por_nombre ?? "",
-    actualizadoPor: data.actualizado_por ?? "",
-    actualizadoPorRol: data.actualizado_por_rol ?? "",
-    fuenteFondos: data.fuente_fondos ?? "GENERAL",
-  };
-
-  setEgresos((prev) => [normalizado, ...(prev || [])]);
-
- // Caja chica: intentar descontar, pero sin romper el egreso si falla
-if (norm(normalizado.fuenteFondos) === "CAJA_CHICA") {
-  try {
-    await registrarMovimientoCajaChicaResidente(
-      {
-        egresoId: normalizado.id,
-        residente: normalizado.residente || a?.name,
-        proyecto: normalizado.proyecto,
-        fecha: normalizado.fecha,
-        concepto: normalizado.concepto,
-        categoria: normalizado.categoria,
-        valor: normalizado.valor,
-      },
-      a
-    );
-  } catch (movError) {
-    console.error(
-      "El egreso se guardó, pero falló el movimiento de caja chica del residente:",
-      movError?.message,
-      movError?.details,
-      movError?.hint,
-      movError
-    );
-  }
-}
-
-  return normalizado;
-};
-
-  const updateEgreso = async (id, patch, customActor) => {
-  const a = customActor || actor;
-
-  // 1) Leer el egreso actual real antes de editar
-  const { data: egresoAnterior, error: egresoAnteriorError } = await supabase
-    .from("egresos")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (egresoAnteriorError) throw egresoAnteriorError;
-
-  const fuenteAnterior = norm(
-    egresoAnterior?.fuente_fondos ?? egresoAnterior?.fuenteFondos ?? "GENERAL"
-  );
-  const proyectoAnterior = norm(egresoAnterior?.proyecto);
-
-  const egresoPatch = {
-    proyecto: norm(patch?.proyecto),
-    residente: norm(patch?.residente),
-    fecha: ensureISODate(patch?.fecha),
-    categoria: norm(patch?.categoria),
-    lugar: norm(patch?.lugar),
-    concepto: norm(patch?.concepto),
-    detalles: norm(patch?.detalles),
-
-    metodo_pago: norm(patch?.metodoPago || patch?.metodo_pago),
-    pagado_por: norm(patch?.pagadoPor || patch?.pagado_por),
-
-    valor: safeNum(patch?.valor),
-    tiene_factura: Boolean(patch?.tieneFactura ?? patch?.tiene_factura),
-    factura: patch?.tieneFactura || patch?.tiene_factura ? "si" : "",
-    estado: norm(patch?.estado || "PENDIENTE"),
-    tipo_registro: norm(patch?.tipoRegistro || patch?.tipo_registro || "EGRESO"),
-    fuente_fondos: norm(patch?.fuenteFondos || patch?.fuente_fondos || "GENERAL"),
-
-    cargo: norm(patch?.cargo),
-    asistio: typeof patch?.asistio === "boolean" ? patch.asistio : null,
-    num_horas_extras: safeNum(patch?.numHorasExtras ?? patch?.num_horas_extras),
-    valores_pendientes: safeNum(patch?.valoresPendientes ?? patch?.valores_pendientes),
-    descuentos: safeNum(patch?.descuentos),
-
-    actualizado_por: norm(a?.name),
-    actualizado_por_rol: norm(a?.role),
-  };
-
-  const fuenteNueva = norm(egresoPatch.fuente_fondos);
-  const proyectoNuevo = norm(egresoPatch.proyecto);
-
-  // 2) Si el egreso editado quedará usando caja chica,
-  // validar antes que sí exista una caja activa en ese proyecto
-  let cajaDestino = null;
-
-  if (fuenteNueva === "CAJA_CHICA") {
-    const { data: cajaData, error: cajaDestinoError } = await supabase
-      .from("caja_chica_proyecto")
-      .select("*")
-      .eq("proyecto", proyectoNuevo)
-      .maybeSingle();
-
-    if (cajaDestinoError) throw cajaDestinoError;
-
-    if (!cajaData?.id) {
-      throw new Error("No existe caja chica activa para el proyecto seleccionado.");
-    }
-
-    cajaDestino = cajaData;
-  }
-
-  // 3) Actualizar el egreso
-  const { data, error } = await supabase
-    .from("egresos")
-    .update(egresoPatch)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // 4) Buscar si ya existe movimiento asociado a este egreso
-  const { data: movimientoExistente, error: movimientoExistenteError } = await supabase
-    .from("movimientos_caja_chica")
-    .select("*")
-    .eq("egreso_id", id)
-    .maybeSingle();
-
-  if (movimientoExistenteError) throw movimientoExistenteError;
-
-  const proyectosARecalcular = new Set();
-
-  if (fuenteAnterior === "CAJA_CHICA") {
-    proyectosARecalcular.add(proyectoAnterior);
-  }
-
-  if (fuenteNueva === "CAJA_CHICA") {
-    proyectosARecalcular.add(proyectoNuevo);
-  }
-
-  // 5) Reconciliar caja chica según el cambio
-  if (fuenteAnterior === "CAJA_CHICA" && fuenteNueva === "CAJA_CHICA") {
-    if (movimientoExistente?.id) {
-      const { error: updateMovimientoError } = await supabase
-        .from("movimientos_caja_chica")
-        .update({
-          caja_chica_proyecto_id: cajaDestino.id,
-          proyecto: proyectoNuevo,
-          fecha: ensureISODate(data.fecha),
-          concepto: norm(data.concepto),
-          categoria: norm(data.categoria),
-          valor: safeNum(data.valor),
-        })
-        .eq("id", movimientoExistente.id);
-
-      if (updateMovimientoError) throw updateMovimientoError;
-    } else {
-      const { error: insertMovimientoError } = await supabase
-        .from("movimientos_caja_chica")
-        .insert([
-          {
-            caja_chica_proyecto_id: cajaDestino.id,
-            egreso_id: data.id,
-            proyecto: proyectoNuevo,
-            fecha: ensureISODate(data.fecha),
-            concepto: norm(data.concepto),
-            categoria: norm(data.categoria),
-            valor: safeNum(data.valor),
-            creado_por: norm(a?.name),
-            creado_por_rol: norm(a?.role),
-          },
-        ]);
-
-      if (insertMovimientoError) throw insertMovimientoError;
-    }
-  } else if (fuenteAnterior !== "CAJA_CHICA" && fuenteNueva === "CAJA_CHICA") {
-    const { error: insertMovimientoError } = await supabase
-      .from("movimientos_caja_chica")
-      .insert([
-        {
-          caja_chica_proyecto_id: cajaDestino.id,
-          egreso_id: data.id,
-          proyecto: proyectoNuevo,
-          fecha: ensureISODate(data.fecha),
-          concepto: norm(data.concepto),
-          categoria: norm(data.categoria),
-          valor: safeNum(data.valor),
-          creado_por: norm(a?.name),
-          creado_por_rol: norm(a?.role),
-        },
-      ]);
-
-    if (insertMovimientoError) throw insertMovimientoError;
-  } else if (fuenteAnterior === "CAJA_CHICA" && fuenteNueva !== "CAJA_CHICA") {
-    if (movimientoExistente?.id) {
-      const { error: deleteMovimientoError } = await supabase
-        .from("movimientos_caja_chica")
-        .delete()
-        .eq("id", movimientoExistente.id);
-
-      if (deleteMovimientoError) throw deleteMovimientoError;
-    }
-  }
-
- // 6) Recalcular las cajas afectadas con base en movimientos reales
-const proyectosValidos = [...proyectosARecalcular].filter(Boolean);
-
-for (const proyecto of proyectosValidos) {
-  await recalcularCajaChicaProyecto(proyecto);
-}
-
-// 7) Recargar estado real desde la base
-await Promise.all([
-  cargarCajaChicaProyecto(),
-  cargarMovimientosCajaChica(),
-  cargarEgresos(),
-]);
-
-  const normalizado = {
-    ...data,
-    metodoPago: data.metodo_pago ?? "",
-    pagadoPor: data.pagado_por ?? "",
-    tieneFactura:
-      typeof data.tiene_factura === "boolean"
-        ? data.tiene_factura
-        : data.factura === "si",
-    tipoRegistro: data.tipo_registro ?? "EGRESO",
-    numHorasExtras: data.num_horas_extras ?? 0,
-    valoresPendientes: data.valores_pendientes ?? 0,
-    creadoPor: data.creado_por ?? "",
-    creadoPorRol: data.creado_por_rol ?? "",
-    creadoPorNombre: data.creado_por_nombre ?? "",
-    actualizadoPor: data.actualizado_por ?? "",
-    actualizadoPorRol: data.actualizado_por_rol ?? "",
-    fuenteFondos: data.fuente_fondos ?? "GENERAL",
-  };
-
-  setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
-  return normalizado;
-};
-
-  const deleteEgreso = async (id, customActor) => {
-  const a = customActor || actor;
-
-  const { data: egresoActual, error: egresoActualError } = await supabase
-    .from("egresos")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (egresoActualError) throw egresoActualError;
-
-  const estadoActual = norm(egresoActual?.estado || "PENDIENTE");
-  if (estadoActual === "ANULADO") {
-    throw new Error("Este egreso ya está anulado.");
-  }
-
-  const proyectoActual = norm(egresoActual?.proyecto);
-  const residenteActual = norm(egresoActual?.residente);
-
-  const { data, error } = await supabase
-    .from("egresos")
-    .update({
-      estado: "ANULADO",
-      anulado_at: new Date().toISOString(),
-      anulado_por: norm(a?.name),
-      anulado_por_rol: norm(a?.role),
+      creado_por: norm(a?.name),
+      creado_por_rol: norm(a?.role),
+      creado_por_nombre: norm(a?.display),
       actualizado_por: norm(a?.name),
       actualizado_por_rol: norm(a?.role),
-      motivo_anulacion: "ANULACIÓN DESDE APP",
-    })
-    .eq("id", id)
-    .select()
-    .single();
+    };
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("egresos")
+      .insert([egresoFinal])
+      .select()
+      .single();
 
-  // Recalcular caja chica si este egreso afectaba caja chica
-  const fuenteActual = norm(egresoActual?.fuente_fondos ?? "GENERAL");
+    if (error) throw error;
 
-  if (fuenteActual === "CAJA_CHICA") {
-  const { data: movimientoActual, error: movimientoActualError } = await supabase
-    .from("movimientos_caja_chica")
-    .select("*")
-    .eq("egreso_id", id)
-    .maybeSingle();
+    const normalizado = normalizeEgreso(data);
+    setEgresos((prev) => [normalizado, ...(prev || [])]);
 
-  if (movimientoActualError) throw movimientoActualError;
+    try {
+      await reconcileMovimientoCajaChicaResidente(normalizado, a);
+    } catch (movError) {
+      console.error(
+        "El egreso se guardó, pero falló el movimiento de caja chica del residente:",
+        movError?.message || movError
+      );
+    }
 
-  if (movimientoActual?.id) {
-    const valorMovimiento = safeNum(movimientoActual.valor);
-
-    const { error: deleteMovimientoError } = await supabase
-      .from("movimientos_caja_chica")
-      .delete()
-      .eq("id", movimientoActual.id);
-
-    if (deleteMovimientoError) throw deleteMovimientoError;
-
-    await ajustarCajaChicaResidentePorDelta(
-      residenteActual,
-      -valorMovimiento
-    );
-  }
-
-  await Promise.all([
-    cargarCajaChicaProyecto(),
-    cargarCajaChicaResidente(),
-    cargarMovimientosCajaChica(),
-  ]);
-}
-
-  const normalizado = {
-    ...data,
-    metodoPago: data.metodo_pago ?? "",
-    pagadoPor: data.pagado_por ?? "",
-    tieneFactura:
-      typeof data.tiene_factura === "boolean"
-        ? data.tiene_factura
-        : data.factura === "si",
-    tipoRegistro: data.tipo_registro ?? "EGRESO",
-    numHorasExtras: data.num_horas_extras ?? 0,
-    valoresPendientes: data.valores_pendientes ?? 0,
-    creadoPor: data.creado_por ?? "",
-    creadoPorRol: data.creado_por_rol ?? "",
-    creadoPorNombre: data.creado_por_nombre ?? "",
-    actualizadoPor: data.actualizado_por ?? "",
-    actualizadoPorRol: data.actualizado_por_rol ?? "",
-    fuenteFondos: data.fuente_fondos ?? "GENERAL",
+    return normalizado;
   };
 
-  setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
+  const updateEgreso = async (id, patch, customActor) => {
+    const a = customActor || actor;
 
-  return normalizado;
-};
+    const egresoPatch = {
+      proyecto: norm(patch?.proyecto),
+      residente: norm(patch?.residente),
+      fecha: ensureISODate(patch?.fecha),
+      categoria: norm(patch?.categoria),
+      lugar: norm(patch?.lugar),
+      concepto: norm(patch?.concepto),
+      detalles: norm(patch?.detalles),
+
+      metodo_pago: norm(patch?.metodoPago || patch?.metodo_pago),
+      pagado_por: norm(patch?.pagadoPor || patch?.pagado_por),
+
+      valor: safeNum(patch?.valor),
+      tiene_factura: Boolean(patch?.tieneFactura ?? patch?.tiene_factura),
+      factura: patch?.tieneFactura || patch?.tiene_factura ? "si" : "",
+      estado: norm(patch?.estado || "PENDIENTE"),
+      tipo_registro: norm(patch?.tipoRegistro || patch?.tipo_registro || "EGRESO"),
+      fuente_fondos: norm(patch?.fuenteFondos || patch?.fuente_fondos || "GENERAL"),
+
+      cargo: norm(patch?.cargo),
+      asistio: typeof patch?.asistio === "boolean" ? patch.asistio : null,
+      num_horas_extras: safeNum(patch?.numHorasExtras ?? patch?.num_horas_extras),
+      valores_pendientes: safeNum(patch?.valoresPendientes ?? patch?.valores_pendientes),
+      descuentos: safeNum(patch?.descuentos),
+
+      actualizado_por: norm(a?.name),
+      actualizado_por_rol: norm(a?.role),
+    };
+
+    const { data, error } = await supabase
+      .from("egresos")
+      .update(egresoPatch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const normalizado = normalizeEgreso(data);
+
+    try {
+      await reconcileMovimientoCajaChicaResidente(normalizado, a);
+    } catch (movError) {
+      console.error(
+        "El egreso se actualizó, pero falló la reconciliación de caja chica del residente:",
+        movError?.message || movError
+      );
+    }
+
+    setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
+    return normalizado;
+  };
+
+  const deleteEgreso = async (id, customActor) => {
+    const a = customActor || actor;
+
+    const { data: egresoActual, error: egresoActualError } = await supabase
+      .from("egresos")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (egresoActualError) throw egresoActualError;
+
+    const estadoActual = norm(egresoActual?.estado || "PENDIENTE");
+    if (estadoActual === "ANULADO") {
+      throw new Error("Este egreso ya está anulado.");
+    }
+
+    const { data, error } = await supabase
+      .from("egresos")
+      .update({
+        estado: "ANULADO",
+        anulado_at: new Date().toISOString(),
+        anulado_por: norm(a?.name),
+        anulado_por_rol: norm(a?.role),
+        actualizado_por: norm(a?.name),
+        actualizado_por_rol: norm(a?.role),
+        motivo_anulacion: "ANULACIÓN DESDE APP",
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    try {
+      await revertirMovimientoCajaChicaResidentePorEgresoDB(id);
+      await Promise.all([cargarCajaChicaResidente(), cargarMovimientosCajaChica()]);
+    } catch (movError) {
+      console.error(
+        "El egreso se anuló, pero falló la reversa de caja chica del residente:",
+        movError?.message || movError
+      );
+    }
+
+    const normalizado = normalizeEgreso(data);
+    setEgresos((prev) => (prev || []).map((e) => (e.id === id ? normalizado : e)));
+
+    return normalizado;
+  };
 
   const addReporteDiario = async (payload, customActor) => {
     return addEgreso(
@@ -1782,19 +1408,17 @@ await Promise.all([
         registrarDesembolsoCajaChica,
         registrarMovimientoCajaChica,
 
-
-
         cajaChicaResidente,
-setCajaChicaResidente,
-loadingCajaChicaResidente,
-cargarCajaChicaResidente,
-getCajaChicaResidenteByNombre,
-getResumenCajaChicaResidente,
-getResumenesCajaChicaResidente,
-recalcularCajaChicaResidente,
-registrarDesembolsoCajaChicaResidente,
-registrarMovimientoCajaChicaResidente,
-ajustarCajaChicaResidentePorDelta,
+        setCajaChicaResidente,
+        loadingCajaChicaResidente,
+        cargarCajaChicaResidente,
+        getCajaChicaResidenteByNombre,
+        getResumenCajaChicaResidente,
+        getResumenesCajaChicaResidente,
+        recalcularCajaChicaResidente,
+        registrarDesembolsoCajaChicaResidente,
+        registrarMovimientoCajaChicaResidente,
+        ajustarCajaChicaResidentePorDelta,
       }}
     >
       {children}
