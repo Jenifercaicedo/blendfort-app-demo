@@ -64,6 +64,14 @@ export const getResumenCajaChicaResidenteLocal = (lista, residente) => {
 
 export const getResumenesCajaChicaResidenteLocal = (lista) => lista || [];
 
+/* ===========================
+   DESEMBOLSO RESIDENTE
+   Usa la RPC nueva de DB.
+   La DB:
+   - crea/actualiza caja chica residente
+   - registra el historial en caja_chica_desembolsos
+   - recalcula saldo/estado
+=========================== */
 export const registrarDesembolsoCajaChicaResidenteDB = async ({
   payload,
   actor,
@@ -76,61 +84,40 @@ export const registrarDesembolsoCajaChicaResidenteDB = async ({
     payload?.monto ?? payload?.montoDesembolsado ?? payload?.monto_desembolsado
   );
 
-  const { data: cajaActual, error: cajaActualError } = await supabase
+  if (!residenteN) {
+    throw new Error("El residente es obligatorio.");
+  }
+
+  if (monto <= 0) {
+    throw new Error("El monto del desembolso debe ser mayor a 0.");
+  }
+
+  const { error: rpcError } = await supabase.rpc("registrar_desembolso_residente", {
+    p_residente: residenteN,
+    p_fecha_desembolso: fechaDesembolso,
+    p_monto: monto,
+    p_observacion: norm(payload?.observacion) || null,
+    p_creado_por: norm(actor?.name),
+    p_creado_por_rol: norm(actor?.role),
+  });
+
+  if (rpcError) throw rpcError;
+
+  // Leemos el estado final real desde la base
+  const { data: cajaData, error: cajaError } = await supabase
     .from("caja_chica_residente")
     .select("*")
     .eq("residente", residenteN)
-    .maybeSingle();
-
-  if (cajaActualError) throw cajaActualError;
-
-  const saldoAnterior = safeNum(cajaActual?.saldo_actual);
-  const estadoAnterior = norm(cajaActual?.estado);
-
-  const deudaArrastrada = saldoAnterior < 0 ? Math.abs(saldoAnterior) : 0;
-  const gastadoNuevo = deudaArrastrada;
-
-  const estadoNuevoCalc = getCajaChicaEstado(monto, gastadoNuevo);
-
-  const cajaPayload = {
-    residente: residenteN,
-    monto_actual_asignado: monto,
-    gastado_actual: gastadoNuevo,
-    saldo_actual: estadoNuevoCalc.saldo,
-    estado: estadoNuevoCalc.estado,
-    fecha_ultimo_desembolso: fechaDesembolso,
-    observacion: norm(payload?.observacion),
-    creado_por: norm(actor?.name),
-    creado_por_rol: norm(actor?.role),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: cajaData, error: cajaError } = await supabase
-    .from("caja_chica_residente")
-    .upsert([cajaPayload], { onConflict: "residente" })
-    .select()
     .single();
 
   if (cajaError) throw cajaError;
 
-  const desembolsoFinal = {
-  caja_chica_residente_id: cajaData.id,
-  proyecto: "GENERAL",
-  residente: residenteN,
-  fecha_desembolso: fechaDesembolso,
-  monto_desembolsado: monto,
-  saldo_final_antes_reposicion: saldoAnterior,
-  estado_antes: estadoAnterior || "SIN FONDO",
-  estado_nuevo: estadoNuevoCalc.estado,
-  observacion: norm(payload?.observacion),
-  creado_por: norm(actor?.name),
-  creado_por_rol: norm(actor?.role),
-};
-
   const { data: desembolsoData, error: desembolsoError } = await supabase
     .from("caja_chica_desembolsos")
-    .insert([desembolsoFinal])
-    .select()
+    .select("*")
+    .eq("caja_chica_residente_id", cajaData.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .single();
 
   if (desembolsoError) throw desembolsoError;
@@ -141,6 +128,10 @@ export const registrarDesembolsoCajaChicaResidenteDB = async ({
   };
 };
 
+/* ===========================
+   AJUSTE MANUAL LEGACY
+   Lo dejamos por compatibilidad, pero ya no es la ruta principal.
+=========================== */
 export const ajustarCajaChicaResidentePorDeltaDB = async ({
   residente,
   delta,
@@ -183,6 +174,11 @@ export const ajustarCajaChicaResidentePorDeltaDB = async ({
   return normalizeCajaChicaResidente(cajaData);
 };
 
+/* ===========================
+   MOVIMIENTO CAJA CHICA RESIDENTE
+   Inserta el movimiento.
+   La DB recalcula saldo/estado sola por trigger.
+=========================== */
 export const registrarMovimientoCajaChicaResidenteDB = async ({
   payload,
   actor,
@@ -223,21 +219,34 @@ export const registrarMovimientoCajaChicaResidenteDB = async ({
 
   if (movError) throw movError;
 
- const cajaActualizada = await ajustarCajaChicaResidentePorDeltaDB({
-  residente: residenteN,
-  delta: safeNum(payload?.valor),
-});
+  // Leemos la caja ya recalculada por DB
+  const { data: cajaActualizada, error: cajaRefreshError } = await supabase
+    .from("caja_chica_residente")
+    .select("*")
+    .eq("id", caja.id)
+    .single();
+
+  if (cajaRefreshError) throw cajaRefreshError;
 
   return {
-  movimiento: normalizeMovimientoCajaChica(movData),
-  caja: cajaActualizada,
-};
+    movimiento: normalizeMovimientoCajaChica(movData),
+    caja: normalizeCajaChicaResidente(cajaActualizada),
+  };
 };
 
-export const revertirMovimientoCajaChicaResidentePorEgresoDB = async ({
-  egresoId,
-  residente,
-}) => {
+/* ===========================
+   REVERSA POR EGRESO
+   Borra el movimiento y deja que la DB recalcule sola.
+   Acepta:
+   - revertirMovimientoCajaChicaResidentePorEgresoDB(id)
+   - revertirMovimientoCajaChicaResidentePorEgresoDB({ egresoId })
+=========================== */
+export const revertirMovimientoCajaChicaResidentePorEgresoDB = async (input) => {
+  const egresoId =
+    typeof input === "object" && input !== null ? input.egresoId : input;
+
+  if (!egresoId) return null;
+
   const { data: movimientoActual, error: movimientoActualError } = await supabase
     .from("movimientos_caja_chica")
     .select("*")
@@ -248,7 +257,7 @@ export const revertirMovimientoCajaChicaResidentePorEgresoDB = async ({
 
   if (!movimientoActual?.id) return null;
 
-  const valorMovimiento = safeNum(movimientoActual.valor);
+  const cajaId = movimientoActual.caja_chica_residente_id;
 
   const { error: deleteMovimientoError } = await supabase
     .from("movimientos_caja_chica")
@@ -257,8 +266,23 @@ export const revertirMovimientoCajaChicaResidentePorEgresoDB = async ({
 
   if (deleteMovimientoError) throw deleteMovimientoError;
 
-  return await ajustarCajaChicaResidentePorDeltaDB({
-    residente,
-    delta: -valorMovimiento,
-  });
+  if (!cajaId) {
+    return {
+      movimientoEliminado: true,
+      caja: null,
+    };
+  }
+
+  const { data: cajaActualizada, error: cajaRefreshError } = await supabase
+    .from("caja_chica_residente")
+    .select("*")
+    .eq("id", cajaId)
+    .single();
+
+  if (cajaRefreshError) throw cajaRefreshError;
+
+  return {
+    movimientoEliminado: true,
+    caja: normalizeCajaChicaResidente(cajaActualizada),
+  };
 };
