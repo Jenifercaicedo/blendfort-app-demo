@@ -74,10 +74,8 @@ const GestionPersonal = ({ onBack }) => {
   const [empleadoOrigenMovimiento, setEmpleadoOrigenMovimiento] = useState(null);
 
   const opcionesProyectos = useMemo(() => {
-    const fromContext = (proyectos || []).map((p) => p?.nombre).filter(Boolean);
-    const fromPersonal = (personal || []).map((p) => p?.proyecto).filter(Boolean);
-    return [...new Set([...fromContext, ...fromPersonal])].sort();
-  }, [proyectos, personal]);
+  return [...new Set((proyectos || []).map((p) => p?.nombre).filter(Boolean))].sort();
+}, [proyectos]);
 
   const opcionesEstado = useMemo(() => ["ACTIVO", "INACTIVO"], []);
 
@@ -161,15 +159,17 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const abrirModalEditar = (asignacion) => {
-    setNuevoEmpleado({
-      ...buildDefaultEmpleado(),
-      ...asignacion,
-      estado: asignacion?.estado || "ACTIVO",
-    });
-    setEditandoEmpleado(asignacion);
-    resetModoAsignacion();
-    setShowModal(true);
-  };
+  setDetalleEmpleado(null);
+
+  setNuevoEmpleado({
+    ...buildDefaultEmpleado(),
+    ...asignacion,
+    estado: asignacion?.estado || "ACTIVO",
+  });
+  setEditandoEmpleado(asignacion);
+  resetModoAsignacion();
+  setShowModal(true);
+};
 
   const abrirAsignacionProyecto = (empleadoAgrupado) => {
     if (!empleadoAgrupado) return;
@@ -201,27 +201,29 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const abrirMoverProyecto = (asignacion) => {
-    if (!asignacion) return;
+  if (!asignacion) return;
 
-    setNuevoEmpleado({
-      ...buildDefaultEmpleado(),
-      nombre: asignacion?.nombre || "",
-      cargo: asignacion?.cargo || "",
-      proyecto: "",
-      tipo: asignacion?.tipo || "CAMPO",
-      fechaContratacion: asignacion?.fechaContratacion || "",
-      valorDia: asignacion?.valorDia ?? "",
-      salarioMensual: asignacion?.salarioMensual ?? "",
-      valorHoraExtra: asignacion?.valorHoraExtra ?? "",
-      rol: asignacion?.rol || "OPERARIO",
-      estado: "ACTIVO",
-    });
+  setDetalleEmpleado(null);
 
-    setEditandoEmpleado(null);
-    setModoAsignacion("mover");
-    setEmpleadoOrigenMovimiento(asignacion);
-    setShowModal(true);
-  };
+  setNuevoEmpleado({
+    ...buildDefaultEmpleado(),
+    nombre: asignacion?.nombre || "",
+    cargo: asignacion?.cargo || "",
+    proyecto: "",
+    tipo: asignacion?.tipo || "CAMPO",
+    fechaContratacion: asignacion?.fechaContratacion || "",
+    valorDia: asignacion?.valorDia ?? "",
+    salarioMensual: asignacion?.salarioMensual ?? "",
+    valorHoraExtra: asignacion?.valorHoraExtra ?? "",
+    rol: asignacion?.rol || "OPERARIO",
+    estado: "ACTIVO",
+  });
+
+  setEditandoEmpleado(null);
+  setModoAsignacion("mover");
+  setEmpleadoOrigenMovimiento(asignacion);
+  setShowModal(true);
+};
 
   const existeDuplicado = (payload) => {
     const nombreN = normalize(payload.nombre);
@@ -321,8 +323,9 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const solicitarEliminar = (id) => {
-    setIdAEliminar(id);
-  };
+  setDetalleEmpleado(null);
+  setIdAEliminar(id);
+};
 
   const eliminarConfirmado = async () => {
     try {

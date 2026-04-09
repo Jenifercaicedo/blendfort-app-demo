@@ -59,7 +59,7 @@ const PersonalFormModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[120] overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-[210] overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

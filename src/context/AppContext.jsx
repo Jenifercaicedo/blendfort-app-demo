@@ -595,35 +595,77 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateProyecto = async (id, payload) => {
-    const proyectoFinal = {
-      nombre: norm(payload?.nombre),
-      residente: norm(payload?.residente),
-      dueno: norm(payload?.dueno),
-      ubicacion: norm(payload?.ubicacion),
-      tiempo: norm(payload?.tiempo),
-      presupuesto: safeNum(payload?.presupuesto),
-    };
+  const proyectoActual =
+    (proyectos || []).find((p) => p.id === id) || null;
 
-    const { data, error } = await supabase
-      .from("proyectos")
-      .update(proyectoFinal)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    setProyectos((prev) => (prev || []).map((p) => (p.id === id ? data : p)));
-    return data;
+  const nombreAnterior = norm(proyectoActual?.nombre);
+  const proyectoFinal = {
+    nombre: norm(payload?.nombre),
+    residente: norm(payload?.residente),
+    dueno: norm(payload?.dueno),
+    ubicacion: norm(payload?.ubicacion),
+    tiempo: norm(payload?.tiempo),
+    presupuesto: safeNum(payload?.presupuesto),
   };
+
+  const { data, error } = await supabase
+    .from("proyectos")
+    .update(proyectoFinal)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const nombreNuevo = norm(data?.nombre);
+
+  // Si cambió el nombre del proyecto,
+  // reflejarlo también en personal
+  if (nombreAnterior && nombreNuevo && nombreAnterior !== nombreNuevo) {
+    const { error: personalError } = await supabase
+      .from("personal")
+      .update({ proyecto: nombreNuevo })
+      .eq("proyecto", nombreAnterior);
+
+    if (personalError) throw personalError;
+
+    // Refrescar personal para que Gestión de Personal vea el cambio
+    await cargarPersonal();
+  }
+
+  setProyectos((prev) => (prev || []).map((p) => (p.id === id ? data : p)));
+  return data;
+};
 
   const deleteProyecto = async (id) => {
-    const { error } = await supabase.from("proyectos").delete().eq("id", id);
+  const proyectoActual =
+    (proyectos || []).find((p) => p.id === id) || null;
 
-    if (error) throw error;
+  const nombreProyecto = norm(proyectoActual?.nombre);
 
-    setProyectos((prev) => (prev || []).filter((p) => p.id !== id));
-  };
+  // Antes de borrar el proyecto, quitamos la asignación
+  // en personal para que no siga apareciendo como proyecto activo.
+  if (nombreProyecto) {
+    const { error: personalError } = await supabase
+      .from("personal")
+      .update({ proyecto: "" })
+      .eq("proyecto", nombreProyecto);
+
+    if (personalError) throw personalError;
+  }
+
+  const { error } = await supabase
+    .from("proyectos")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+
+  setProyectos((prev) => (prev || []).filter((p) => p.id !== id));
+
+  // Refrescar personal para que desaparezca de inmediato
+  await cargarPersonal();
+};
 
   /* ===========================
      CRUD PERSONAL
