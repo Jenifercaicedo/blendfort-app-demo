@@ -26,6 +26,7 @@ import {
   toggleEstadoAsignacionMultiproyectoDB,
   deleteAsignacionMultiproyectoDB,
 } from "../features/personal/personalMultiproyecto";
+import { asegurarAsignacionResidentePrincipalDB } from "../features/personal/syncProyectoResidente";
 
 const AppContext = createContext();
 
@@ -574,32 +575,47 @@ export const AppProvider = ({ children }) => {
      CRUD PROYECTOS
   =========================== */
   const addProyecto = async (payload) => {
-    const proyectoFinal = {
-      nombre: norm(payload?.nombre),
-      residente: norm(payload?.residente),
-      dueno: norm(payload?.dueno),
-      ubicacion: norm(payload?.ubicacion),
-      tiempo: norm(payload?.tiempo),
-      presupuesto: safeNum(payload?.presupuesto),
-    };
-
-    const { data, error } = await supabase
-      .from("proyectos")
-      .insert([proyectoFinal])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    setProyectos((prev) => [data, ...(prev || [])]);
-    return data;
+  const proyectoFinal = {
+    nombre: norm(payload?.nombre),
+    residente: norm(payload?.residente),
+    dueno: norm(payload?.dueno),
+    ubicacion: norm(payload?.ubicacion),
+    tiempo: norm(payload?.tiempo),
+    presupuesto: safeNum(payload?.presupuesto),
   };
+
+  const { data, error } = await supabase
+    .from("proyectos")
+    .insert([proyectoFinal])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  try {
+    await asegurarAsignacionResidentePrincipalDB({
+      proyectoId: data.id,
+      proyectoNombre: data.nombre,
+      residenteNombre: data.residente,
+    });
+  } catch (syncError) {
+    console.error(
+      "Proyecto creado, pero no se pudo sincronizar la asignación del residente principal:",
+      syncError
+    );
+  }
+
+  setProyectos((prev) => [data, ...(prev || [])]);
+  await cargarPersonal();
+  return data;
+};
 
   const updateProyecto = async (id, payload) => {
   const proyectoActual =
     (proyectos || []).find((p) => p.id === id) || null;
 
   const nombreAnterior = norm(proyectoActual?.nombre);
+
   const proyectoFinal = {
     nombre: norm(payload?.nombre),
     residente: norm(payload?.residente),
@@ -620,8 +636,19 @@ export const AppProvider = ({ children }) => {
 
   const nombreNuevo = norm(data?.nombre);
 
-  // Si cambió el nombre del proyecto,
-  // reflejarlo también en personal
+  try {
+    await asegurarAsignacionResidentePrincipalDB({
+      proyectoId: data.id,
+      proyectoNombre: data.nombre,
+      residenteNombre: data.residente,
+    });
+  } catch (syncError) {
+    console.error(
+      "Proyecto actualizado, pero no se pudo sincronizar la asignación del residente principal:",
+      syncError
+    );
+  }
+
   if (nombreAnterior && nombreNuevo && nombreAnterior !== nombreNuevo) {
     await cargarPersonal();
   }
