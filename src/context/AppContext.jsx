@@ -18,6 +18,14 @@ import {
   ajustarCajaChicaResidentePorDeltaDB,
   revertirMovimientoCajaChicaResidentePorEgresoDB,
 } from "../features/cajaChica/cajaChicaResidente";
+import {
+  cargarPersonalMultiproyectoDB,
+  agruparPersonalMultiproyecto,
+  addPersonalMultiproyectoDB,
+  updatePersonalMultiproyectoDB,
+  toggleEstadoAsignacionMultiproyectoDB,
+  deleteAsignacionMultiproyectoDB,
+} from "../features/personal/personalMultiproyecto";
 
 const AppContext = createContext();
 
@@ -442,24 +450,17 @@ export const AppProvider = ({ children }) => {
      CARGAR PERSONAL
   =========================== */
   const cargarPersonal = async () => {
-    try {
-      setLoadingPersonal(true);
+  try {
+    setLoadingPersonal(true);
 
-      const { data, error } = await supabase
-        .from("personal")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const normalizados = (data || []).map((p) => normalizePersonal(p));
-      setPersonal(normalizados);
-    } catch (error) {
-      console.error("Error cargando personal:", error);
-    } finally {
-      setLoadingPersonal(false);
-    }
-  };
+    const data = await cargarPersonalMultiproyectoDB();
+    setPersonal(data || []);
+  } catch (error) {
+    console.error("Error cargando personal:", error);
+  } finally {
+    setLoadingPersonal(false);
+  }
+};
 
   /* ===========================
      CARGAR CAJA CHICA
@@ -622,14 +623,6 @@ export const AppProvider = ({ children }) => {
   // Si cambió el nombre del proyecto,
   // reflejarlo también en personal
   if (nombreAnterior && nombreNuevo && nombreAnterior !== nombreNuevo) {
-    const { error: personalError } = await supabase
-      .from("personal")
-      .update({ proyecto: nombreNuevo })
-      .eq("proyecto", nombreAnterior);
-
-    if (personalError) throw personalError;
-
-    // Refrescar personal para que Gestión de Personal vea el cambio
     await cargarPersonal();
   }
 
@@ -646,12 +639,7 @@ export const AppProvider = ({ children }) => {
   // Antes de borrar el proyecto, quitamos la asignación
   // en personal para que no siga apareciendo como proyecto activo.
   if (nombreProyecto) {
-    const { error: personalError } = await supabase
-      .from("personal")
-      .update({ proyecto: "" })
-      .eq("proyecto", nombreProyecto);
-
-    if (personalError) throw personalError;
+    await cargarPersonal();
   }
 
   const { error } = await supabase
@@ -671,184 +659,48 @@ export const AppProvider = ({ children }) => {
      CRUD PERSONAL
   =========================== */
   const addPersonal = async (payload) => {
-    const personalFinal = {
-      nombre: norm(payload?.nombre),
-      rol: norm(payload?.rol || "OPERARIO"),
-      cargo: norm(payload?.cargo),
-      tipo: norm(payload?.tipo || "CAMPO"),
-      proyecto: norm(payload?.proyecto),
-      valor_dia: safeNum(payload?.valorDia ?? payload?.valor_dia),
-      salario_mensual: safeNum(payload?.salarioMensual ?? payload?.salario_mensual),
-      valor_hora_extra: safeNum(payload?.valorHoraExtra ?? payload?.valor_hora_extra),
-      fecha_contratacion: payload?.fechaContratacion || payload?.fecha_contratacion || null,
-      estado: norm(payload?.estado || "ACTIVO"),
-    };
-
-    const { data, error } = await supabase
-      .from("personal")
-      .insert([personalFinal])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const normalizado = normalizePersonal(data);
-    setPersonal((prev) => [normalizado, ...(prev || [])]);
-    return normalizado;
-  };
+  await addPersonalMultiproyectoDB(payload);
+  await cargarPersonal();
+  return true;
+};
 
   const updatePersonal = async (id, payload) => {
-    const personalFinal = {
-      nombre: norm(payload?.nombre),
-      rol: norm(payload?.rol || "OPERARIO"),
-      cargo: norm(payload?.cargo),
-      tipo: norm(payload?.tipo || "CAMPO"),
-      proyecto: norm(payload?.proyecto),
-      valor_dia: safeNum(payload?.valorDia ?? payload?.valor_dia),
-      salario_mensual: safeNum(payload?.salarioMensual ?? payload?.salario_mensual),
-      valor_hora_extra: safeNum(payload?.valorHoraExtra ?? payload?.valor_hora_extra),
-      fecha_contratacion: payload?.fechaContratacion || payload?.fecha_contratacion || null,
-      estado: norm(payload?.estado || "ACTIVO"),
-    };
-
-    const { data, error } = await supabase
-      .from("personal")
-      .update(personalFinal)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const normalizado = normalizePersonal(data);
-    setPersonal((prev) => (prev || []).map((p) => (p.id === id ? normalizado : p)));
-    return normalizado;
-  };
+  await updatePersonalMultiproyectoDB(id, payload);
+  await cargarPersonal();
+  return true;
+};
 
   const toggleEstadoPersonal = async (id, nextEstado) => {
-    const estadoFinal = norm(nextEstado || "ACTIVO");
-
-    const { data, error } = await supabase
-      .from("personal")
-      .update({
-        estado: estadoFinal,
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const normalizado = normalizePersonal(data);
-    setPersonal((prev) => (prev || []).map((p) => (p.id === id ? normalizado : p)));
-    return normalizado;
-  };
+  await toggleEstadoAsignacionMultiproyectoDB(id, nextEstado);
+  await cargarPersonal();
+  return true;
+};
 
   const deletePersonal = async (id) => {
-    const { error } = await supabase.from("personal").delete().eq("id", id);
-
-    if (error) throw error;
-
-    setPersonal((prev) => (prev || []).filter((p) => p.id !== id));
-  };
-
+  await deleteAsignacionMultiproyectoDB(id);
+  await cargarPersonal();
+  return true;
+};
   /* ===========================
      PERSONAL AGRUPADO
   =========================== */
   const agruparPersonal = (lista = []) => {
-    const map = new Map();
-
-    for (const row of lista || []) {
-      const nombreKey = norm(row?.nombre);
-      if (!nombreKey) continue;
-
-      const asignacion = {
-        id: row?.id,
-        nombre: norm(row?.nombre),
-        cargo: norm(row?.cargo),
-        proyecto: norm(row?.proyecto),
-        tipo: norm(row?.tipo || "CAMPO"),
-        rol: norm(row?.rol || "OPERARIO"),
-        estado: norm(row?.estado || "ACTIVO"),
-        valorDia: safeNum(row?.valorDia ?? row?.valor_dia),
-        salarioMensual: safeNum(row?.salarioMensual ?? row?.salario_mensual),
-        valorHoraExtra: safeNum(row?.valorHoraExtra ?? row?.valor_hora_extra),
-        fechaContratacion: row?.fechaContratacion || row?.fecha_contratacion || "",
-        raw: row,
-      };
-
-      if (!map.has(nombreKey)) {
-        map.set(nombreKey, {
-          key: nombreKey,
-          nombre: norm(row?.nombre),
-          fechaContratacion: row?.fechaContratacion || row?.fecha_contratacion || "",
-          asignaciones: [],
-        });
-      }
-
-      const grupo = map.get(nombreKey);
-      grupo.asignaciones.push(asignacion);
-
-      if (!grupo.fechaContratacion && (row?.fechaContratacion || row?.fecha_contratacion)) {
-        grupo.fechaContratacion = row?.fechaContratacion || row?.fecha_contratacion || "";
-      }
-    }
-
-    const grouped = Array.from(map.values()).map((grupo) => {
-      const asignaciones = [...grupo.asignaciones].sort((a, b) => {
-        const aAct = a.estado === "ACTIVO" ? 0 : 1;
-        const bAct = b.estado === "ACTIVO" ? 0 : 1;
-        if (aAct !== bAct) return aAct - bAct;
-        return String(a.proyecto || "").localeCompare(String(b.proyecto || ""));
-      });
-
-      const activas = asignaciones.filter((a) => a.estado === "ACTIVO");
-      const inactivas = asignaciones.filter((a) => a.estado !== "ACTIVO");
-
-      const proyectos = [...new Set(asignaciones.map((a) => a.proyecto).filter(Boolean))];
-      const cargos = [...new Set(asignaciones.map((a) => a.cargo).filter(Boolean))];
-      const roles = [...new Set(asignaciones.map((a) => a.rol).filter(Boolean))];
-      const tipos = [...new Set(asignaciones.map((a) => a.tipo).filter(Boolean))];
-
-      const referencia = activas[0] || asignaciones[0] || null;
-
-      return {
-        key: grupo.key,
-        nombre: grupo.nombre,
-        fechaContratacion: grupo.fechaContratacion || "",
-        asignaciones,
-        totalAsignaciones: asignaciones.length,
-        asignacionesActivas: activas.length,
-        asignacionesInactivas: inactivas.length,
-        proyectos,
-        cargos,
-        roles,
-        tipos,
-        cargoPrincipal: referencia?.cargo || "",
-        rolPrincipal: referencia?.rol || "",
-        tipoPrincipal: referencia?.tipo || "",
-        valorDiaPrincipal: safeNum(referencia?.valorDia),
-        salarioMensualPrincipal: safeNum(referencia?.salarioMensual),
-        valorHoraExtraPrincipal: safeNum(referencia?.valorHoraExtra),
-      };
-    });
-
-    return grouped.sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")));
-  };
+  return agruparPersonalMultiproyecto(lista || []);
+};
 
   const getPersonalAgrupado = () => {
-    return agruparPersonal(personal || []);
-  };
+  return agruparPersonalMultiproyecto(personal || []);
+};
 
   const getEmpleadoAgrupado = (nombre) => {
-    const nombreKey = norm(nombre);
-    return agruparPersonal(personal || []).find((e) => e.key === nombreKey) || null;
-  };
+  const nombreKey = norm(nombre);
+  return agruparPersonalMultiproyecto(personal || []).find((e) => e.key === nombreKey) || null;
+};
 
   const getAsignacionesPorEmpleado = (nombre) => {
-    const empleado = getEmpleadoAgrupado(nombre);
-    return empleado?.asignaciones || [];
-  };
+  const empleado = getEmpleadoAgrupado(nombre);
+  return empleado?.asignaciones || [];
+};
 
   /* ===========================
      Proyectos asignados
