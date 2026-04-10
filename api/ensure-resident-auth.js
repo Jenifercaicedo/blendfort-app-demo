@@ -1,8 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const RESIDENTE_PASSWORD = "Blendfort2026";
-
-const normalize = (s) =>
+const norm = (s) =>
   String(s || "")
     .toUpperCase()
     .normalize("NFD")
@@ -23,149 +21,113 @@ const buildResidentEmail = (nombre) => {
   return `${slug}@blendfortdemo.com`;
 };
 
-const rolesPermitidos = new Set([
-  "RESIDENTE",
-  "INGENIERO",
-  "INGENIERA",
-  "ARQUITECTO",
-  "ARQUITECTA",
-  "ING",
-  "ING.",
-  "ARQ",
-  "ARQ.",
-]);
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
   try {
-  
-
-    const supabaseUrl =
-      process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl) {
-      return res.status(500).json({ error: "Falta VITE_SUPABASE_URL" });
-    }
-
-    if (!serviceRoleKey) {
-      return res
-        .status(500)
-        .json({ error: "Falta SUPABASE_SERVICE_ROLE_KEY" });
+    if (!supabaseUrl || !serviceRoleKey) {
+      return res.status(500).json({
+        error: "Faltan variables de entorno de Supabase en el servidor",
+      });
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const body =
-      typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const nombre = norm(req.body?.nombre);
 
-    const { nombre } = body;
-    const nombreLimpio = String(nombre || "").trim();
-
-    if (!nombreLimpio) {
-      return res.status(400).json({ error: "Nombre requerido" });
+    if (!nombre) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
     }
 
-    const nombreN = normalize(nombreLimpio);
+    // 1) Validar que exista como empleado RESIDENTE
+    const { data: empleado, error: empleadoError } = await admin
+      .from("empleados")
+      .select("id,nombre,rol,estado_general")
+      .eq("nombre", nombre)
+      .eq("rol", "RESIDENTE")
+      .eq("estado_general", "ACTIVO")
+      .maybeSingle();
 
-    // 1) Validar en personal
-    const { data: personalRows, error: personalError } = await admin
-      .from("personal")
-      .select("nombre, rol")
-      .limit(1000);
+    if (empleadoError) throw empleadoError;
 
-    if (personalError) {
-      throw personalError;
-    }
-
-    const emp = (personalRows || []).find(
-      (p) => normalize(p?.nombre) === nombreN
-    );
-
-    if (!emp) {
-      return res
-        .status(403)
-        .json({ error: "No está registrado en gestión personal" });
-    }
-
-    const rol = normalize(emp?.rol);
-
-    if (!rolesPermitidos.has(rol)) {
-      return res.status(403).json({ error: "Rol sin acceso a residente" });
-    }
-
-    // 2) Validar proyecto asignado
-    const { data: proyectosRows, error: proyectosError } = await admin
-      .from("proyectos")
-      .select("nombre, residente, residentes")
-      .limit(1000);
-
-    if (proyectosError) {
-      throw proyectosError;
-    }
-
-    const asignados = (proyectosRows || []).filter((p) => {
-      const r1 = normalize(p?.residente);
-      const rList = Array.isArray(p?.residentes)
-        ? p.residentes.map((r) => normalize(r))
-        : [];
-      return r1 === nombreN || rList.includes(nombreN);
-    });
-
-    if (!asignados.length) {
-      return res.status(403).json({ error: "No tiene proyecto asignado" });
-    }
-
-    // 3) Asegurar usuario Auth
-    const email = buildResidentEmail(nombreLimpio);
-
-    const { data: listData, error: listError } =
-      await admin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
+    if (!empleado?.id) {
+      return res.status(403).json({
+        error: "No está registrado como residente activo",
       });
-
-    if (listError) {
-      throw listError;
     }
 
-    const yaExiste = (listData?.users || []).some(
+    // 2) Validar que tenga al menos una asignación activa
+    const { data: asignaciones, error: asignacionesError } = await admin
+      .from("empleado_proyecto")
+      .select("id,proyecto_id,estado_asignacion")
+      .eq("empleado_id", empleado.id)
+      .eq("estado_asignacion", "ACTIVO")
+      .limit(1);
+
+    if (asignacionesError) throw asignacionesError;
+
+    if (!asignaciones || asignaciones.length === 0) {
+      return res.status(403).json({
+        error: "No tiene proyectos activos asignados",
+      });
+    }
+
+    // 3) Email derivado del nombre
+    const email = buildResidentEmail(nombre);
+    const password = "Blendfort2026";
+
+    // 4) Buscar si ya existe el usuario Auth
+    const { data: usersData, error: listUsersError } =
+      await admin.auth.admin.listUsers();
+
+    if (listUsersError) throw listUsersError;
+
+    const existingUser = (usersData?.users || []).find(
       (u) => String(u.email || "").toLowerCase() === email.toLowerCase()
     );
 
-    if (!yaExiste) {
-      const { error: createError } = await admin.auth.admin.createUser({
-        email,
-        password: RESIDENTE_PASSWORD,
-        email_confirm: true,
-        user_metadata: {
-          nombre: nombreLimpio,
-          tipo: "residente",
-        },
-      });
+    let userId = existingUser?.id || null;
 
-      if (createError) {
-        throw createError;
-      }
+    // 5) Si no existe, crearlo
+    if (!userId) {
+      const { data: createdUserData, error: createUserError } =
+        await admin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            nombre,
+            rol: "RESIDENTE",
+          },
+        });
+
+      if (createUserError) throw createUserError;
+      userId = createdUserData?.user?.id || null;
+    }
+
+    if (!userId) {
+      return res.status(500).json({
+        error: "No se pudo asegurar el usuario del residente",
+      });
     }
 
     return res.status(200).json({
       ok: true,
       email,
-      nombre: nombreLimpio,
+      userId,
+      nombre,
     });
   } catch (error) {
     console.error("ensure-resident-auth error:", error);
     return res.status(500).json({
-      error: error?.message || "No se pudo asegurar el usuario residente",
+      error: error?.message || "Error interno preparando acceso del residente",
     });
   }
 }

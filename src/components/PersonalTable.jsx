@@ -16,28 +16,31 @@ const money = (n) => {
   });
 };
 
-const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
+const PersonalTable = ({ data, onOpenDetalle, onNew }) => {
   return (
     <div className="space-y-4">
       <div className="rounded-[2rem] border border-black/[0.04] bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin scrollbar-thumb-black/5">
-          <table className="w-full text-left border-collapse min-w-[980px]">
+          <table className="w-full text-left border-collapse min-w-[1120px]">
             <thead className="sticky top-0 z-20 bg-white">
               <tr className="border-b border-black/[0.04]">
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
                   Empleado
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
-                  Proyecto
+                  Proyectos
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
-                  Tipo & Rol
+                  Estado general
+                </th>
+                <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30">
+                  Perfil principal
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30 text-right">
-                  Valores
+                  Referencia
                 </th>
                 <th className="px-8 py-5 text-[8px] font-black uppercase tracking-[0.2em] text-black/30 text-right">
-                  Acciones
+                  Ver
                 </th>
               </tr>
             </thead>
@@ -45,7 +48,7 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
             <tbody className="divide-y divide-black/[0.02]">
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-14">
+                  <td colSpan="6" className="px-8 py-14">
                     <div className="text-center">
                       <div className="text-[10px] font-black uppercase tracking-[0.3em] text-black/30">
                         No hay resultados
@@ -67,23 +70,26 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                 </tr>
               ) : (
                 data.map((emp) => {
-                  const tipo = norm(emp.tipo || "CAMPO");
-                  const rol = norm(emp.rol || "OPERARIO");
+                  const tipo = norm(emp.tipoPrincipal || "CAMPO");
+                  const rol = norm(emp.rolPrincipal || "OPERARIO");
                   const esOficina = tipo === "OFICINA";
 
-                  const valorPrincipal = esOficina
-                    ? Number(emp.salarioMensual) || 0
-                    : Number(emp.valorDia) || 0;
+                  const activas = Number(emp.asignacionesActivas || 0);
+                  const inactivas = Number(emp.asignacionesInactivas || 0);
+                  const totalAsignaciones = Number(emp.totalAsignaciones || 0);
 
-                  const valorHoraExtra = Number(emp.valorHoraExtra) || 0;
+                  const valorPrincipal = esOficina
+                    ? Number(emp.salarioMensualPrincipal) || 0
+                    : Number(emp.valorDiaPrincipal) || 0;
+
+                  const valorHoraExtra = Number(emp.valorHoraExtraPrincipal) || 0;
                   const sufijo = esOficina ? "MES" : "DÍA";
 
                   return (
                     <tr
-                      key={emp.id}
+                      key={emp.key}
                       className="group hover:bg-blendfort-fondo/20 transition-colors"
                     >
-                      {/* Empleado */}
                       <td className="px-8 py-5">
                         <button
                           type="button"
@@ -97,21 +103,49 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                         </button>
 
                         <div className="text-[8px] font-bold opacity-30 uppercase tracking-wider mt-0.5">
-                          {emp.cargo}
+                          {totalAsignaciones} asignación{totalAsignaciones === 1 ? "" : "es"}
                         </div>
                       </td>
 
-                      {/* Proyecto */}
                       <td className="px-8 py-5">
-                        <div className="text-[10px] font-black uppercase text-black/70">
-                          {emp.proyecto ? emp.proyecto : "SIN ASIGNAR"}
-                        </div>
-                        <div className="text-[8px] font-bold opacity-20 uppercase tracking-wider">
-                          asignación actual
+                        <div className="flex flex-wrap gap-2 max-w-[320px]">
+                          {(emp.proyectos || []).length ? (
+                            emp.proyectos.map((proyecto) => (
+                              <span
+                                key={proyecto}
+                                className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-black/5 text-[8px] font-black uppercase tracking-widest text-black/55"
+                              >
+                                {proyecto}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] font-black uppercase text-black/30">
+                              Sin proyecto
+                            </span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Tipo & Rol */}
+                      <td className="px-8 py-5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                            <span className="text-[8px] font-black uppercase tracking-widest">
+                              {activas} activas
+                            </span>
+                          </span>
+
+                          {inactivas > 0 && (
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-black/5 text-black/50 border-black/10">
+                              <span className="w-1.5 h-1.5 rounded-full bg-black/30" />
+                              <span className="text-[8px] font-black uppercase tracking-widest">
+                                {inactivas} inactivas
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
                       <td className="px-8 py-5">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
@@ -134,10 +168,15 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                           <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-black/5 text-[8px] font-black uppercase tracking-widest text-black/50">
                             {rol}
                           </span>
+
+                          {emp.cargoPrincipal ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-black/5 text-[8px] font-black uppercase tracking-widest text-black/50">
+                              {emp.cargoPrincipal}
+                            </span>
+                          ) : null}
                         </div>
                       </td>
 
-                      {/* Valores */}
                       <td className="px-8 py-5 text-right">
                         <div className="text-[11px] font-black text-black tracking-tight">
                           <span className="text-[8px] font-black uppercase text-blendfort-naranja mr-1">
@@ -158,15 +197,14 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                         </div>
                       </td>
 
-                      {/* Acciones */}
                       <td className="px-8 py-5">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end">
                           <button
-                            onClick={() => onEdit(emp)}
+                            onClick={() => onOpenDetalle(emp)}
                             type="button"
-                            className="inline-flex items-center gap-2 bg-blendfort-fondo rounded-2xl px-3 py-3 hover:bg-black hover:text-white transition-all active:scale-95"
-                            title="Editar"
-                            aria-label="Editar"
+                            className="inline-flex items-center gap-2 bg-blendfort-fondo rounded-2xl px-4 py-3 hover:bg-black hover:text-white transition-all active:scale-95"
+                            title="Ver detalle"
+                            aria-label="Ver detalle"
                           >
                             <svg
                               className="w-4 h-4"
@@ -175,38 +213,12 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
                               stroke="currentColor"
                               strokeWidth="2.8"
                             >
-                              <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                              <path d="M19.5 7.125L16.875 4.5" />
+                              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <path d="M12 15.5A3.5 3.5 0 1012 8.5a3.5 3.5 0 000 7z" />
                             </svg>
 
                             <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
-                              Editar
-                            </span>
-                          </button>
-
-                          <button
-                            onClick={() => onDelete(emp.id)}
-                            type="button"
-                            className="inline-flex items-center gap-2 bg-red-50 text-red-600/70 rounded-2xl px-3 py-3 hover:bg-red-500 hover:text-white transition-all active:scale-95"
-                            title="Eliminar"
-                            aria-label="Eliminar"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth="2.8"
-                            >
-                              <path d="M6 7h12" />
-                              <path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                              <path d="M7 7l1 14h8l1-14" />
-                            </svg>
-
-                            <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
-                              Eliminar
+                              Detalle
                             </span>
                           </button>
                         </div>
@@ -221,7 +233,7 @@ const PersonalTable = ({ data, onOpenDetalle, onEdit, onDelete, onNew }) => {
       </div>
 
       <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 px-2">
-        Tip: haz click en el nombre para ver el detalle
+        Tip: haz click en el detalle para ver y gestionar las asignaciones del empleado
       </div>
     </div>
   );

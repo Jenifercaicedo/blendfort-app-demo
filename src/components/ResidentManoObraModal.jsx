@@ -101,11 +101,12 @@ const resolveWorkerKey = (reg, personalMap) => {
     reg?.nombreTrabajador,
     reg?.personal,
     reg?.colaborador,
+    reg?.concepto,
   ];
 
   for (const candidate of explicitCandidates) {
     const key = normalize(candidate);
-    if (key) return key;
+    if (key && personalMap.has(key)) return key;
   }
 
   const conceptKey = normalize(reg?.concepto);
@@ -132,6 +133,206 @@ const resolveWorkerKey = (reg, personalMap) => {
   return "SIN IDENTIFICAR";
 };
 
+const getISOWeekKey = (dateString) => {
+  const raw = iso10(dateString);
+  if (!raw) return "";
+
+  const date = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const temp = new Date(date);
+  const day = temp.getDay() || 7;
+  temp.setDate(temp.getDate() + 4 - day);
+
+  const yearStart = new Date(temp.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((temp - yearStart) / 86400000) + 1) / 7);
+
+  return `${temp.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+};
+
+const weekLabel = (weekKey) => {
+  const wk = String(weekKey || "").toUpperCase().trim();
+  if (!wk) return "";
+
+  const match = wk.match(/^(\d{4})-W(\d{2})$/i);
+  if (!match) return wk;
+
+  return `SEMANA ${match[2]} · ${match[1]}`;
+};
+
+const resolveSemanaKey = (reg) => {
+  const direct =
+    reg?.semana ||
+    reg?.semanaKey ||
+    reg?.semana_key ||
+    reg?.week ||
+    reg?.weekKey ||
+    reg?.week_key ||
+    "";
+
+  const normalizedDirect = String(direct || "").toUpperCase().trim();
+  if (normalizedDirect) return normalizedDirect;
+
+  return getISOWeekKey(reg?.fecha);
+};
+
+const buildNominaRows = (rows = [], personalMap = new Map()) => {
+  const acumulado = new Map();
+
+  for (const reg of rows) {
+    const nombreKey = resolveWorkerKey(reg, personalMap);
+    const base = personalMap.get(nombreKey);
+
+    if (!acumulado.has(nombreKey)) {
+      acumulado.set(nombreKey, {
+        key: nombreKey,
+        nombre: String(
+          base?.nombre ||
+            reg?.empleado ||
+            reg?.trabajador ||
+            reg?.nombreEmpleado ||
+            reg?.nombreTrabajador ||
+            reg?.concepto ||
+            reg?.detalles ||
+            "SIN IDENTIFICAR"
+        ).toUpperCase(),
+        cargo: String(base?.cargo || reg?.cargo || reg?.rol || "SIN CARGO").toUpperCase(),
+        estadoPersonal: String(base?.estadoPersonal || "ACTIVO").toUpperCase(),
+        valorDia: Number(base?.valorDia || 0),
+        valorHoraExtra: Number(base?.valorHoraExtra || 0),
+        total: 0,
+        pagado: 0,
+        pendiente: 0,
+        movimientos: 0,
+        ultimaFecha: "",
+        ultimoEstado: "PENDIENTE",
+      });
+    }
+
+    const row = acumulado.get(nombreKey);
+    const valor = Number(reg?.valor) || 0;
+    const estado = normalize(reg?.estado || "PENDIENTE");
+    const fecha = iso10(reg?.fecha);
+
+    if (estado !== "ANULADO") {
+      row.total += valor;
+    }
+
+    row.movimientos += 1;
+    row.ultimoEstado = estado;
+
+    if (estado === "PAGADO" || estado === "COMPLETADO") {
+      row.pagado += valor;
+    } else if (estado !== "ANULADO") {
+      row.pendiente += valor;
+    }
+
+    if (!row.ultimaFecha || fecha > row.ultimaFecha) {
+      row.ultimaFecha = fecha;
+    }
+  }
+
+  for (const [key, trabajador] of personalMap.entries()) {
+    if (!acumulado.has(key)) {
+      acumulado.set(key, {
+        key,
+        nombre: trabajador.nombre,
+        cargo: trabajador.cargo,
+        estadoPersonal: trabajador.estadoPersonal,
+        valorDia: trabajador.valorDia,
+        valorHoraExtra: trabajador.valorHoraExtra,
+        total: 0,
+        pagado: 0,
+        pendiente: 0,
+        movimientos: 0,
+        ultimaFecha: "",
+        ultimoEstado: "SIN MOVIMIENTOS",
+      });
+    }
+  }
+
+  return Array.from(acumulado.values()).sort((a, b) => {
+    if ((b.total || 0) !== (a.total || 0)) return (b.total || 0) - (a.total || 0);
+    return normalize(a.nombre).localeCompare(normalize(b.nombre));
+  });
+};
+
+const buildPagoRows = (rows = [], personalMap = new Map()) => {
+  const acumulado = new Map();
+
+  for (const reg of rows) {
+    const nombreKey = resolveWorkerKey(reg, personalMap);
+    const base = personalMap.get(nombreKey);
+    const semana = resolveSemanaKey(reg) || "SIN SEMANA";
+    const key = `${nombreKey}__${semana}`;
+
+    if (!acumulado.has(key)) {
+      acumulado.set(key, {
+        key,
+        workerKey: nombreKey,
+        nombre: String(
+          base?.nombre ||
+            reg?.empleado ||
+            reg?.trabajador ||
+            reg?.nombreEmpleado ||
+            reg?.nombreTrabajador ||
+            reg?.concepto ||
+            reg?.detalles ||
+            "SIN IDENTIFICAR"
+        ).toUpperCase(),
+        cargo: String(base?.cargo || reg?.cargo || reg?.rol || "SIN CARGO").toUpperCase(),
+        semana,
+        dias: 0,
+        horasExtras: 0,
+        bonos: 0,
+        descuentos: 0,
+        neto: 0,
+        estadoSemana: "PENDIENTE",
+        rows: [],
+      });
+    }
+
+    const item = acumulado.get(key);
+    const estado = normalize(reg?.estado || "PENDIENTE");
+    const valor = Number(reg?.valor) || 0;
+
+    item.rows.push(reg);
+
+    if (reg?.asistio !== false && estado !== "ANULADO") item.dias += 1;
+    if (estado !== "ANULADO") {
+      item.horasExtras += Number(reg?.numHorasExtras ?? reg?.num_horas_extras) || 0;
+      item.bonos += Number(reg?.valoresPendientes ?? reg?.valores_pendientes) || 0;
+      item.descuentos += Number(reg?.descuentos) || 0;
+      item.neto += valor;
+    }
+  }
+
+  return Array.from(acumulado.values())
+    .map((item) => {
+      const movimientosValidos = item.rows.filter(
+        (r) => normalize(r?.estado || "PENDIENTE") !== "ANULADO"
+      );
+
+      const todosPagados =
+        movimientosValidos.length > 0 &&
+        movimientosValidos.every((r) => {
+          const estado = normalize(r?.estado || "PENDIENTE");
+          return estado === "PAGADO" || estado === "COMPLETADO";
+        });
+
+      return {
+        ...item,
+        estadoSemana: todosPagados ? "PAGADO" : "PENDIENTE",
+      };
+    })
+    .sort((a, b) => {
+      if (normalize(a.semana) !== normalize(b.semana)) {
+        return normalize(b.semana).localeCompare(normalize(a.semana));
+      }
+      return normalize(a.nombre).localeCompare(normalize(b.nombre));
+    });
+};
+
 const ResidentManoObraModal = ({
   show = false,
   onClose,
@@ -142,6 +343,8 @@ const ResidentManoObraModal = ({
   const [busqueda, setBusqueda] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("TODOS");
   const [filtroEstadoPago, setFiltroEstadoPago] = useState("TODOS");
+  const [filtroSemana, setFiltroSemana] = useState("TODAS");
+  const [vistaActiva, setVistaActiva] = useState("nomina");
   const [showFiltrosMobile, setShowFiltrosMobile] = useState(false);
 
   useEffect(() => {
@@ -166,6 +369,8 @@ const ResidentManoObraModal = ({
     setBusqueda("");
     setFiltroCargo("TODOS");
     setFiltroEstadoPago("TODOS");
+    setFiltroSemana("TODAS");
+    setVistaActiva("nomina");
     setShowFiltrosMobile(false);
   }, [show, proyectoActivo]);
 
@@ -180,146 +385,60 @@ const ResidentManoObraModal = ({
     );
   }, [registrosManoObra]);
 
-  const resumen = useMemo(() => {
-    const totalGeneral = registrosMO.reduce(
-      (acc, r) => acc + (Number(r?.valor) || 0),
-      0
-    );
-
-    const totalPagado = registrosMO.reduce((acc, r) => {
-      const estado = normalize(r?.estado);
-      const suma =
-        estado === "PAGADO" || estado === "COMPLETADO"
-          ? Number(r?.valor) || 0
-          : 0;
-
-      return acc + suma;
-    }, 0);
-
-    const totalPendiente = totalGeneral - totalPagado;
-
-    const trabajadoresConMovimiento = new Set(
-      registrosMO.map((r) => resolveWorkerKey(r, personalMap)).filter(Boolean)
-    ).size;
-
-    return {
-      totalGeneral,
-      totalPagado,
-      totalPendiente,
-      trabajadoresPlantilla: personalMap.size,
-      trabajadoresConMovimiento,
-    };
-  }, [registrosMO, personalMap]);
-
-  const filasBase = useMemo(() => {
-    const acumulado = new Map();
-
-    for (const reg of registrosMO) {
-      const nombreKey = resolveWorkerKey(reg, personalMap);
-      const base = personalMap.get(nombreKey);
-
-      if (!acumulado.has(nombreKey)) {
-        acumulado.set(nombreKey, {
-          key: nombreKey,
-          nombre: String(
-            base?.nombre ||
-              reg?.empleado ||
-              reg?.trabajador ||
-              reg?.nombreEmpleado ||
-              reg?.nombreTrabajador ||
-              reg?.concepto ||
-              reg?.detalles ||
-              "SIN IDENTIFICAR"
-          ).toUpperCase(),
-          cargo: String(
-            base?.cargo || reg?.cargo || reg?.rol || "SIN CARGO"
-          ).toUpperCase(),
-          estadoPersonal: String(base?.estadoPersonal || "ACTIVO").toUpperCase(),
-          valorDia: Number(base?.valorDia || 0),
-          valorHoraExtra: Number(base?.valorHoraExtra || 0),
-          total: 0,
-          pagado: 0,
-          pendiente: 0,
-          movimientos: 0,
-          ultimaFecha: "",
-          ultimoEstado: "PENDIENTE",
-        });
-      }
-
-      const row = acumulado.get(nombreKey);
-      const valor = Number(reg?.valor) || 0;
-      const estado = normalize(reg?.estado || "PENDIENTE");
-      const fecha = iso10(reg?.fecha);
-
-      row.total += valor;
-      row.movimientos += 1;
-      row.ultimoEstado = estado;
-
-      if (estado === "PAGADO" || estado === "COMPLETADO") {
-        row.pagado += valor;
-      } else if (estado !== "ANULADO") {
-        row.pendiente += valor;
-      }
-
-      if (!row.ultimaFecha || fecha > row.ultimaFecha) {
-        row.ultimaFecha = fecha;
-      }
-    }
-
-    for (const [key, trabajador] of personalMap.entries()) {
-      if (!acumulado.has(key)) {
-        acumulado.set(key, {
-          key,
-          nombre: trabajador.nombre,
-          cargo: trabajador.cargo,
-          estadoPersonal: trabajador.estadoPersonal,
-          valorDia: trabajador.valorDia,
-          valorHoraExtra: trabajador.valorHoraExtra,
-          total: 0,
-          pagado: 0,
-          pendiente: 0,
-          movimientos: 0,
-          ultimaFecha: "",
-          ultimoEstado: "SIN MOVIMIENTOS",
-        });
-      }
-    }
-
-    const rows = Array.from(acumulado.values());
-
-    rows.sort((a, b) => {
-      if ((b.total || 0) !== (a.total || 0)) return (b.total || 0) - (a.total || 0);
-      return normalize(a.nombre).localeCompare(normalize(b.nombre));
-    });
-
-    return rows;
-  }, [registrosMO, personalMap]);
-
-  const opcionesCargo = useMemo(() => {
+  const opcionesSemana = useMemo(() => {
     const unique = Array.from(
-      new Set(filasBase.map((r) => normalize(r.cargo)).filter(Boolean))
-    ).sort();
+      new Set(registrosMO.map((r) => resolveSemanaKey(r)).filter(Boolean))
+    ).sort((a, b) => b.localeCompare(a));
 
-    return ["TODOS", ...unique];
-  }, [filasBase]);
+    return ["TODAS", ...unique];
+  }, [registrosMO]);
 
-  const opcionesEstadoPago = useMemo(
-    () => ["TODOS", "PAGADO", "PENDIENTE", "SIN MOVIMIENTOS"],
-    []
-  );
+  const registrosBaseFiltrados = useMemo(() => {
+    let rows = [...registrosMO];
 
-  const filasTrabajadores = useMemo(() => {
-    let rows = [...filasBase];
+    if (normalize(filtroSemana) !== "TODAS") {
+      rows = rows.filter((r) => resolveSemanaKey(r) === normalize(filtroSemana));
+    }
 
     if (busqueda.trim()) {
       const q = normalize(busqueda);
-      rows = rows.filter(
-        (r) =>
-          normalize(r.nombre).includes(q) ||
-          normalize(r.cargo).includes(q) ||
-          normalize(r.ultimoEstado).includes(q)
-      );
+
+      rows = rows.filter((r) => {
+        const workerKey = resolveWorkerKey(r, personalMap);
+        const base = personalMap.get(workerKey);
+
+        const nombre = normalize(
+          base?.nombre ||
+            r?.empleado ||
+            r?.trabajador ||
+            r?.nombreEmpleado ||
+            r?.nombreTrabajador ||
+            r?.concepto ||
+            r?.detalles
+        );
+
+        const cargo = normalize(base?.cargo || r?.cargo || r?.rol);
+        const estado = normalize(r?.estado);
+        const semana = normalize(resolveSemanaKey(r));
+
+        return (
+          nombre.includes(q) ||
+          cargo.includes(q) ||
+          estado.includes(q) ||
+          semana.includes(q)
+        );
+      });
     }
+
+    return rows;
+  }, [registrosMO, filtroSemana, busqueda, personalMap]);
+
+  const filasNominaBase = useMemo(() => {
+    return buildNominaRows(registrosBaseFiltrados, personalMap);
+  }, [registrosBaseFiltrados, personalMap]);
+
+  const filasNomina = useMemo(() => {
+    let rows = [...filasNominaBase];
 
     if (normalize(filtroCargo) !== "TODOS") {
       rows = rows.filter((r) => normalize(r.cargo) === normalize(filtroCargo));
@@ -327,7 +446,7 @@ const ResidentManoObraModal = ({
 
     if (normalize(filtroEstadoPago) !== "TODOS") {
       if (normalize(filtroEstadoPago) === "PAGADO") {
-        rows = rows.filter((r) => r.pagado > 0);
+        rows = rows.filter((r) => r.pagado > 0 && r.pendiente <= 0);
       } else if (normalize(filtroEstadoPago) === "PENDIENTE") {
         rows = rows.filter((r) => r.pendiente > 0);
       } else if (normalize(filtroEstadoPago) === "SIN MOVIMIENTOS") {
@@ -336,26 +455,124 @@ const ResidentManoObraModal = ({
     }
 
     return rows;
-  }, [filasBase, busqueda, filtroCargo, filtroEstadoPago]);
+  }, [filasNominaBase, filtroCargo, filtroEstadoPago]);
+
+  const filasPagoBase = useMemo(() => {
+    return buildPagoRows(registrosBaseFiltrados, personalMap);
+  }, [registrosBaseFiltrados, personalMap]);
+
+  const filasPago = useMemo(() => {
+    let rows = [...filasPagoBase];
+
+    if (normalize(filtroCargo) !== "TODOS") {
+      rows = rows.filter((r) => normalize(r.cargo) === normalize(filtroCargo));
+    }
+
+    if (normalize(filtroEstadoPago) !== "TODOS") {
+      if (normalize(filtroEstadoPago) === "PAGADO") {
+        rows = rows.filter((r) => normalize(r.estadoSemana) === "PAGADO");
+      } else if (normalize(filtroEstadoPago) === "PENDIENTE") {
+        rows = rows.filter((r) => normalize(r.estadoSemana) === "PENDIENTE");
+      } else if (normalize(filtroEstadoPago) === "SIN MOVIMIENTOS") {
+        rows = [];
+      }
+    }
+
+    return rows;
+  }, [filasPagoBase, filtroCargo, filtroEstadoPago]);
+
+  const opcionesCargo = useMemo(() => {
+    const source = vistaActiva === "pagos" ? filasPagoBase : filasNominaBase;
+
+    const unique = Array.from(
+      new Set(source.map((r) => normalize(r.cargo)).filter(Boolean))
+    ).sort();
+
+    return ["TODOS", ...unique];
+  }, [filasNominaBase, filasPagoBase, vistaActiva]);
+
+  const opcionesEstadoPago = useMemo(
+    () => ["TODOS", "PAGADO", "PENDIENTE", "SIN MOVIMIENTOS"],
+    []
+  );
+
+  const resumenNomina = useMemo(() => {
+    const totalGeneral = filasNomina.reduce((acc, r) => acc + (Number(r?.total) || 0), 0);
+    const totalPagado = filasNomina.reduce((acc, r) => acc + (Number(r?.pagado) || 0), 0);
+    const totalPendiente = filasNomina.reduce((acc, r) => acc + (Number(r?.pendiente) || 0), 0);
+
+    return {
+      totalGeneral,
+      totalPagado,
+      totalPendiente,
+      trabajadores: filasNomina.length,
+    };
+  }, [filasNomina]);
+
+  const resumenPagos = useMemo(() => {
+    const totalGeneral = filasPago.reduce((acc, r) => acc + (Number(r?.neto) || 0), 0);
+    const totalPagado = filasPago.reduce((acc, r) => {
+      return normalize(r?.estadoSemana) === "PAGADO"
+        ? acc + (Number(r?.neto) || 0)
+        : acc;
+    }, 0);
+
+    const totalPendiente = filasPago.reduce((acc, r) => {
+      return normalize(r?.estadoSemana) === "PENDIENTE"
+        ? acc + (Number(r?.neto) || 0)
+        : acc;
+    }, 0);
+
+    return {
+      totalGeneral,
+      totalPagado,
+      totalPendiente,
+      trabajadores: filasPago.length,
+    };
+  }, [filasPago]);
+
+  const resumen = vistaActiva === "pagos" ? resumenPagos : resumenNomina;
 
   const hayFiltrosActivos = useMemo(() => {
     return (
       Boolean(busqueda.trim()) ||
       normalize(filtroCargo) !== "TODOS" ||
-      normalize(filtroEstadoPago) !== "TODOS"
+      normalize(filtroEstadoPago) !== "TODOS" ||
+      normalize(filtroSemana) !== "TODAS"
     );
-  }, [busqueda, filtroCargo, filtroEstadoPago]);
+  }, [busqueda, filtroCargo, filtroEstadoPago, filtroSemana]);
 
   const limpiarFiltros = () => {
     setBusqueda("");
     setFiltroCargo("TODOS");
     setFiltroEstadoPago("TODOS");
+    setFiltroSemana("TODAS");
   };
 
   const filtrosPanel = (
     <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-end">
-        <div className="lg:col-span-2">
+        <div>
+          <CustomSelect
+            label="Semana"
+            options={opcionesSemana.map((s) => (s === "TODAS" ? "TODAS" : weekLabel(s)))}
+            value={filtroSemana === "TODAS" ? "TODAS" : weekLabel(filtroSemana)}
+            onChange={(val) => {
+              if (String(val || "").toUpperCase() === "TODAS") {
+                setFiltroSemana("TODAS");
+                return;
+              }
+
+              const match = opcionesSemana.find((s) => weekLabel(s) === val);
+              setFiltroSemana(match || "TODAS");
+            }}
+            placeholder={opcionesSemana.length > 1 ? "TODAS" : "SIN SEMANAS"}
+            allowCustom={false}
+            disabled={opcionesSemana.length <= 1}
+          />
+        </div>
+
+        <div className="lg:col-span-1">
           <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
             Buscar trabajador
           </label>
@@ -363,7 +580,7 @@ const ResidentManoObraModal = ({
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="NOMBRE, CARGO O ESTADO..."
+            placeholder="NOMBRE, CARGO, ESTADO..."
             className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
           />
         </div>
@@ -493,7 +710,7 @@ const ResidentManoObraModal = ({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
               <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
                 <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
-                  Total Mano de Obra
+                  {vistaActiva === "pagos" ? "Total a Pagar" : "Total Mano de Obra"}
                 </p>
                 <p className="text-lg md:text-xl font-black tracking-tight">
                   {money(resumen.totalGeneral)}
@@ -520,219 +737,446 @@ const ResidentManoObraModal = ({
 
               <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
                 <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
-                  Trabajadores
+                  {vistaActiva === "pagos" ? "Pagos" : "Trabajadores"}
                 </p>
                 <p className="text-lg md:text-xl font-black tracking-tight">
-                  {resumen.trabajadoresPlantilla}
+                  {resumen.trabajadores}
                 </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
+              <div className="grid grid-cols-2 gap-2 md:w-fit">
+                <button
+                  type="button"
+                  onClick={() => setVistaActiva("nomina")}
+                  className={`h-11 px-5 rounded-2xl font-black text-[8px] uppercase tracking-[0.18em] transition-all active:scale-95 ${
+                    vistaActiva === "nomina"
+                      ? "bg-black text-white shadow-sm"
+                      : "bg-blendfort-fondo text-black/55 hover:bg-black hover:text-white"
+                  }`}
+                >
+                  Nómina
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setVistaActiva("pagos")}
+                  className={`h-11 px-5 rounded-2xl font-black text-[8px] uppercase tracking-[0.18em] transition-all active:scale-95 ${
+                    vistaActiva === "pagos"
+                      ? "bg-black text-white shadow-sm"
+                      : "bg-blendfort-fondo text-black/55 hover:bg-black hover:text-white"
+                  }`}
+                >
+                  Pagos
+                </button>
               </div>
             </div>
 
             <div className="hidden md:block">{filtrosPanel}</div>
             {showFiltrosMobile && <div className="md:hidden">{filtrosPanel}</div>}
 
-            <div className="md:hidden space-y-3">
-              {filasTrabajadores.length === 0 ? (
-                <div className="bg-white rounded-[1.5rem] border border-dashed border-black/10 p-8 text-center shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
-                    No hay registros de mano de obra para mostrar
-                  </p>
-                </div>
-              ) : (
-                filasTrabajadores.map((row) => (
-                  <div
-                    key={row.key}
-                    className="bg-white rounded-[1.5rem] border border-black/5 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-black uppercase tracking-tight leading-tight">
-                          {row.nombre}
-                        </h3>
-
-                        <span
-                          className={`inline-flex mt-2 px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
-                            row.cargo
-                          )}`}
-                        >
-                          {row.cargo}
-                        </span>
-                      </div>
-
-                      <span
-                        className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
-                          row.ultimoEstado
-                        )}`}
+            {vistaActiva === "nomina" ? (
+              <>
+                <div className="md:hidden space-y-3">
+                  {filasNomina.length === 0 ? (
+                    <div className="bg-white rounded-[1.5rem] border border-dashed border-black/10 p-8 text-center shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
+                        No hay registros de mano de obra para mostrar
+                      </p>
+                    </div>
+                  ) : (
+                    filasNomina.map((row) => (
+                      <div
+                        key={row.key}
+                        className="bg-white rounded-[1.5rem] border border-black/5 p-4 shadow-sm"
                       >
-                        {row.ultimoEstado}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-[10px]">
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          Total
-                        </p>
-                        <p className="font-black">{money(row.total)}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          Pagado
-                        </p>
-                        <p className="font-black text-green-700">{money(row.pagado)}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          Pendiente
-                        </p>
-                        <p className="font-black text-amber-700">{money(row.pendiente)}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          Última fecha
-                        </p>
-                        <p className="font-black">{row.ultimaFecha || "—"}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          Valor día
-                        </p>
-                        <p className="font-black">{money(row.valorDia)}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
-                          H. extra
-                        </p>
-                        <p className="font-black">{money(row.valorHoraExtra)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="hidden md:block bg-white rounded-[1.6rem] border border-black/5 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px]">
-                  <thead className="bg-blendfort-fondo/60 border-b border-black/5">
-                    <tr>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Trabajador
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Cargo
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Valor Día
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Hora Extra
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Total
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Pagado
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Pendiente
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Mov.
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Última Fecha
-                      </th>
-                      <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Estado
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {filasTrabajadores.length === 0 ? (
-                      <tr>
-                        <td colSpan="10" className="px-4 py-10 text-center">
-                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
-                            No hay registros de mano de obra para mostrar
-                          </p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filasTrabajadores.map((row) => (
-                        <tr
-                          key={row.key}
-                          className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/40 transition-colors"
-                        >
-                          <td className="px-4 py-4">
-                            <p className="text-[10px] font-black uppercase leading-tight">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight">
                               {row.nombre}
-                            </p>
-                          </td>
+                            </h3>
 
-                          <td className="px-4 py-4">
                             <span
-                              className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
+                              className={`inline-flex mt-2 px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
                                 row.cargo
                               )}`}
                             >
                               {row.cargo}
                             </span>
-                          </td>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black">
-                            {money(row.valorDia)}
-                          </td>
+                          <span
+                            className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
+                              row.ultimoEstado
+                            )}`}
+                          >
+                            {row.ultimoEstado}
+                          </span>
+                        </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black">
-                            {money(row.valorHoraExtra)}
-                          </td>
+                        <div className="grid grid-cols-2 gap-3 text-[10px]">
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Total
+                            </p>
+                            <p className="font-black">{money(row.total)}</p>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black">
-                            {money(row.total)}
-                          </td>
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Pagado
+                            </p>
+                            <p className="font-black text-green-700">{money(row.pagado)}</p>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black text-green-700">
-                            {money(row.pagado)}
-                          </td>
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Pendiente
+                            </p>
+                            <p className="font-black text-amber-700">{money(row.pendiente)}</p>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black text-amber-700">
-                            {money(row.pendiente)}
-                          </td>
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Última fecha
+                            </p>
+                            <p className="font-black">{row.ultimaFecha || "—"}</p>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black">
-                            {row.movimientos}
-                          </td>
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Valor día
+                            </p>
+                            <p className="font-black">{money(row.valorDia)}</p>
+                          </div>
 
-                          <td className="px-4 py-4 text-[10px] font-black">
-                            {row.ultimaFecha || "—"}
-                          </td>
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              H. extra
+                            </p>
+                            <p className="font-black">{money(row.valorHoraExtra)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
-                                row.ultimoEstado
-                              )}`}
-                            >
-                              {row.ultimoEstado}
-                            </span>
-                          </td>
+                <div className="hidden md:block bg-white rounded-[1.6rem] border border-black/5 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[980px]">
+                      <thead className="bg-blendfort-fondo/60 border-b border-black/5">
+                        <tr>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Trabajador
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Cargo
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Valor Día
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Hora Extra
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Total
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Pagado
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Pendiente
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Mov.
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Última Fecha
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Estado
+                          </th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                      </thead>
+
+                      <tbody>
+                        {filasNomina.length === 0 ? (
+                          <tr>
+                            <td colSpan="10" className="px-4 py-10 text-center">
+                              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
+                                No hay registros de mano de obra para mostrar
+                              </p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filasNomina.map((row) => (
+                            <tr
+                              key={row.key}
+                              className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/40 transition-colors"
+                            >
+                              <td className="px-4 py-4">
+                                <p className="text-[10px] font-black uppercase leading-tight">
+                                  {row.nombre}
+                                </p>
+                              </td>
+
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
+                                    row.cargo
+                                  )}`}
+                                >
+                                  {row.cargo}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {money(row.valorDia)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {money(row.valorHoraExtra)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {money(row.total)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black text-green-700">
+                                {money(row.pagado)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black text-amber-700">
+                                {money(row.pendiente)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {row.movimientos}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {row.ultimaFecha || "—"}
+                              </td>
+
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
+                                    row.ultimoEstado
+                                  )}`}
+                                >
+                                  {row.ultimoEstado}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="md:hidden space-y-3">
+                  {filasPago.length === 0 ? (
+                    <div className="bg-white rounded-[1.5rem] border border-dashed border-black/10 p-8 text-center shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
+                        No hay pagos para mostrar con este filtro
+                      </p>
+                    </div>
+                  ) : (
+                    filasPago.map((row) => (
+                      <div
+                        key={row.key}
+                        className="bg-white rounded-[1.5rem] border border-black/5 p-4 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight">
+                              {row.nombre}
+                            </h3>
+
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <span
+                                className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
+                                  row.cargo
+                                )}`}
+                              >
+                                {row.cargo}
+                              </span>
+
+                              <span className="inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] bg-black/[0.03] text-black/60 border-black/10">
+                                {weekLabel(row.semana)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
+                              row.estadoSemana
+                            )}`}
+                          >
+                            {row.estadoSemana}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-[10px]">
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Días
+                            </p>
+                            <p className="font-black">{row.dias}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              H. extras
+                            </p>
+                            <p className="font-black">{row.horasExtras}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Bonos
+                            </p>
+                            <p className="font-black text-black">{money(row.bonos)}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Descuentos
+                            </p>
+                            <p className="font-black text-red-600">- {money(row.descuentos)}</p>
+                          </div>
+
+                          <div className="col-span-2">
+                            <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
+                              Neto a pagar
+                            </p>
+                            <p className="font-black text-lg tracking-tight">{money(row.neto)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="hidden md:block bg-white rounded-[1.6rem] border border-black/5 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[980px]">
+                      <thead className="bg-blendfort-fondo/60 border-b border-black/5">
+                        <tr>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Trabajador
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Cargo
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Semana
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Días
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            H. Extras
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Bonos
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Desc.
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Neto
+                          </th>
+                          <th className="text-left px-4 py-4 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                            Estado
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {filasPago.length === 0 ? (
+                          <tr>
+                            <td colSpan="9" className="px-4 py-10 text-center">
+                              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
+                                No hay pagos para mostrar con este filtro
+                              </p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filasPago.map((row) => (
+                            <tr
+                              key={row.key}
+                              className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/40 transition-colors"
+                            >
+                              <td className="px-4 py-4">
+                                <p className="text-[10px] font-black uppercase leading-tight">
+                                  {row.nombre}
+                                </p>
+                              </td>
+
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${cargoTone(
+                                    row.cargo
+                                  )}`}
+                                >
+                                  {row.cargo}
+                                </span>
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {weekLabel(row.semana)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {row.dias}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {row.horasExtras}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {money(row.bonos)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black text-red-600">
+                                - {money(row.descuentos)}
+                              </td>
+
+                              <td className="px-4 py-4 text-[10px] font-black">
+                                {money(row.neto)}
+                              </td>
+
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoTone(
+                                    row.estadoSemana
+                                  )}`}
+                                >
+                                  {row.estadoSemana}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="mt-5 px-1">
               <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.16em] text-black/25">
-                Esta vista muestra solo la mano de obra del proyecto activo del residente.
+                {vistaActiva === "pagos"
+                  ? "Esta vista resume cuánto corresponde pagar por trabajador y semana en el proyecto activo."
+                  : "Esta vista muestra solo la mano de obra del proyecto activo del residente."}
               </p>
             </div>
           </div>

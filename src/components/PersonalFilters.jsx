@@ -1,4 +1,3 @@
-// PersonalFilters.jsx
 import React from "react";
 import FilterSelect from "./FilterSelect";
 
@@ -9,6 +8,9 @@ const PersonalFilters = ({
   filtroProyecto,
   setFiltroProyecto,
   opcionesProyectos,
+  filtroEstado,
+  setFiltroEstado,
+  opcionesEstado,
   hayFiltros,
   limpiarFiltros,
 }) => {
@@ -16,7 +18,7 @@ const PersonalFilters = ({
 
   return (
     <div className="mb-10 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-1">
           <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
             Buscar
@@ -34,6 +36,14 @@ const PersonalFilters = ({
           options={opcionesProyectos}
           value={filtroProyecto}
           onChange={setFiltroProyecto}
+          placeholder="TODOS..."
+        />
+
+        <FilterSelect
+          label="Estado"
+          options={opcionesEstado}
+          value={filtroEstado}
+          onChange={setFiltroEstado}
           placeholder="TODOS..."
         />
       </div>
