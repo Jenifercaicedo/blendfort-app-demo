@@ -53,9 +53,6 @@ const ResidentDashboard = () => {
     canDeleteEgreso,
   } = useAppContext();
 
-  /* ===========================
-     Proyectos asignados
-  =========================== */
   const proyectosAsignados = useMemo(() => {
     return (getProyectosAsignados?.(nombreUsuario) || [])
       .map(normalize)
@@ -79,9 +76,6 @@ const ResidentDashboard = () => {
   const proyectoActivoFinal = proyectoActivo || proyectosAsignados[0] || "";
   const tieneProyectosAsignados = proyectosAsignados.length > 0;
 
-  /* ===========================
-     Fallback de permisos
-  =========================== */
   const canEditLocal = useMemo(() => {
     return (reg) => {
       const me = normalize(nombreUsuario);
@@ -103,9 +97,6 @@ const ResidentDashboard = () => {
   const canDelete = (reg) =>
     typeof canDeleteEgreso === "function" ? canDeleteEgreso(reg) : canEditLocal(reg);
 
-  /* ===========================
-     Filtros
-  =========================== */
   const [showFiltros, setShowFiltros] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
@@ -120,9 +111,6 @@ const ResidentDashboard = () => {
     setFiltroFecha("");
   };
 
-  /* ===========================
-     Modales
-  =========================== */
   const [showModalNuevo, setShowModalNuevo] = useState(false);
   const [idAEliminar, setIdAEliminar] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
@@ -133,9 +121,6 @@ const ResidentDashboard = () => {
   const [modalExito, setModalExito] = useState({ show: false, mensaje: "" });
   const mostrarExito = (mensaje) => setModalExito({ show: true, mensaje });
 
-  /* ===========================
-     Form
-  =========================== */
   const initialForm = {
     proyecto: "",
     lugar: "",
@@ -167,9 +152,6 @@ const ResidentDashboard = () => {
     []
   );
 
-  /* ===========================
-     Egresos visibles
-  =========================== */
   const registrosProyecto = useMemo(() => {
     const allowed = new Set(proyectosAsignados.map(normalize));
     return (egresos || []).filter((e) => allowed.has(normalize(e?.proyecto)));
@@ -209,9 +191,6 @@ const ResidentDashboard = () => {
     }, 0);
   }, [registrosScope]);
 
-  /* ===========================
-     Mano de obra residente
-  =========================== */
   const personalProyectoActivo = useMemo(() => {
     if (!proyectoActivoFinal) return [];
 
@@ -226,9 +205,6 @@ const ResidentDashboard = () => {
     );
   }, [registrosScope]);
 
-  /* ===========================
-     Resumen Caja Chica
-  =========================== */
   const resumenCajaChica = useMemo(() => {
     if (!nombreUsuario || typeof getResumenCajaChicaResidente !== "function") {
       return {
@@ -257,9 +233,6 @@ const ResidentDashboard = () => {
   const cajaExcedida =
     normalize(resumenCajaChica?.estado) === "EXCEDIDA" || saldoCajaNegativo;
 
-  /* ===========================
-     Acciones
-  =========================== */
   const abrirModalNuevo = () => {
     setEditandoId(null);
     setNuevoEgreso({
@@ -402,8 +375,8 @@ const ResidentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-blendfort-fondo flex flex-col p-4 md:p-8 font-sans text-black overflow-x-hidden">
-      <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-6 md:mb-8">
+    <div className="min-h-screen bg-blendfort-fondo flex flex-col px-4 py-3 md:px-7 md:py-4 lg:px-8 lg:py-5 font-sans text-black overflow-x-hidden">
+      <div className="w-full max-w-7xl mx-auto flex justify-between items-start md:items-center mb-2 md:mb-3 lg:mb-2">
         <button
           type="button"
           onClick={() => {
@@ -416,7 +389,7 @@ const ResidentDashboard = () => {
           <img
             src={logo}
             alt="Blendfort"
-            className="h-24 sm:h-26 md:h-30 lg:h-38 xl:h36  w-auto object-contain"
+            className="h-16 sm:h-20 md:h-20 lg:h-24 xl:h-28 w-auto object-contain"
           />
         </button>
 
@@ -442,13 +415,13 @@ const ResidentDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start mb-6">
-          <div className="flex flex-col items-center lg:items-start space-y-3 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 items-start mb-6">
+          <div className="flex flex-col items-center lg:items-start space-y-2 md:space-y-2.5 w-full lg:-mt-1">
             <div className="text-center lg:text-left">
-              <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.24em] block mb-1">
+              <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.24em] block mb-0.5">
                 BIENVENIDO DE NUEVO
               </span>
-              <h1 className="text-3xl md:text-5xl font-black text-black uppercase tracking-tighter leading-tight">
+              <h1 className="text-3xl md:text-5xl font-black text-black uppercase tracking-tighter leading-[0.95]">
                 HOLA, <span className="text-[#a1a1a1]">{nombreUsuario}</span>!
               </h1>
             </div>
@@ -588,10 +561,9 @@ const ResidentDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setShowFiltros((v) => !v)}
-                  className={`h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja
-                    flex items-center justify-center md:justify-start gap-2
-                    ${hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"}
-                  `}
+                  className={`h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja flex items-center justify-center md:justify-start gap-2 ${
+                    hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"
+                  }`}
                 >
                   <svg
                     className="w-3.5 h-3.5 opacity-50"
@@ -613,10 +585,7 @@ const ResidentDashboard = () => {
                 <button
                   type="button"
                   onClick={abrirReporteLista}
-                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-blendfort-naranja text-white
-                    font-black text-[9px] uppercase tracking-[0.16em]
-                    hover:bg-black transition-all active:scale-95 shadow-sm
-                    flex items-center justify-center gap-2"
+                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-blendfort-naranja text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-black transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
                 >
                   <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
                     <span className="text-sm font-light">+</span>
@@ -627,10 +596,7 @@ const ResidentDashboard = () => {
                 <button
                   type="button"
                   onClick={abrirModalNuevo}
-                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-black text-white
-                    font-black text-[9px] uppercase tracking-[0.16em]
-                    hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm
-                    flex items-center justify-center gap-2"
+                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-black text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
                 >
                   <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
                     <span className="text-sm font-light">+</span>
