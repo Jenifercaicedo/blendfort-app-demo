@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 
-import PersonalTopBar from "../components/PersonalTopBar";
 import PersonalFilters from "../components/PersonalFilters";
 import PersonalTable from "../components/PersonalTable";
 import PersonalFormModal from "../components/PersonalFormModal";
@@ -35,6 +34,19 @@ const buildDefaultEmpleado = () => ({
   rol: "OPERARIO",
   estado: "ACTIVO",
 });
+
+const InfoPill = ({ icon, children, accent = false }) => (
+  <div
+    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+      accent
+        ? "border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]"
+        : "border-transparent bg-slate-100 text-slate-600"
+    }`}
+  >
+    <i className={`${icon} text-[11px]`} />
+    <span className="truncate">{children}</span>
+  </div>
+);
 
 /* ===========================
    Component
@@ -74,8 +86,8 @@ const GestionPersonal = ({ onBack }) => {
   const [empleadoOrigenMovimiento, setEmpleadoOrigenMovimiento] = useState(null);
 
   const opcionesProyectos = useMemo(() => {
-  return [...new Set((proyectos || []).map((p) => p?.nombre).filter(Boolean))].sort();
-}, [proyectos]);
+    return [...new Set((proyectos || []).map((p) => p?.nombre).filter(Boolean))].sort();
+  }, [proyectos]);
 
   const opcionesEstado = useMemo(() => ["ACTIVO", "INACTIVO"], []);
 
@@ -159,17 +171,17 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const abrirModalEditar = (asignacion) => {
-  setDetalleEmpleado(null);
+    setDetalleEmpleado(null);
 
-  setNuevoEmpleado({
-    ...buildDefaultEmpleado(),
-    ...asignacion,
-    estado: asignacion?.estado || "ACTIVO",
-  });
-  setEditandoEmpleado(asignacion);
-  resetModoAsignacion();
-  setShowModal(true);
-};
+    setNuevoEmpleado({
+      ...buildDefaultEmpleado(),
+      ...asignacion,
+      estado: asignacion?.estado || "ACTIVO",
+    });
+    setEditandoEmpleado(asignacion);
+    resetModoAsignacion();
+    setShowModal(true);
+  };
 
   const abrirAsignacionProyecto = (empleadoAgrupado) => {
     if (!empleadoAgrupado) return;
@@ -201,29 +213,29 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const abrirMoverProyecto = (asignacion) => {
-  if (!asignacion) return;
+    if (!asignacion) return;
 
-  setDetalleEmpleado(null);
+    setDetalleEmpleado(null);
 
-  setNuevoEmpleado({
-    ...buildDefaultEmpleado(),
-    nombre: asignacion?.nombre || "",
-    cargo: asignacion?.cargo || "",
-    proyecto: "",
-    tipo: asignacion?.tipo || "CAMPO",
-    fechaContratacion: asignacion?.fechaContratacion || "",
-    valorDia: asignacion?.valorDia ?? "",
-    salarioMensual: asignacion?.salarioMensual ?? "",
-    valorHoraExtra: asignacion?.valorHoraExtra ?? "",
-    rol: asignacion?.rol || "OPERARIO",
-    estado: "ACTIVO",
-  });
+    setNuevoEmpleado({
+      ...buildDefaultEmpleado(),
+      nombre: asignacion?.nombre || "",
+      cargo: asignacion?.cargo || "",
+      proyecto: "",
+      tipo: asignacion?.tipo || "CAMPO",
+      fechaContratacion: asignacion?.fechaContratacion || "",
+      valorDia: asignacion?.valorDia ?? "",
+      salarioMensual: asignacion?.salarioMensual ?? "",
+      valorHoraExtra: asignacion?.valorHoraExtra ?? "",
+      rol: asignacion?.rol || "OPERARIO",
+      estado: "ACTIVO",
+    });
 
-  setEditandoEmpleado(null);
-  setModoAsignacion("mover");
-  setEmpleadoOrigenMovimiento(asignacion);
-  setShowModal(true);
-};
+    setEditandoEmpleado(null);
+    setModoAsignacion("mover");
+    setEmpleadoOrigenMovimiento(asignacion);
+    setShowModal(true);
+  };
 
   const existeDuplicado = (payload) => {
     const nombreN = normalize(payload.nombre);
@@ -323,9 +335,9 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const solicitarEliminar = (id) => {
-  setDetalleEmpleado(null);
-  setIdAEliminar(id);
-};
+    setDetalleEmpleado(null);
+    setIdAEliminar(id);
+  };
 
   const eliminarConfirmado = async () => {
     try {
@@ -350,65 +362,104 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   return (
-    <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
-      <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        <PersonalTopBar
-          onBack={onBack}
-          onToggleFiltros={() => setShowFiltros((v) => !v)}
+    <div className="space-y-4 md:space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+            <i className="pi pi-users text-[11px]" />
+            <span>Gestión de personal</span>
+          </div>
+
+          <h2 className="mt-3 text-[28px] md:text-[34px] xl:text-[38px] font-black tracking-tight text-slate-800 leading-none">
+            Personal
+          </h2>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <InfoPill icon="pi pi-id-card" accent>
+              {personalAgrupado.length} empleados
+            </InfoPill>
+
+            {filtroProyecto ? (
+              <InfoPill icon="pi pi-briefcase">
+                {String(filtroProyecto).toUpperCase()}
+              </InfoPill>
+            ) : null}
+
+            {filtroEstado ? (
+              <InfoPill icon="pi pi-check-circle">
+                {String(filtroEstado).toUpperCase()}
+              </InfoPill>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex justify-end items-center gap-2 self-start">
+          <button
+            type="button"
+            onClick={() => setShowFiltros((v) => !v)}
+            className={`md:hidden relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+              showFiltros
+                ? "border-[#FCB017] bg-[#FFF8E8] text-[#C98500]"
+                : hayFiltros
+                ? "border-[#FCB017]/30 bg-[#FFF8E8] text-[#C98500]"
+                : "border-black/10 bg-white text-slate-600"
+            }`}
+            aria-label="Filtros"
+            title="Filtros"
+          >
+            <i className="pi pi-filter text-[13px]" />
+            {hayFiltros && (
+              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FCB017]" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={abrirModalNuevo}
+            className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#FCB017] active:scale-95 shadow-sm"
+          >
+            <i className="pi pi-plus text-[12px]" />
+            <span>Nuevo personal</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
+        <PersonalFilters
+          show={true}
+          queryNombre={queryNombre}
+          setQueryNombre={setQueryNombre}
+          filtroProyecto={filtroProyecto}
+          setFiltroProyecto={setFiltroProyecto}
+          opcionesProyectos={opcionesProyectos}
+          filtroEstado={filtroEstado}
+          setFiltroEstado={setFiltroEstado}
+          opcionesEstado={opcionesEstado}
           hayFiltros={hayFiltros}
-          onNuevo={abrirModalNuevo}
+          limpiarFiltros={limpiarFiltros}
         />
+      </div>
 
-        <div className="p-8 md:p-14 relative">
-          <div className="mb-10">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
-              <span className="text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
-                Personnel Control
-              </span>
-            </div>
+      {showFiltros && (
+        <div className="md:hidden animate-in fade-in zoom-in duration-300">
+          <PersonalFilters
+            show={showFiltros}
+            queryNombre={queryNombre}
+            setQueryNombre={setQueryNombre}
+            filtroProyecto={filtroProyecto}
+            setFiltroProyecto={setFiltroProyecto}
+            opcionesProyectos={opcionesProyectos}
+            filtroEstado={filtroEstado}
+            setFiltroEstado={setFiltroEstado}
+            opcionesEstado={opcionesEstado}
+            hayFiltros={hayFiltros}
+            limpiarFiltros={limpiarFiltros}
+          />
+        </div>
+      )}
 
-            <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-              Directorio de Personal
-            </h3>
-
-            <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-3">
-              {personalAgrupado.length} Empleados encontrados
-            </p>
-          </div>
-
-          <div className="hidden md:block mb-10">
-            <PersonalFilters
-              show={true}
-              queryNombre={queryNombre}
-              setQueryNombre={setQueryNombre}
-              filtroProyecto={filtroProyecto}
-              setFiltroProyecto={setFiltroProyecto}
-              opcionesProyectos={opcionesProyectos}
-              filtroEstado={filtroEstado}
-              setFiltroEstado={setFiltroEstado}
-              opcionesEstado={opcionesEstado}
-              hayFiltros={hayFiltros}
-              limpiarFiltros={limpiarFiltros}
-            />
-          </div>
-
-          <div className="md:hidden mb-10">
-            <PersonalFilters
-              show={showFiltros}
-              queryNombre={queryNombre}
-              setQueryNombre={setQueryNombre}
-              filtroProyecto={filtroProyecto}
-              setFiltroProyecto={setFiltroProyecto}
-              opcionesProyectos={opcionesProyectos}
-              filtroEstado={filtroEstado}
-              setFiltroEstado={setFiltroEstado}
-              opcionesEstado={opcionesEstado}
-              hayFiltros={hayFiltros}
-              limpiarFiltros={limpiarFiltros}
-            />
-          </div>
-
+      <div className="rounded-[1.8rem] border border-black/5 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.04)] overflow-hidden">
+        <div className="p-4 md:p-5">
           <PersonalTable
             data={personalAgrupado}
             onOpenDetalle={setDetalleEmpleado}

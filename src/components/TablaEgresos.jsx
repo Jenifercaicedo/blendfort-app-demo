@@ -17,44 +17,58 @@ const money = (n) => {
   });
 };
 
+const estadoBadge = (estado) => {
+  const estadoU = norm(estado || "PENDIENTE");
+
+  if (estadoU === "ANULADO") {
+    return "bg-red-50 text-red-700 border-red-200";
+  }
+
+  if (estadoU === "PAGADO" || estadoU === "COMPLETADO") {
+    return "bg-green-50 text-green-700 border-green-200";
+  }
+
+  return "bg-amber-50 text-amber-700 border-amber-200";
+};
+
 const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
   const [detalleEgreso, setDetalleEgreso] = useState(null);
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[2rem] border border-black/[0.04] bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin scrollbar-thumb-black/5">
-          <table className="w-full text-left border-collapse min-w-[860px]">
-            <thead className="sticky top-0 z-20 bg-black">
-              <tr className="border-b border-white/10">
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70">
+      <div className="rounded-[1.6rem] md:rounded-[1.8rem] border border-black/5 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.04)] overflow-hidden">
+        {/* Desktop */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[520px]">
+          <table className="w-full min-w-[900px] border-collapse text-left">
+            <thead className="sticky top-0 z-20 bg-white">
+              <tr className="border-b border-black/5 bg-[#F9F9F6]">
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
                   Fecha
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70">
-                  Proyecto & Concepto
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
+                  Proyecto y concepto
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70">
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
                   Categoría
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70">
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
                   Estado
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70 text-center">
+                <th className="px-6 py-4 text-center text-[11px] font-semibold text-slate-500">
                   Fact.
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70 text-right">
+                <th className="px-6 py-4 text-right text-[11px] font-semibold text-slate-500">
                   Valor
                 </th>
-                <th className="px-4 md:px-8 py-4 md:py-5 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-white/70 text-center">
+                <th className="px-6 py-4 text-center text-[11px] font-semibold text-slate-500">
                   Acciones
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-black/[0.02]">
+            <tbody className="divide-y divide-black/[0.04]">
               {(registros || []).map((reg) => {
                 const estadoU = norm(reg?.estado || "PENDIENTE");
-                const esPagado = estadoU === "PAGADO" || estadoU === "COMPLETADO";
                 const esAnulado = estadoU === "ANULADO";
 
                 const puedeEditarBase = canEdit ? canEdit(reg) : true;
@@ -64,139 +78,109 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                 const puedeEliminar = !esAnulado && puedeEliminarBase;
 
                 const tieneFactura =
-                  Boolean(reg?.tieneFactura) || String(reg?.factura || "").toLowerCase() === "si";
+                  Boolean(reg?.tieneFactura) ||
+                  String(reg?.factura || "").toLowerCase() === "si";
 
                 return (
                   <tr
                     key={reg.id}
-                    className={`group transition-colors ${
-                      esAnulado
-                        ? "bg-red-50/40 hover:bg-red-50/70"
-                        : "hover:bg-blendfort-fondo/20"
+                    className={`transition-colors ${
+                      esAnulado ? "bg-red-50/30 hover:bg-red-50/50" : "hover:bg-[#FCFCFA]"
                     }`}
                   >
-                    <td className="px-4 md:px-8 py-3.5 md:py-5">
-                      <div
-                        className={`text-[9px] md:text-[10px] font-black uppercase ${
-                          esAnulado ? "text-red-700/70" : "text-black/40"
+                    <td className="px-6 py-4">
+                      <p
+                        className={`text-[12px] font-semibold ${
+                          esAnulado ? "text-red-700/70" : "text-slate-600"
                         }`}
                       >
                         {reg.fecha}
-                      </div>
+                      </p>
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5">
+                    <td className="px-6 py-4">
                       <button
                         type="button"
                         onClick={() => setDetalleEgreso(reg)}
-                        className="text-left w-full group/item"
+                        className="w-full text-left"
                         title="Ver detalle"
                       >
-                        <div
-                          className={`text-[9px] md:text-[10px] font-black uppercase ${
-                            esAnulado ? "text-red-700" : "text-blendfort-naranja"
+                        <p
+                          className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                            esAnulado ? "text-red-700/70" : "text-[#C98500]"
                           }`}
                         >
-                          <span
-                            className={`border-b border-transparent transition-all ${
-                              esAnulado
-                                ? "line-through decoration-red-300 decoration-2"
-                                : "group-hover/item:border-blendfort-naranja"
-                            }`}
-                          >
-                            {reg.proyecto}
-                          </span>
-                        </div>
+                          {reg.proyecto}
+                        </p>
 
-                        <div
-                          className={`text-[10px] md:text-[11px] font-black uppercase mt-1 truncate max-w-[260px] ${
+                        <p
+                          className={`mt-1 text-[13px] font-black uppercase tracking-tight truncate max-w-[320px] ${
                             esAnulado
                               ? "text-red-700/80 line-through decoration-red-300"
-                              : "text-black/70"
+                              : "text-slate-800 hover:text-[#C98500]"
                           }`}
                         >
                           {reg.concepto}
-                        </div>
+                        </p>
                       </button>
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5">
-                      <div
-                        className={`text-[8px] md:text-[9px] font-black uppercase italic ${
-                          esAnulado ? "text-red-700/70" : "text-black/40"
+                    <td className="px-6 py-4">
+                      <p
+                        className={`text-[12px] font-semibold uppercase ${
+                          esAnulado ? "text-red-700/70" : "text-slate-500"
                         }`}
                       >
                         {reg.categoria}
-                      </div>
+                      </p>
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5">
-                      <div
-                        className={`text-[6px] md:text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
-                          esAnulado
-                            ? "text-red-700 bg-red-50 border-red-200"
-                            : esPagado
-                            ? "text-green-600 bg-green-50 border-green-100"
-                            : "text-amber-500 bg-amber-50 border-amber-100"
-                        }`}
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${estadoBadge(
+                          reg.estado
+                        )}`}
                       >
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            esAnulado
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            estadoU === "ANULADO"
                               ? "bg-red-600"
-                              : esPagado
+                              : estadoU === "PAGADO" || estadoU === "COMPLETADO"
                               ? "bg-green-600"
-                              : "bg-amber-500 animate-pulse"
+                              : "bg-amber-500"
                           }`}
                         />
                         {reg.estado}
-                      </div>
+                      </span>
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5 text-center">
+                    <td className="px-6 py-4 text-center">
                       {tieneFactura ? (
                         <div
-                          className={`flex justify-center ${
-                            esAnulado ? "text-red-400" : "text-blendfort-naranja/70"
+                          className={`inline-flex items-center justify-center ${
+                            esAnulado ? "text-red-400" : "text-[#C98500]"
                           }`}
                         >
-                          <svg
-                            className="w-3.5 h-3.5 md:w-4 md:h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M9 12h6m-6 4h6M7 3h7l3 3v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M14 3v3a1 1 0 001 1h3"
-                            />
-                          </svg>
+                          <i className="pi pi-file text-[14px]" />
                         </div>
                       ) : (
-                        <span className="text-[9px] opacity-10 font-black">—</span>
+                        <span className="text-slate-300">—</span>
                       )}
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5 text-right">
-                      <div
-                        className={`text-[10px] md:text-[11px] font-black tracking-tight ${
+                    <td className="px-6 py-4 text-right">
+                      <p
+                        className={`text-[14px] font-black tracking-tight ${
                           esAnulado
                             ? "text-red-700/80 line-through decoration-red-300"
-                            : "text-black"
+                            : "text-slate-800"
                         }`}
                       >
                         $ {money(reg.valor)}
-                      </div>
+                      </p>
                     </td>
 
-                    <td className="px-4 md:px-8 py-3.5 md:py-5">
+                    <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <button
                           type="button"
@@ -212,22 +196,13 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                               ? "Solo puedes editar registros que tú creaste"
                               : "Editar"
                           }
-                          className={`w-9 h-9 rounded-full transition-all shadow-sm active:scale-90 flex items-center justify-center ${
+                          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
                             puedeEditar
-                              ? "bg-blendfort-fondo text-black/70 hover:bg-black hover:text-white"
-                              : "bg-black/5 text-black/20 cursor-not-allowed"
+                              ? "bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white"
+                              : "bg-slate-100 text-slate-300 cursor-not-allowed"
                           }`}
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                          >
-                            <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                            <path d="M19.5 7.125L16.875 4.5" />
-                          </svg>
+                          <i className="pi pi-pencil text-[12px]" />
                         </button>
 
                         <button
@@ -244,21 +219,13 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
                               ? "Solo puedes anular registros que tú creaste"
                               : "Anular"
                           }
-                          className={`w-9 h-9 rounded-full transition-all shadow-sm active:scale-90 flex items-center justify-center ${
+                          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
                             puedeEliminar
-                              ? "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"
-                              : "bg-black/5 text-black/20 cursor-not-allowed"
+                              ? "bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
+                              : "bg-slate-100 text-slate-300 cursor-not-allowed"
                           }`}
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                          >
-                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <i className="pi pi-trash text-[12px]" />
                         </button>
                       </div>
                     </td>
@@ -268,8 +235,8 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
 
               {(!registros || registros.length === 0) && (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center">
-                    <p className="text-[9px] font-black uppercase tracking-[0.45em] opacity-20">
+                  <td colSpan={7} className="py-16 text-center">
+                    <p className="text-[12px] font-semibold text-slate-400">
                       No hay registros para este filtro
                     </p>
                   </td>
@@ -277,6 +244,156 @@ const TablaEgresos = ({ registros, onEdit, onDelete, canEdit, canDelete }) => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile */}
+        <div className="md:hidden p-4 space-y-3">
+          {(registros || []).length === 0 ? (
+            <div className="rounded-[1.2rem] border border-dashed border-black/10 bg-white p-8 text-center">
+              <p className="text-[12px] font-semibold text-slate-400">
+                No hay registros para este filtro
+              </p>
+            </div>
+          ) : (
+            (registros || []).map((reg) => {
+              const estadoU = norm(reg?.estado || "PENDIENTE");
+              const esAnulado = estadoU === "ANULADO";
+
+              const puedeEditarBase = canEdit ? canEdit(reg) : true;
+              const puedeEliminarBase = canDelete ? canDelete(reg) : true;
+
+              const puedeEditar = !esAnulado && puedeEditarBase;
+              const puedeEliminar = !esAnulado && puedeEliminarBase;
+
+              const tieneFactura =
+                Boolean(reg?.tieneFactura) ||
+                String(reg?.factura || "").toLowerCase() === "si";
+
+              return (
+                <div
+                  key={reg.id}
+                  className={`rounded-[1.3rem] border p-4 shadow-sm ${
+                    esAnulado
+                      ? "border-red-100 bg-red-50/30"
+                      : "border-black/5 bg-white"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDetalleEgreso(reg)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p
+                          className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                            esAnulado ? "text-red-700/70" : "text-[#C98500]"
+                          }`}
+                        >
+                          {reg.proyecto}
+                        </p>
+
+                        <h4
+                          className={`mt-1 text-[15px] font-black uppercase tracking-tight leading-tight ${
+                            esAnulado
+                              ? "text-red-700/80 line-through decoration-red-300"
+                              : "text-slate-800"
+                          }`}
+                        >
+                          {reg.concepto}
+                        </h4>
+                      </div>
+
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${estadoBadge(
+                          reg.estado
+                        )}`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            estadoU === "ANULADO"
+                              ? "bg-red-600"
+                              : estadoU === "PAGADO" || estadoU === "COMPLETADO"
+                              ? "bg-green-600"
+                              : "bg-amber-500"
+                          }`}
+                        />
+                        {reg.estado}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-medium text-slate-500">Fecha</p>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-800">
+                        {reg.fecha}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-medium text-slate-500">Categoría</p>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-800 uppercase">
+                        {reg.categoria}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-medium text-slate-500">Factura</p>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-800">
+                        {tieneFactura ? "Sí" : "No"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-medium text-slate-500">Valor</p>
+                      <p
+                        className={`mt-1 text-[13px] font-black ${
+                          esAnulado ? "text-red-700/80" : "text-slate-800"
+                        }`}
+                      >
+                        $ {money(reg.valor)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (puedeEditar) onEdit(reg);
+                      }}
+                      disabled={!puedeEditar}
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold transition-all ${
+                        puedeEditar
+                          ? "bg-slate-100 text-slate-700"
+                          : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                      }`}
+                    >
+                      <i className="pi pi-pencil text-[11px]" />
+                      Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (puedeEliminar) onDelete(reg.id);
+                      }}
+                      disabled={!puedeEliminar}
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold transition-all ${
+                        puedeEliminar
+                          ? "bg-red-50 text-red-600"
+                          : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                      }`}
+                    >
+                      <i className="pi pi-trash text-[11px]" />
+                      Anular
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

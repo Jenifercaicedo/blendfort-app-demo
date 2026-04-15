@@ -45,6 +45,22 @@ const money = (n) => {
   });
 };
 
+const InfoPill = ({ icon, children, accent = false }) => (
+  <div
+    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+      accent
+        ? "border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]"
+        : "border-transparent bg-slate-100 text-slate-600"
+    }`}
+  >
+    <i className={`${icon} text-[11px]`} />
+    <span className="truncate">{children}</span>
+  </div>
+);
+
+const filtersBoxClass =
+  "rounded-[1.6rem] border border-black/5 bg-white p-4 md:p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]";
+
 const ManoObraCard = ({ onBack }) => {
   const {
     egresos,
@@ -117,9 +133,6 @@ const ManoObraCard = ({ onBack }) => {
     return proyectoActivo;
   }, [proyectoActivo, opcionesProyectosBase]);
 
-  /* ===========================
-     Helpers de actualización
-  =========================== */
   const updateManyEgresos = useCallback(
     (updater) => {
       if (typeof setEgresos === "function") {
@@ -144,9 +157,6 @@ const ManoObraCard = ({ onBack }) => {
     [setEgresos, updateEgreso, egresos]
   );
 
-  /* ===========================
-     Filtrado MO
-  =========================== */
   const egresosMOProyecto = useMemo(() => {
     const pA = norm(proyectoActivo);
     const todos = pA === "TODOS";
@@ -331,145 +341,154 @@ const ManoObraCard = ({ onBack }) => {
   };
 
   const filtrosPanel = (
-    <div className="bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <CustomSelect
-          label="Proyecto"
-          options={opcionesProyectos}
-          value={proyectoActivo}
-          onChange={(val) => {
-            const next = String(val || "").trim();
-            setProyectoActivo(!next ? "TODOS" : next);
-            setSemanaActiva("");
-          }}
-          placeholder="TODOS"
-          allowCustom={false}
-        />
+    <div className={filtersBoxClass}>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-4">
+          <CustomSelect
+            label="Proyecto"
+            options={opcionesProyectos}
+            value={proyectoActivo}
+            onChange={(val) => {
+              const next = String(val || "").trim();
+              setProyectoActivo(!next ? "TODOS" : next);
+              setSemanaActiva("");
+            }}
+            placeholder="TODOS"
+            allowCustom={false}
+          />
+        </div>
 
-        <CustomSelect
-          label="Semana"
-          options={opcionesSemanas.map((w) => weekLabel(w))}
-          value={semanaActiva ? weekLabel(semanaActiva) : ""}
-          onChange={(val) => {
-            const match = opcionesSemanas.find((k) => weekLabel(k) === val);
-            setSemanaActiva(match || "");
-          }}
-          placeholder={opcionesSemanas.length ? "TODAS..." : "SIN SEMANAS"}
-          allowCustom={false}
-          disabled={!opcionesSemanas.length}
-        />
+        <div className="md:col-span-4">
+          <CustomSelect
+            label="Semana"
+            options={opcionesSemanas.map((w) => weekLabel(w))}
+            value={semanaActiva ? weekLabel(semanaActiva) : ""}
+            onChange={(val) => {
+              const match = opcionesSemanas.find((k) => weekLabel(k) === val);
+              setSemanaActiva(match || "");
+            }}
+            placeholder={opcionesSemanas.length ? "TODAS..." : "SIN SEMANAS"}
+            allowCustom={false}
+            disabled={!opcionesSemanas.length}
+          />
+        </div>
 
-        <div className="space-y-1">
+        <div className="md:col-span-3 space-y-1">
           <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
             Pendientes
           </label>
           <button
             type="button"
             onClick={() => setSoloPendientes((v) => !v)}
-            className="w-full h-[53px] bg-white border border-black/5 rounded-2xl px-4 flex items-center justify-between shadow-sm transition-all hover:border-black/20"
+            className="w-full h-[50px] bg-white border border-black/5 rounded-xl px-4 flex items-center justify-between shadow-sm transition-all hover:border-black/20"
           >
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-black/50">
-              {soloPendientes ? "ACTIVO" : "DESACT."}
+            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+              {soloPendientes ? "ACTIVO" : "DESACTIVADO"}
             </span>
+
             <div
-              className={`w-14 h-7 rounded-full transition-all relative ${
-                soloPendientes ? "bg-blendfort-naranja" : "bg-black/10"
+              className={`w-12 h-6 rounded-full transition-all relative ${
+                soloPendientes ? "bg-[#FCB017]" : "bg-black/10"
               }`}
             >
               <div
-                className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
-                  soloPendientes ? "left-8" : "left-1"
+                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all ${
+                  soloPendientes ? "left-7" : "left-1"
                 }`}
               />
             </div>
           </button>
         </div>
-      </div>
 
-      {hayFiltros && (
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={limpiarFiltros}
-            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-          >
-            <svg
-              className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
+        {hayFiltros && (
+          <div className="md:col-span-1 flex items-end">
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-black/10 text-slate-600 transition-all active:scale-95 hover:border-[#FCB017] hover:text-[#C98500] shadow-sm h-[50px]"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-
-            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
-              Limpiar
-            </span>
-          </button>
-        </div>
-      )}
+              <i className="pi pi-filter-slash text-[12px]" />
+              <span className="hidden lg:inline text-[12px] font-semibold">
+                Limpiar
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
-      <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        {/* TOP BAR */}
-        <div className="flex justify-between items-center gap-3 p-4 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-3 group transition-all active:scale-95 shrink-0"
-            type="button"
-          >
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white border border-black/5 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-sm">
-              <svg
-                className="w-3.5 h-3.5 rotate-180"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="3"
-              >
-                <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-            <span className="hidden md:block text-[9px] font-black uppercase tracking-[0.2em] text-black/30 group-hover:text-black">
-              Volver al Panel
-            </span>
-          </button>
+    <div className="space-y-4 md:space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+            <i className="pi pi-chart-line text-[11px]" />
+            <span>Control de nómina</span>
+          </div>
 
-          <div className="flex items-center gap-2 md:gap-3 shrink-0 whitespace-nowrap">
-            {/* Mobile: solo icono */}
+          <h2 className="mt-3 text-[28px] md:text-[34px] xl:text-[38px] font-black tracking-tight text-slate-800 leading-none">
+            Mano de obra
+          </h2>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <InfoPill icon="pi pi-calendar">
+              {semanaActiva ? weekLabel(semanaActiva) : "Todas las semanas"}
+            </InfoPill>
+
+            <InfoPill icon="pi pi-briefcase" accent={norm(proyectoActivo) !== "TODOS"}>
+              {norm(proyectoActivo) === "TODOS" ? "Todos los proyectos" : proyectoActivo}
+            </InfoPill>
+
+            {soloPendientes ? (
+              <InfoPill icon="pi pi-clock" accent>
+                Solo pendientes
+              </InfoPill>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="w-full xl:w-auto flex flex-col gap-3 xl:items-end">
+          <div className="rounded-[1.5rem] border border-[#FCB017]/20 bg-[#FFF8E8] px-4 py-3 md:px-5 md:py-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)] xl:min-w-[280px]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C98500]">
+              Total {semanaActiva ? "semana" : "acumulado"}
+            </p>
+
+            <div className="mt-2 flex items-end gap-2">
+              <span className="text-[11px] font-black text-[#C98500] uppercase tracking-[0.12em]">
+                USD
+              </span>
+              <span className="text-[24px] md:text-[30px] font-black tracking-tight text-slate-800 leading-none">
+                $ {money(granTotal)}
+              </span>
+            </div>
+
+            <p className="mt-2 text-[11px] font-medium text-slate-500">
+              {listaFinal.length} personal
+            </p>
+          </div>
+
+          <div className="flex justify-end items-center gap-2">
             <button
               onClick={() => setShowFiltros((v) => !v)}
               type="button"
-              className={`md:hidden relative w-11 h-11 rounded-2xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja flex items-center justify-center ${
-                hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"
+              className={`md:hidden relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                hayFiltros || showFiltros
+                  ? "border-[#FCB017]/30 bg-[#FFF8E8] text-[#C98500]"
+                  : "border-black/10 bg-white text-slate-600"
               }`}
               title="Filtros"
             >
-              <svg
-                className="w-3.5 h-3.5 opacity-50"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="3"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-              </svg>
+              <i className="pi pi-filter text-[13px]" />
               {hayFiltros && (
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
+                <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FCB017]" />
               )}
             </button>
 
             <button
               onClick={pagarProyectoCompleto}
               type="button"
-              className="bg-black text-white px-3 md:px-6 py-2.5 rounded-2xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.25em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#FCB017] active:scale-95 shadow-sm"
               title={
                 norm(proyectoActivo) === "TODOS"
                   ? "Selecciona un proyecto específico"
@@ -478,74 +497,31 @@ const ManoObraCard = ({ onBack }) => {
                   : "Pagar todo el proyecto"
               }
             >
-              Pagar Proyecto
+              <i className="pi pi-check text-[12px]" />
+              <span>Pagar proyecto</span>
             </button>
 
             <button
               onClick={() => setShowReporte(true)}
               type="button"
-              className="bg-blendfort-naranja text-white px-3 md:px-6 py-2.5 rounded-2xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.2em] md:tracking-[0.25em] hover:bg-black transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-2 rounded-full bg-[#FCB017] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-slate-800 active:scale-95 shadow-sm"
             >
-              + Reporte
+              <i className="pi pi-plus text-[12px]" />
+              <span>Reporte</span>
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="p-8 md:p-14 relative">
-          {/* Desktop: filtros fijos */}
-          <div className="hidden md:block mb-10">{filtrosPanel}</div>
+      <div className="hidden md:block">{filtrosPanel}</div>
+      {showFiltros && <div className="md:hidden animate-in fade-in zoom-in duration-300">{filtrosPanel}</div>}
 
-          {/* Mobile: filtros desplegables */}
-          {showFiltros && <div className="md:hidden mb-10">{filtrosPanel}</div>}
-
-          {/* Header */}
-          <div className="mb-10">
-            <div className="flex items-end justify-between gap-6 flex-wrap">
-              <div className="min-w-[240px]">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
-                  <span className="text-[7px] md:text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
-                    Payroll Control
-                  </span>
-                </div>
-                <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-                  Mano de Obra
-                </h3>
-                <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-3">
-                  {semanaActiva ? weekLabel(semanaActiva) : "Todas las semanas"}
-                </p>
-                <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-1">
-                  {norm(proyectoActivo) === "TODOS"
-                    ? "Todos los proyectos"
-                    : `Proyecto: ${proyectoActivo}`}
-                </p>
-              </div>
-
-              <div className="ml-auto w-full sm:w-auto">
-                <div className="bg-blendfort-fondo/50 border border-black/5 rounded-[2rem] px-5 py-4 shadow-sm text-right">
-                  <div className="text-[7px] font-black uppercase tracking-[0.35em] text-black/30">
-                    Total {semanaActiva ? "Semana" : "Acumulado"}
-                  </div>
-                  <div className="mt-1 text-2xl md:text-3xl font-black tracking-tighter text-black">
-                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">
-                      USD
-                    </span>
-                    $ {money(granTotal)}
-                  </div>
-                  <div className="mt-1 text-[7px] font-bold uppercase tracking-widest text-black/30">
-                    {listaFinal.length} PERSONAL
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <ManoObraTabla
-            listaFinal={listaFinal}
-            onDetalle={abrirDetalle}
-            onPagarSemana={marcarPagadoSemanaEmpleado}
-          />
-        </div>
+      <div className="rounded-[1.8rem] border border-black/5 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.04)] overflow-hidden">
+        <ManoObraTabla
+          listaFinal={listaFinal}
+          onDetalle={abrirDetalle}
+          onPagarSemana={marcarPagadoSemanaEmpleado}
+        />
       </div>
 
       <ReporteDiarioModal

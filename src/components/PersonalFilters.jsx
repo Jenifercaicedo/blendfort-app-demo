@@ -17,64 +17,58 @@ const PersonalFilters = ({
   if (!show) return null;
 
   return (
-    <div className="mb-10 bg-blendfort-fondo/50 p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.5rem] border border-black/[0.02] animate-in fade-in zoom-in duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-1">
+    <div className="rounded-[1.6rem] border border-black/5 bg-white p-4 md:p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] animate-in fade-in zoom-in duration-300">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-5 space-y-1">
           <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
             Buscar
           </label>
-          <input
-            value={queryNombre}
-            onChange={(e) => setQueryNombre(e.target.value)}
-            placeholder="NOMBRE..."
-            className="w-full bg-white border border-black/5 px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black outline-none h-[54px] focus:border-black transition-all shadow-sm uppercase"
+          <div className="relative">
+            <i className="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-[12px] text-black/25" />
+            <input
+              value={queryNombre}
+              onChange={(e) => setQueryNombre(e.target.value)}
+              placeholder="NOMBRE, CARGO O PROYECTO..."
+              className="w-full bg-white border border-black/5 pl-10 pr-4 py-3.5 md:p-4 md:pl-10 rounded-xl text-[16px] md:text-[10px] font-black outline-none h-[50px] focus:border-black transition-all shadow-sm uppercase"
+            />
+          </div>
+        </div>
+
+        <div className="md:col-span-3">
+          <FilterSelect
+            label="Proyecto"
+            options={opcionesProyectos}
+            value={filtroProyecto}
+            onChange={setFiltroProyecto}
+            placeholder="TODOS..."
           />
         </div>
 
-        <FilterSelect
-          label="Proyecto"
-          options={opcionesProyectos}
-          value={filtroProyecto}
-          onChange={setFiltroProyecto}
-          placeholder="TODOS..."
-        />
-
-        <FilterSelect
-          label="Estado"
-          options={opcionesEstado}
-          value={filtroEstado}
-          onChange={setFiltroEstado}
-          placeholder="TODOS..."
-        />
-      </div>
-
-      {hayFiltros && (
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={limpiarFiltros}
-            type="button"
-            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-          >
-            <svg
-              className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
-
-            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
-              Limpiar Filtros
-            </span>
-          </button>
+        <div className="md:col-span-3">
+          <FilterSelect
+            label="Estado"
+            options={opcionesEstado}
+            value={filtroEstado}
+            onChange={setFiltroEstado}
+            placeholder="TODOS..."
+          />
         </div>
-      )}
+
+        {hayFiltros && (
+          <div className="md:col-span-1 flex items-end">
+            <button
+              onClick={limpiarFiltros}
+              type="button"
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-black/10 text-slate-600 transition-all active:scale-95 hover:border-[#FCB017] hover:text-[#C98500] shadow-sm h-[50px]"
+            >
+              <i className="pi pi-filter-slash text-[12px]" />
+              <span className="hidden lg:inline text-[12px] font-semibold">
+                Limpiar
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

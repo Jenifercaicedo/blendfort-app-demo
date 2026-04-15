@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from "react";
 const Toast = ({ mensaje, tipo = "exito", onClose }) => {
   useEffect(() => {
     if (!mensaje) return;
+
     const timer = setTimeout(() => {
       onClose?.();
     }, 3000);
@@ -15,37 +16,50 @@ const Toast = ({ mensaje, tipo = "exito", onClose }) => {
 
     if (t === "error") {
       return {
-        wrapper: "bg-red-500 text-white border-white/10",
-        dot: "bg-white",
+        wrapper:
+          "bg-white text-red-700 border-red-100 shadow-[0_18px_40px_rgba(239,68,68,0.14)]",
+        dot: "bg-red-500",
+        label: "Error",
       };
     }
 
     if (t === "info") {
       return {
-        wrapper: "bg-blendfort-naranja text-white border-white/10",
-        dot: "bg-white",
+        wrapper:
+          "bg-white text-[#C98500] border-[#FCB017]/20 shadow-[0_18px_40px_rgba(252,176,23,0.14)]",
+        dot: "bg-[#FCB017]",
+        label: "Aviso",
       };
     }
 
     return {
-      wrapper: "bg-black text-white border-white/10",
-      dot: "bg-white",
+      wrapper:
+        "bg-white text-slate-800 border-black/5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]",
+      dot: "bg-green-500",
+      label: "Correcto",
     };
   }, [tipo]);
 
   if (!mensaje) return null;
 
   return (
-    <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[220] px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="fixed bottom-5 md:bottom-8 left-1/2 z-[220] w-full max-w-full -translate-x-1/2 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div
-        className={`${config.wrapper} min-w-[260px] max-w-[92vw] md:max-w-[560px] px-6 md:px-8 py-3 rounded-full shadow-2xl flex items-center justify-center gap-3 border`}
+        className={`mx-auto flex min-h-[52px] w-fit max-w-[94vw] items-center justify-center gap-3 rounded-full border px-4 py-3 md:px-5 ${config.wrapper}`}
         role="status"
         aria-live="polite"
       >
-        <div className={`w-1.5 h-1.5 rounded-full ${config.dot} animate-pulse`} />
-        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.18em] md:tracking-[0.2em] text-center">
-          {mensaje}
-        </span>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${config.dot} animate-pulse`} />
+
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="hidden sm:inline text-[11px] font-semibold text-slate-400">
+            {config.label}
+          </span>
+
+          <span className="text-center text-[11px] md:text-[12px] font-semibold leading-tight">
+            {mensaje}
+          </span>
+        </div>
       </div>
     </div>
   );

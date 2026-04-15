@@ -7,9 +7,16 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TODOS..." }) => {
+const FilterSelect = ({
+  label,
+  options = [],
+  value,
+  onChange,
+  placeholder = "TODOS...",
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -46,6 +53,8 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
     close();
   };
 
+  const selectedNormalized = normalize(value);
+
   return (
     <div className="space-y-1 relative" ref={containerRef}>
       {label && (
@@ -57,34 +66,36 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
       <button
         type="button"
         onClick={() => (isOpen ? close() : open())}
-        className={`w-full bg-white px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black uppercase flex justify-between items-center border transition-all h-[54px] ${
-          value ? "border-black/10 shadow-sm text-black" : "border-black/5 text-black/50"
-        } hover:border-blendfort-naranja`}
+        aria-expanded={isOpen}
+        className={`w-full h-[50px] rounded-xl border bg-white px-4 flex items-center justify-between text-left transition-all shadow-sm ${
+          value ? "border-black/10 text-slate-800" : "border-black/5 text-slate-400"
+        } hover:border-[#FCB017]`}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="truncate text-[16px] md:text-[11px] font-black uppercase">
+          {value || placeholder}
+        </span>
 
-        <svg
-          className={`w-3 h-3 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="4"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <i
+          className={`pi pi-chevron-down text-[12px] text-slate-400 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       {isOpen && (
-        <div className="absolute z-[200] top-full left-0 w-full mt-2 bg-white rounded-[1.5rem] shadow-2xl border border-black/5 overflow-hidden animate-in fade-in zoom-in duration-200">
-          <div className="p-3 border-b border-black/5 bg-blendfort-fondo/40">
-            <input
-              ref={inputRef}
-              autoFocus
-              className="w-full bg-white px-3 py-3 rounded-xl text-[16px] md:text-[10px] font-bold uppercase outline-none border border-black/5 focus:border-black/20 transition-all"
-              placeholder="Escribe para buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <div className="absolute z-[220] top-full left-0 w-full mt-2 overflow-hidden rounded-[1.2rem] border border-black/5 bg-white shadow-[0_24px_50px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
+          <div className="border-b border-black/5 bg-[#F9F9F6] p-3">
+            <div className="relative">
+              <i className="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
+              <input
+                ref={inputRef}
+                autoFocus
+                className="w-full h-[44px] rounded-xl border border-black/5 bg-white pl-9 pr-3 text-[15px] md:text-[10px] font-bold uppercase outline-none transition-all focus:border-black/20"
+                placeholder="ESCRIBE PARA BUSCAR..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="max-h-56 overflow-y-auto">
@@ -94,26 +105,44 @@ const FilterSelect = ({ label, options = [], value, onChange, placeholder = "TOD
                 onChange("");
                 close();
               }}
-              className="w-full text-left p-4 text-[16px] md:text-[10px] font-black uppercase text-black/40 hover:bg-black/5 border-b border-black/5 transition-colors"
+              className={`w-full text-left px-4 py-3 border-b border-black/5 transition-colors ${
+                !value
+                  ? "bg-[#FFF8E8] text-[#C98500]"
+                  : "text-slate-500 hover:bg-slate-100"
+              }`}
             >
-              • Mostrar Todos
+              <span className="text-[15px] md:text-[11px] font-semibold uppercase">
+                Mostrar todos
+              </span>
             </button>
 
             {filteredOptions.length === 0 ? (
-              <div className="p-4 text-[16px] md:text-[10px] font-black uppercase text-black/30">
-                Sin resultados
+              <div className="p-4">
+                <p className="text-[12px] font-semibold text-slate-400">
+                  Sin resultados
+                </p>
               </div>
             ) : (
-              filteredOptions.map((opt, i) => (
-                <button
-                  key={`${opt}-${i}`}
-                  type="button"
-                  onClick={() => pick(opt)}
-                  className="w-full text-left p-4 text-[16px] md:text-[10px] font-black uppercase hover:bg-black hover:text-white cursor-pointer transition-colors"
-                >
-                  {opt}
-                </button>
-              ))
+              filteredOptions.map((opt, i) => {
+                const isSelected = normalize(opt) === selectedNormalized;
+
+                return (
+                  <button
+                    key={`${opt}-${i}`}
+                    type="button"
+                    onClick={() => pick(opt)}
+                    className={`w-full text-left px-4 py-3 transition-colors ${
+                      isSelected
+                        ? "bg-[#FFF8E8] text-[#C98500]"
+                        : "text-slate-700 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-[15px] md:text-[11px] font-semibold uppercase">
+                      {opt}
+                    </span>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

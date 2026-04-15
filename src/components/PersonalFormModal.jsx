@@ -59,7 +59,7 @@ const PersonalFormModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-[210] overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-[210] overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-300"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -67,26 +67,24 @@ const PersonalFormModal = ({
       aria-modal="true"
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
-        <div className="bg-white w-full max-w-2xl rounded-[2.4rem] md:rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-black/5 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto animate-in zoom-in-95 duration-300">
-          <div className="relative pt-8 md:pt-12 px-6 md:px-12 pb-5 md:pb-6 border-b border-black/5">
-            <div className="space-y-2 pr-12">
+        <div className="bg-white w-full max-w-2xl rounded-[2rem] md:rounded-[2.8rem] overflow-hidden shadow-[0_40px_90px_-20px_rgba(0,0,0,0.45)] border border-black/5 max-h-[calc(100vh-4rem)] overflow-y-auto animate-in zoom-in-95 duration-300">
+          <div className="relative pt-7 md:pt-8 px-6 md:px-8 pb-5 border-b border-black/5 bg-white">
+            <div className="pr-12">
               <div className="flex items-center gap-2">
-                <div className="w-6 md:w-8 h-[2px] bg-blendfort-naranja"></div>
-                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.32em] md:tracking-[0.5em] text-black/40">
-                  {editando ? "Update Employee" : "New Employee"}
+                <div className="w-6 h-[2px] bg-[#FCB017]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#C98500]">
+                  {editando ? "Actualizar empleado" : "Nuevo empleado"}
                 </span>
               </div>
 
-              <h3 className="text-[1.8rem] md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-                {editando ? "Editar Empleado" : "Nuevo Empleado"}
+              <h3 className="mt-3 text-[28px] md:text-[30px] font-black tracking-tight text-slate-800 leading-none">
+                {editando ? "Editar empleado" : "Nuevo empleado"}
               </h3>
 
               {editando && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja"></span>
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-black/50">
-                    EDICIÓN ACTIVA
-                  </span>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+                  <i className="pi pi-pencil text-[11px]" />
+                  <span>Edición activa</span>
                 </div>
               )}
             </div>
@@ -94,19 +92,17 @@ const PersonalFormModal = ({
             <button
               onClick={onClose}
               type="button"
-              className="absolute top-5 md:top-8 right-5 md:right-8 bg-black text-white p-2.5 md:p-3 rounded-full hover:bg-blendfort-naranja transition-all shadow-lg active:scale-90"
+              className="absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-slate-600 hover:border-[#FCB017] hover:text-[#C98500] transition-all"
               aria-label="Cerrar"
             >
-              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <i className="pi pi-times text-[13px]" />
             </button>
           </div>
 
-          <form onSubmit={onSave} className="p-6 pt-6 md:p-12 md:pt-8 space-y-6 md:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          <form onSubmit={onSave} className="p-6 md:p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1 md:col-span-2">
-                <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
+                <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
                   Nombre completo
                 </label>
                 <input
@@ -114,66 +110,60 @@ const PersonalFormModal = ({
                   required
                   type="text"
                   placeholder="EJ. JUAN PÉREZ"
-                  className="w-full bg-blendfort-fondo px-4 py-3.5 md:p-4.5 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black uppercase outline-none border border-transparent focus:bg-white focus:border-black/5 transition-all"
+                  className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black uppercase outline-none focus:border-black transition-all shadow-sm"
                   value={empleado.nombre}
                   onChange={(e) => setEmpleado({ ...empleado, nombre: e.target.value })}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
+                <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
                   Cargo
                 </label>
                 <input
                   required
                   type="text"
                   placeholder="EJ. ALBAÑIL / MAESTRO / RESIDENTE"
-                  className="w-full bg-blendfort-fondo px-4 py-3.5 md:p-4.5 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black uppercase outline-none border border-transparent focus:bg-white focus:border-black/5 transition-all"
+                  className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black uppercase outline-none focus:border-black transition-all shadow-sm"
                   value={empleado.cargo}
                   onChange={(e) => setEmpleado({ ...empleado, cargo: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-1">
-                <CustomSelect
-                  label="Rol"
-                  options={["OPERARIO", "RESIDENTE", "OFICINA"]}
-                  value={empleado.rol || ""}
-                  onChange={setRol}
-                  placeholder="SELECCIONAR..."
-                />
-              </div>
+              <CustomSelect
+                label="Rol"
+                options={["OPERARIO", "RESIDENTE", "OFICINA"]}
+                value={empleado.rol || ""}
+                onChange={setRol}
+                placeholder="SELECCIONAR..."
+              />
 
-              <div className="space-y-1">
-                <CustomSelect
-                  label="Tipo"
-                  options={["CAMPO", "OFICINA"]}
-                  value={empleado.tipo}
-                  onChange={setTipo}
-                  placeholder="SELECCIONAR..."
-                />
-              </div>
+              <CustomSelect
+                label="Tipo"
+                options={["CAMPO", "OFICINA"]}
+                value={empleado.tipo}
+                onChange={setTipo}
+                placeholder="SELECCIONAR..."
+              />
 
-              <div className="space-y-1">
-                <CustomSelect
-                  label="Estado"
-                  options={["ACTIVO", "INACTIVO"]}
-                  value={empleado.estado || "ACTIVO"}
-                  onChange={(val) =>
-                    setEmpleado({ ...empleado, estado: String(val || "ACTIVO") })
-                  }
-                  placeholder="SELECCIONAR..."
-                />
-              </div>
+              <CustomSelect
+                label="Estado"
+                options={["ACTIVO", "INACTIVO"]}
+                value={empleado.estado || "ACTIVO"}
+                onChange={(val) =>
+                  setEmpleado({ ...empleado, estado: String(val || "ACTIVO") })
+                }
+                placeholder="SELECCIONAR..."
+              />
 
-              <div className="space-y-1 md:col-span-2">
-                <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 ml-3 md:ml-4 mt-1">
-                  El rol recomienda el tipo, pero puedes ajustarlo manualmente
-                </div>
+              <div className="md:col-span-2">
+                <p className="text-[11px] font-medium text-slate-500">
+                  El rol recomienda el tipo, pero puedes ajustarlo manualmente.
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CustomSelect
                 label="Proyecto"
                 options={opcionesProyectos}
@@ -183,36 +173,45 @@ const PersonalFormModal = ({
               />
 
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
+                <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
                   Fecha de contratación
                 </label>
                 <input
                   type="date"
                   value={empleado.fechaContratacion}
-                  onChange={(e) => setEmpleado({ ...empleado, fechaContratacion: e.target.value })}
-                  className="w-full bg-white border border-black/5 px-4 py-3.5 md:p-4 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[10px] font-black outline-none h-[54px] focus:border-black transition-all shadow-sm"
+                  onChange={(e) =>
+                    setEmpleado({ ...empleado, fechaContratacion: e.target.value })
+                  }
+                  className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[10px] font-black outline-none h-[50px] focus:border-black transition-all shadow-sm"
                 />
               </div>
             </div>
 
-            <div className="bg-blendfort-fondo p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.5rem] border border-black/5 space-y-5">
+            <div className="rounded-[1.5rem] border border-black/5 bg-[#F9F9F6] p-4 md:p-5 space-y-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="text-[8px] font-black uppercase tracking-[0.4em] text-black/30">
-                  Payment Setup
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C98500]">
+                    Configuración de pago
+                  </p>
+                  <p className="mt-1 text-[12px] font-medium text-slate-500">
+                    {esOficina ? "Salario mensual" : "Jornal diario"}
+                  </p>
                 </div>
-                <div className="text-[9px] font-black uppercase tracking-[0.25em] text-black/50">
-                  {esOficina ? "Salario mensual" : "Jornal diario"}
+
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600">
+                  <i className="pi pi-wallet text-[11px]" />
+                  <span>{esOficina ? "OFICINA" : "CAMPO"}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {!esOficina ? (
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
-                      Valor Día
+                    <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                      Valor día
                     </label>
                     <div className="relative">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
                         $
                       </span>
                       <input
@@ -220,7 +219,7 @@ const PersonalFormModal = ({
                         type="number"
                         step="any"
                         min="0"
-                        className="w-full bg-white px-4 py-3.5 md:p-4 pl-10 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black outline-none border border-transparent focus:border-black/5 transition-all"
+                        className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
                         value={empleado.valorDia}
                         onChange={onChangeNumero("valorDia")}
                       />
@@ -228,11 +227,11 @@ const PersonalFormModal = ({
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
-                      Salario Mensual
+                    <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                      Salario mensual
                     </label>
                     <div className="relative">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
                         $
                       </span>
                       <input
@@ -240,7 +239,7 @@ const PersonalFormModal = ({
                         type="number"
                         step="any"
                         min="0"
-                        className="w-full bg-white px-4 py-3.5 md:p-4 pl-10 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black outline-none border border-transparent focus:border-black/5 transition-all"
+                        className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
                         value={empleado.salarioMensual ?? ""}
                         onChange={onChangeNumero("salarioMensual")}
                       />
@@ -249,11 +248,11 @@ const PersonalFormModal = ({
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
-                    Valor Hora Extra
+                  <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                    Valor hora extra
                   </label>
                   <div className="relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
                       $
                     </span>
                     <input
@@ -261,7 +260,7 @@ const PersonalFormModal = ({
                       type="number"
                       step="any"
                       min="0"
-                      className="w-full bg-white px-4 py-3.5 md:p-4 pl-10 rounded-[1.1rem] md:rounded-2xl text-[16px] md:text-[11px] font-black outline-none border border-transparent focus:border-black/5 transition-all"
+                      className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
                       value={empleado.valorHoraExtra}
                       onChange={onChangeNumero("valorHoraExtra")}
                     />
@@ -269,29 +268,27 @@ const PersonalFormModal = ({
                 </div>
               </div>
 
-              <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20 ml-1 leading-relaxed">
+              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
                 {esOficina
                   ? "Oficina usa salario mensual. No aparece en mano de obra."
                   : "Campo usa jornal diario. Aparece en mano de obra si el rol es OPERARIO."}
-              </div>
+              </p>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-5 md:py-7 rounded-full font-black text-[15px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.5em] hover:bg-blendfort-naranja hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 md:gap-4"
+              className="w-full bg-slate-800 text-white py-4.5 md:py-5 rounded-full font-semibold text-[14px] uppercase tracking-[0.16em] hover:bg-[#FCB017] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm"
             >
+              <i className="pi pi-check text-[12px]" />
               {editando ? "Actualizar" : "Guardar"}
-              <svg className="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="w-full text-[10px] font-black uppercase opacity-40 hover:opacity-100 py-2 text-center tracking-widest"
+              className="w-full text-[11px] font-semibold text-slate-400 hover:text-slate-700 py-1 text-center"
             >
-              ← Cancelar
+              Cancelar
             </button>
           </form>
         </div>

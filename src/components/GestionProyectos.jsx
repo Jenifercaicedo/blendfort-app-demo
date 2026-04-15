@@ -1,6 +1,6 @@
-// GestionProyectos.jsx
 import React, { useMemo, useState } from "react";
 import CustomSelect from "./CustomSelect";
+import ModalAccesoCliente from "./ModalAccesoCliente";
 
 /* ===========================
    Helpers
@@ -15,10 +15,12 @@ const normU = (s) =>
 const money = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "0.00";
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
-// Regla: ANULADO nunca suma. Mano de Obra solo suma si está PAGADO/COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normU(e?.categoria);
   const est = normU(e?.estado || "PENDIENTE");
@@ -32,6 +34,155 @@ const shouldCountInTotals = (e) => {
   return true;
 };
 
+const progressWidth = (gasto, presupuesto) => {
+  const p = Number(presupuesto) || 0;
+  const g = Number(gasto) || 0;
+  if (!p || p <= 0) return 0;
+  return Math.min((g / p) * 100, 100);
+};
+
+const toneDisponible = (disponible) => {
+  if (Number(disponible) < 0) {
+    return {
+      card: "border-red-200 bg-red-50/70",
+      text: "text-red-700",
+      chip: "bg-red-100 text-red-700 border-red-200",
+      label: "EXCEDIDO",
+    };
+  }
+
+  return {
+    card: "border-green-200 bg-green-50/70",
+    text: "text-green-700",
+    chip: "bg-green-100 text-green-700 border-green-200",
+    label: "DISPONIBLE",
+  };
+};
+
+const KpiCard = ({ icon, label, value, hint, accent = false }) => (
+  <div
+    className={`rounded-[1.5rem] border p-4 md:p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] ${
+      accent
+        ? "border-[#FCB017]/25 bg-[#FFF8E8]"
+        : "border-black/5 bg-white"
+    }`}
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+          {label}
+        </p>
+        <h3 className="mt-2 text-[22px] md:text-[26px] xl:text-[28px] font-black tracking-tight text-slate-800 leading-none">
+          {value}
+        </h3>
+        {hint ? (
+          <p className="mt-2 text-[11px] md:text-[12px] font-medium text-slate-500 leading-snug">
+            {hint}
+          </p>
+        ) : null}
+      </div>
+
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+          accent
+            ? "border-[#FCB017]/20 bg-white text-[#C98500]"
+            : "border-black/5 bg-slate-50 text-slate-600"
+        }`}
+      >
+        <i className={`${icon} text-[14px]`} />
+      </div>
+    </div>
+  </div>
+);
+
+const InfoPill = ({ icon, children, accent = false }) => (
+  <div
+    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+      accent
+        ? "border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]"
+        : "border-transparent bg-slate-100 text-slate-600"
+    }`}
+  >
+    <i className={`${icon} text-[11px]`} />
+    <span className="truncate">{children}</span>
+  </div>
+);
+
+const ActionButton = ({
+  onClick,
+  icon,
+  label,
+  tone = "default",
+  mobileSquare = false,
+}) => {
+  const base =
+    tone === "danger"
+      ? "bg-white border border-red-200 text-red-600 hover:bg-red-50"
+      : tone === "accent"
+      ? "bg-[#FFF8E8] border border-[#FCB017]/25 text-[#C98500] hover:bg-[#FCB017] hover:text-white"
+      : "bg-white border border-black/10 text-slate-700 hover:border-[#FCB017] hover:text-[#C98500]";
+
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      className={`inline-flex items-center justify-center gap-2 rounded-xl md:rounded-2xl transition-all active:scale-95 shadow-sm ${base} ${
+        mobileSquare
+          ? "h-11 w-11 md:h-auto md:w-auto md:px-4 md:py-3"
+          : "px-4 py-3"
+      }`}
+    >
+      <i className={`${icon} text-[13px]`} />
+      <span className="hidden md:inline text-[10px] font-black uppercase tracking-[0.18em]">
+        {label}
+      </span>
+    </button>
+  );
+};
+
+const EmptyState = ({ onNew }) => (
+  <div className="space-y-4">
+    <div className="flex justify-end">
+      <button
+        onClick={onNew}
+        type="button"
+        className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#FCB017]"
+      >
+        <i className="pi pi-plus text-[12px]" />
+        <span>Nuevo proyecto</span>
+      </button>
+    </div>
+
+    <div className="rounded-[1.8rem] border border-black/5 bg-white p-8 md:p-10 text-center shadow-[0_14px_40px_rgba(15,23,42,0.04)]">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]">
+        <i className="pi pi-briefcase text-[18px]" />
+      </div>
+
+      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+        Gestión de proyectos
+      </p>
+
+      <h3 className="mt-3 text-2xl md:text-3xl font-black tracking-tight text-slate-800">
+        No hay proyectos activos
+      </h3>
+
+      <p className="mt-3 text-[13px] md:text-[14px] font-medium text-slate-500 max-w-md mx-auto leading-relaxed">
+        Crea tu primer proyecto para empezar a gestionar presupuesto,
+        residentes y portal cliente.
+      </p>
+
+      <button
+        onClick={onNew}
+        type="button"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#FCB017] px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-slate-800"
+      >
+        <i className="pi pi-plus text-[12px]" />
+        <span>Crear proyecto</span>
+      </button>
+    </div>
+  </div>
+);
+
 const GestionProyectos = ({
   proyectos = [],
   egresos = [],
@@ -40,15 +191,15 @@ const GestionProyectos = ({
   onBack,
   onNew,
 }) => {
-  // Hooks SIEMPRE arriba
   const [proyectoActivoIndex, setProyectoActivoIndex] = useState(0);
+  const [showModalClienteAccess, setShowModalClienteAccess] = useState(false);
+  const [proyectoPortalCliente, setProyectoPortalCliente] = useState(null);
 
   const opcionesProyectos = useMemo(
     () => (proyectos || []).map((p) => p?.nombre).filter(Boolean),
     [proyectos]
   );
 
-  // proyecto activo seguro (nunca revienta si cambia la lista)
   const safeIndex = useMemo(() => {
     if (!proyectos?.length) return 0;
     return Math.min(Math.max(0, proyectoActivoIndex), proyectos.length - 1);
@@ -56,7 +207,6 @@ const GestionProyectos = ({
 
   const proy = proyectos?.[safeIndex] || null;
 
-  // gasto acumulado por proyecto (CON regla de ANULADO y MANO DE OBRA)
   const gastoReal = useMemo(() => {
     const nombre = proy?.nombre;
     if (!nombre) return 0;
@@ -69,297 +219,337 @@ const GestionProyectos = ({
       }, 0);
   }, [egresos, proy?.nombre]);
 
-  const presupuesto = useMemo(() => Number(proy?.presupuesto) || 0, [proy?.presupuesto]);
+  const presupuesto = useMemo(
+    () => Number(proy?.presupuesto) || 0,
+    [proy?.presupuesto]
+  );
 
   const porcentajeGasto = useMemo(() => {
     if (!presupuesto) return 0;
-    return Math.min((gastoReal / presupuesto) * 100, 999); // dejamos pasar >100 para UI excedido
+    return Math.min((gastoReal / presupuesto) * 100, 999);
   }, [gastoReal, presupuesto]);
 
-  const disponible = useMemo(() => presupuesto - gastoReal, [presupuesto, gastoReal]);
+  const disponible = useMemo(
+    () => presupuesto - gastoReal,
+    [presupuesto, gastoReal]
+  );
+
   const excedido = disponible < 0;
 
-  // multi-residentes con fallback
   const residentes = useMemo(() => {
-    if (Array.isArray(proy?.residentes) && proy.residentes.length) return proy.residentes;
+    if (Array.isArray(proy?.residentes) && proy.residentes.length) {
+      return proy.residentes;
+    }
     if (proy?.residente) return [proy.residente];
     return [];
   }, [proy]);
 
-  /* ===========================
-     Render: sin proyectos
-  =========================== */
+  const abrirPortalCliente = (proyecto) => {
+    setProyectoPortalCliente(proyecto || null);
+    setShowModalClienteAccess(true);
+  };
+
   if (!proyectos?.length) {
     return (
-      <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
-        <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl overflow-hidden">
-          {/* TOP BAR */}
-          <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
-            <button
-              onClick={onBack}
-              className="flex items-center gap-3 group transition-all active:scale-95"
-              type="button"
-            >
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white border border-black/5 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-sm">
-                <svg className="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                  <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </div>
-              <span className="hidden md:block text-[9px] font-black uppercase tracking-[0.2em] text-black/30 group-hover:text-black">
-                Volver
-              </span>
-            </button>
+      <>
+        <EmptyState onNew={onNew} />
 
-            <button
-              onClick={onNew}
-              type="button"
-              className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-black text-white transition-all active:scale-95 hover:bg-blendfort-naranja shadow-sm"
-            >
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-                <span className="text-sm font-light">+</span>
-              </div>
-              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em]">
-                Proyecto
-              </span>
-            </button>
-          </div>
-
-          {/* BODY */}
-          <div className="p-10 md:p-12 text-center">
-            <div className="text-[9px] font-black uppercase tracking-[0.45em] text-black/20">
-              No hay proyectos activos
-            </div>
-            <div className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black mt-4">
-              Crea tu primer proyecto
-            </div>
-          </div>
-        </div>
-      </div>
+        <ModalAccesoCliente
+          show={showModalClienteAccess}
+          onClose={() => {
+            setShowModalClienteAccess(false);
+            setProyectoPortalCliente(null);
+          }}
+          proyecto={proyectoPortalCliente}
+        />
+      </>
     );
   }
 
-  /* ===========================
-     Render: con proyectos
-  =========================== */
-  return (
-    <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
-      <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        {/* TOP BAR (no lo muevo) */}
-        <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-blendfort-fondo/30">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-3 group transition-all active:scale-95"
-            type="button"
-          >
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white border border-black/5 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-sm">
-              <svg className="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-            <span className="hidden md:block text-[9px] font-black uppercase tracking-[0.2em] text-black/30 group-hover:text-black">
-              Volver
-            </span>
-          </button>
+  const disponibleTone = toneDisponible(disponible);
 
-          <div className="flex-1 max-w-[180px] md:max-w-xs mx-3 md:mx-4">
-            <CustomSelect
-              label=""
-              options={opcionesProyectos}
-              value={proy?.nombre || ""}
-              onChange={(val) => {
-                const idx = proyectos.findIndex((p) => p?.nombre === val);
-                setProyectoActivoIndex(idx >= 0 ? idx : 0);
-              }}
-              placeholder="PROYECTO..."
-              allowCustom={false}
-            />
+  return (
+    <>
+      <div className="space-y-4 md:space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+              <i className="pi pi-briefcase text-[11px]" />
+              <span>Gestión de proyectos</span>
+            </div>
+
+            <h2 className="mt-3 text-[28px] md:text-[34px] xl:text-[38px] font-black tracking-tight text-slate-800 leading-none">
+              {proy?.nombre || "Proyecto"}
+            </h2>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {proy?.dueno ? (
+                <InfoPill icon="pi pi-user" accent>
+                  {normU(proy.dueno)}
+                </InfoPill>
+              ) : null}
+
+              {proy?.ubicacion ? (
+                <InfoPill icon="pi pi-map-marker">
+                  {normU(proy.ubicacion)}
+                </InfoPill>
+              ) : null}
+
+              {proy?.tiempo ? (
+                <InfoPill icon="pi pi-clock">
+                  {normU(proy.tiempo)}
+                </InfoPill>
+              ) : null}
+            </div>
           </div>
 
-          <button
-            onClick={onNew}
-            type="button"
-            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-black text-white transition-all active:scale-95 hover:bg-blendfort-naranja shadow-sm"
-          >
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-              <span className="text-sm font-light">+</span>
-            </div>
-            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em]">
-              Proyecto
-            </span>
-          </button>
+          <div className="self-start">
+            <button
+              onClick={onNew}
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#FCB017]"
+            >
+              <i className="pi pi-plus text-[12px]" />
+              <span>Proyecto</span>
+            </button>
+          </div>
         </div>
 
-        {/* BODY */}
-        <div className="p-7 md:p-10">
-          {/* Header + acciones */}
-          <div className="flex items-start justify-between gap-6 flex-wrap mb-7">
-            <div className="min-w-[240px]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
-                <span className="text-[7px] md:text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
-                  Project Dashboard
-                </span>
-              </div>
-
-              <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-                {proy?.nombre}
-              </h3>
-
-              <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-2">
-                {proy?.dueno} • {proy?.ubicacion}
-              </p>
-            </div>
-
-            {/* Edit / Delete con texto en desktop */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => onEdit?.(proy)}
-                type="button"
-                className="inline-flex items-center gap-2 px-3 py-3 bg-blendfort-fondo hover:bg-black hover:text-white rounded-xl md:rounded-2xl transition-all active:scale-90"
-                title="Editar"
-              >
-                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
-                  Editar
-                </span>
-              </button>
-
-              <button
-                onClick={() => onDelete?.(proy)}
-                type="button"
-                className="inline-flex items-center gap-2 px-3 py-3 bg-blendfort-fondo hover:bg-red-500 hover:text-white rounded-xl md:rounded-2xl transition-all text-red-500/30 active:scale-90"
-                title="Eliminar"
-              >
-                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span className="hidden md:inline text-[9px] font-black uppercase tracking-[0.2em]">
-                  Eliminar
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Finance grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Inversión */}
-            <div className="rounded-[2.5rem] border border-black/5 bg-white shadow-sm p-6 md:p-7">
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.3em] text-black/20">
-                    Inversión acumulada
-                  </div>
-                  <div className="text-4xl md:text-5xl font-black tracking-tighter text-black mt-2">
-                    $ {money(gastoReal)}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-[11px] font-black text-black">{porcentajeGasto.toFixed(1)}%</div>
-                  <div className="text-[6px] md:text-[7px] font-black uppercase tracking-[0.25em] text-black/20">
-                    Consumo
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 w-full h-2.5 bg-blendfort-fondo rounded-full overflow-hidden p-[1px] border border-black/5">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${
-                    porcentajeGasto >= 100
-                      ? "bg-red-500"
-                      : porcentajeGasto > 90
-                      ? "bg-amber-500"
-                      : "bg-black"
-                  }`}
-                  style={{ width: `${Math.min(porcentajeGasto, 100)}%` }}
+        <div className="rounded-[1.8rem] border border-black/5 bg-white p-4 md:p-5 xl:p-6 shadow-[0_14px_40px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-4 xl:gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4 xl:gap-5 items-start">
+              <div>
+                <CustomSelect
+                  label="Proyecto activo"
+                  options={opcionesProyectos}
+                  value={proy?.nombre || ""}
+                  onChange={(val) => {
+                    const idx = proyectos.findIndex((p) => p?.nombre === val);
+                    setProyectoActivoIndex(idx >= 0 ? idx : 0);
+                  }}
+                  placeholder="PROYECTO..."
+                  allowCustom={false}
                 />
               </div>
 
-              <div className="mt-4 flex justify-between items-center text-[7px] md:text-[8px] font-black uppercase tracking-widest text-black/30">
-                <span>Presupuesto: $ {money(presupuesto)}</span>
-                <span className="italic">{proy?.tiempo || "—"}</span>
+              <div className="flex flex-wrap xl:justify-end gap-2">
+                <ActionButton
+                  onClick={() => onEdit?.(proy)}
+                  icon="pi pi-pencil"
+                  label="Editar"
+                  mobileSquare
+                />
+
+                <ActionButton
+                  onClick={() => abrirPortalCliente(proy)}
+                  icon="pi pi-eye"
+                  label="Portal Cliente"
+                  tone="accent"
+                  mobileSquare
+                />
+
+                <ActionButton
+                  onClick={() => onDelete?.(proy)}
+                  icon="pi pi-trash"
+                  label="Eliminar"
+                  tone="danger"
+                  mobileSquare
+                />
               </div>
             </div>
 
-            {/* Disponible + Residentes */}
-            <div className="rounded-[2.5rem] border border-black/5 bg-blendfort-fondo/40 p-6 md:p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.3em] text-black/20">
-                    Disponible
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 xl:gap-4">
+              <KpiCard
+                icon="pi pi-chart-bar"
+                label="Presupuesto"
+                value={`$ ${money(presupuesto)}`}
+                hint="Asignado"
+                accent
+              />
+              <KpiCard
+                icon="pi pi-wallet"
+                label="Inversión"
+                value={`$ ${money(gastoReal)}`}
+                hint={`${Math.min(porcentajeGasto, 999).toFixed(1)}% consumido`}
+              />
+              <KpiCard
+                icon="pi pi-check-circle"
+                label="Disponible"
+                value={`$ ${money(Math.abs(disponible))}`}
+                hint={excedido ? "Presupuesto excedido" : "Saldo del proyecto"}
+              />
+              <KpiCard
+                icon="pi pi-users"
+                label="Residentes"
+                value={`${residentes.length}`}
+                hint={residentes.length ? "Asignados" : "Sin asignar"}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-4 xl:gap-5">
+              <div className="rounded-[1.5rem] border border-black/5 bg-[#F9F9F6] p-4 md:p-5 xl:p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold tracking-[0.18em] text-[#C98500] uppercase">
+                      Resumen del proyecto
+                    </p>
+
+                    <h3 className="mt-2 text-[22px] md:text-[24px] xl:text-[26px] font-black tracking-tight text-slate-800">
+                      {proy?.nombre || "Proyecto"}
+                    </h3>
+
+                    <p className="mt-2 text-[13px] font-medium text-slate-500 leading-relaxed max-w-2xl">
+                      Vista general del estado financiero del proyecto, sus
+                      responsables y el acceso del portal cliente.
+                    </p>
                   </div>
 
-                  <div className={`text-3xl md:text-4xl font-black tracking-tighter mt-2 ${excedido ? "text-red-600" : "text-green-700"}`}>
-                    $ {money(Math.abs(disponible))}
-                  </div>
-
-                  <div className="mt-2">
-                    <span
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest ${
-                        excedido
-                          ? "bg-red-50 border-red-200 text-red-600"
-                          : "bg-green-50 border-green-200 text-green-700"
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${excedido ? "bg-red-500" : "bg-green-500"}`} />
-                      {excedido ? "EXCEDIDO" : "OK"}
-                    </span>
+                  <div
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${disponibleTone.chip}`}
+                  >
+                    <i
+                      className={`pi ${
+                        excedido ? "pi-exclamation-triangle" : "pi-check-circle"
+                      } text-[11px]`}
+                    />
+                    <span>{disponibleTone.label}</span>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.3em] text-black/20">
-                    Capacidad
+                <div className="mt-5">
+                  <div className="mb-2 flex items-center justify-between text-[12px] font-semibold">
+                    <span className="text-slate-500">Consumo del presupuesto</span>
+                    <span className="text-slate-800 font-black">
+                      {Math.min(porcentajeGasto, 999).toFixed(1)}%
+                    </span>
                   </div>
-                  <div className="text-[11px] md:text-[12px] font-black text-black mt-2">
-                    $ {money(presupuesto)}
+
+                  <div className="h-3 overflow-hidden rounded-full bg-white border border-black/5">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        porcentajeGasto >= 100
+                          ? "bg-red-500"
+                          : porcentajeGasto > 90
+                          ? "bg-amber-500"
+                          : "bg-[#FCB017]"
+                      }`}
+                      style={{ width: `${progressWidth(gastoReal, presupuesto)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={`rounded-[1.35rem] border p-4 ${disponibleTone.card}`}>
+                    <p className="text-[11px] font-semibold text-slate-500">
+                      Estado del disponible
+                    </p>
+                    <p className={`mt-2 text-[24px] xl:text-[26px] font-black tracking-tight ${disponibleTone.text}`}>
+                      $ {money(Math.abs(disponible))}
+                    </p>
+                    <p className="mt-2 text-[12px] font-medium text-slate-500">
+                      {excedido
+                        ? "El gasto ya superó el presupuesto asignado."
+                        : "Saldo restante disponible para el proyecto."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[1.35rem] border border-black/5 bg-white p-4">
+                    <p className="text-[11px] font-semibold text-slate-500">
+                      Presupuesto vs gasto
+                    </p>
+
+                    <div className="mt-3 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12px] font-medium text-slate-500">
+                          Presupuesto
+                        </span>
+                        <span className="text-[13px] font-black text-slate-800">
+                          $ {money(presupuesto)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12px] font-medium text-slate-500">
+                          Gasto real
+                        </span>
+                        <span className="text-[13px] font-black text-slate-800">
+                          $ {money(gastoReal)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12px] font-medium text-slate-500">
+                          Consumo
+                        </span>
+                        <span className="text-[13px] font-black text-slate-800">
+                          {Math.min(porcentajeGasto, 999).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <div className="text-[7px] font-black uppercase tracking-[0.3em] text-black/20 mb-3">
+              <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 md:p-5 xl:p-6">
+                <p className="text-[11px] font-bold tracking-[0.18em] text-[#C98500] uppercase">
                   Residentes a cargo
-                </div>
+                </p>
+
+                <h3 className="mt-2 text-[22px] md:text-[24px] xl:text-[26px] font-black tracking-tight text-slate-800">
+                  Equipo responsable
+                </h3>
 
                 {residentes.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {residentes.slice(0, 4).map((r, i) => (
-                      <span key={`${r}-${i}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-black/5 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja" />
-                        <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-black/70">
-                          {String(r).toUpperCase()}
-                        </span>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {residentes.map((r, i) => (
+                      <span
+                        key={`${r}-${i}`}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#FFF8E8] border border-[#FCB017]/20 px-3 py-1.5 text-[11px] font-semibold text-[#C98500]"
+                      >
+                        <i className="pi pi-user text-[10px]" />
+                        <span>{String(r).toUpperCase()}</span>
                       </span>
                     ))}
-                    {residentes.length > 4 && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-black/5 text-[8px] font-black uppercase tracking-widest text-black/40">
-                        +{residentes.length - 4}
-                      </span>
-                    )}
                   </div>
                 ) : (
-                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-black/30">
-                    Sin residente asignado
-                  </div>
+                  <p className="mt-4 text-[12px] font-medium text-slate-500">
+                    Sin residente asignado.
+                  </p>
                 )}
 
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-black/20" />
-                  <span className="text-[7px] font-black opacity-30 uppercase">
-                    {proy?.ubicacion || "—"}
-                  </span>
+                <div className="mt-5 rounded-[1.35rem] border border-black/5 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    Portal cliente
+                  </p>
+                  <p className="mt-2 text-[13px] font-medium text-slate-600 leading-relaxed">
+                    Administra desde aquí el acceso visual del cliente para este
+                    proyecto.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => abrirPortalCliente(proy)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#FCB017] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    <i className="pi pi-eye text-[12px]" />
+                    <span>Abrir portal cliente</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* sin scroll extra */}
         </div>
       </div>
-    </div>
+
+      <ModalAccesoCliente
+        show={showModalClienteAccess}
+        onClose={() => {
+          setShowModalClienteAccess(false);
+          setProyectoPortalCliente(null);
+        }}
+        proyecto={proyectoPortalCliente}
+      />
+    </>
   );
 };
 

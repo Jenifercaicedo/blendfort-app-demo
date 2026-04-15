@@ -21,71 +21,77 @@ const ModalConfirmar = ({ id, onConfirm, onCancel }) => {
       return {
         eyebrow: "Acción crítica",
         title: "¿Anular registro?",
-        description: "El registro no se borrará. Quedará anulado y guardado para auditoría.",
+        description:
+          "El registro no se eliminará de la auditoría. Quedará marcado como anulado.",
         infoTitle: "Confirmación requerida",
-        infoText: "Se anulará el egreso seleccionado",
+        infoText: "Se anulará el egreso seleccionado.",
         confirmText: "Anular",
-        accentBar: "bg-red-500/70",
-        infoBox: "bg-red-50 border-red-100",
-        iconBox: "bg-red-500 text-white",
-        confirmBtn: "bg-red-500 hover:brightness-110 text-white",
+        accentBar: "bg-red-500",
+        infoWrap: "bg-red-50 border-red-100",
+        iconWrap: "bg-red-500 text-white",
+        confirmBtn:
+          "bg-red-500 text-white hover:bg-red-600 shadow-[0_10px_30px_rgba(239,68,68,0.18)]",
       };
     }
 
     return {
       eyebrow: "Acción crítica",
       title: "¿Eliminar proyecto?",
-      description: "Esta acción eliminará el proyecto seleccionado.",
+      description:
+        "Esta acción eliminará el proyecto seleccionado del sistema.",
       infoTitle: "Confirmación requerida",
-      infoText: "Se eliminará el proyecto seleccionado",
+      infoText: "Se eliminará el proyecto seleccionado.",
       confirmText: "Eliminar",
-      accentBar: "bg-red-500/70",
-      infoBox: "bg-red-50 border-red-100",
-      iconBox: "bg-red-500 text-white",
-      confirmBtn: "bg-red-500 hover:brightness-110 text-white",
+      accentBar: "bg-red-500",
+      infoWrap: "bg-red-50 border-red-100",
+      iconWrap: "bg-red-500 text-white",
+      confirmBtn:
+        "bg-red-500 text-white hover:bg-red-600 shadow-[0_10px_30px_rgba(239,68,68,0.18)]",
     };
   }, [id]);
 
   return (
     <div
-      className="fixed inset-0 z-[190] overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-[190] overflow-y-auto bg-black/55 backdrop-blur-sm animate-in fade-in duration-300"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
+        if (e.target === e.currentTarget) onCancel?.();
       }}
       role="dialog"
       aria-modal="true"
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
-        <div className="bg-white w-full max-w-sm rounded-[2.5rem] md:rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.25)] border border-black/5 overflow-hidden animate-in zoom-in-95 duration-300 my-2 md:my-4">
+        <div className="w-full max-w-md overflow-hidden rounded-[2rem] md:rounded-[2.4rem] border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] animate-in zoom-in-95 duration-300 my-2 md:my-4">
           {/* Header */}
-          <div className="px-8 pt-10 pb-6 border-b border-black/5 bg-blendfort-fondo/40">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-6 h-[2px] ${config.accentBar}`}></div>
-              <span className="text-[8px] font-black uppercase tracking-[0.45em] text-black/40">
+          <div className="relative border-b border-black/5 bg-[linear-gradient(180deg,#FFF8E8_0%,#FFFFFF_100%)] px-6 pb-5 pt-6 md:px-7 md:pb-6">
+            <div className="flex items-center gap-2">
+              <div className={`h-[2px] w-6 ${config.accentBar}`} />
+              <span className="text-[10px] font-semibold text-slate-500">
                 {config.eyebrow}
               </span>
             </div>
 
-            <h3 className="text-2xl font-black uppercase tracking-tight text-black leading-tight">
+            <h3 className="mt-3 text-[24px] md:text-[28px] font-black tracking-tight text-slate-800 leading-none">
               {config.title}
             </h3>
 
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/40 mt-3 leading-relaxed">
+            <p className="mt-3 text-[12px] leading-relaxed text-slate-500">
               {config.description}
             </p>
           </div>
 
           {/* Body */}
-          <div className="p-8">
-            <div className={`${config.infoBox} border rounded-[2rem] p-5`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full ${config.iconBox} flex items-center justify-center shadow-sm`}>
+          <div className="p-6 md:p-7">
+            <div className={`rounded-[1.4rem] border p-4 md:p-5 ${config.infoWrap}`}>
+              <div className="flex items-start gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${config.iconWrap}`}
+                >
                   <svg
-                    className="w-5 h-5"
+                    className="h-5 w-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth="2.5"
+                    strokeWidth="2.4"
                   >
                     <path
                       strokeLinecap="round"
@@ -95,23 +101,23 @@ const ModalConfirmar = ({ id, onConfirm, onCancel }) => {
                   </svg>
                 </div>
 
-                <div className="flex-1">
-                  <div className="text-[9px] font-black uppercase tracking-[0.25em] text-red-600/80">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-red-600">
                     {config.infoTitle}
-                  </div>
-                  <div className="text-[10px] font-black uppercase tracking-tight text-black/70 mt-1">
+                  </p>
+                  <p className="mt-1 text-[12px] text-slate-700">
                     {config.infoText}
-                  </div>
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={onCancel}
                 type="button"
-                className="flex-1 bg-white border border-black/10 text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] hover:border-black hover:shadow-sm transition-all active:scale-95"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-black/10 bg-white px-5 text-[12px] font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
               >
                 Cancelar
               </button>
@@ -120,7 +126,7 @@ const ModalConfirmar = ({ id, onConfirm, onCancel }) => {
                 ref={confirmRef}
                 onClick={onConfirm}
                 type="button"
-                className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] transition-all active:scale-95 shadow-sm ${config.confirmBtn}`}
+                className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-[12px] font-semibold transition-all active:scale-[0.98] ${config.confirmBtn}`}
               >
                 {config.confirmText}
               </button>
@@ -129,9 +135,9 @@ const ModalConfirmar = ({ id, onConfirm, onCancel }) => {
             <button
               type="button"
               onClick={onCancel}
-              className="mt-4 w-full text-[9px] font-black uppercase tracking-[0.3em] text-black/30 hover:text-black transition-colors"
+              className="mt-4 w-full text-center text-[11px] font-medium text-slate-400 transition-colors hover:text-slate-700"
             >
-              ← Volver sin cambios
+              Volver sin cambios
             </button>
           </div>
         </div>

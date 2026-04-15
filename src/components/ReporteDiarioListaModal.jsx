@@ -299,16 +299,19 @@ const ReporteDiarioListaModal = ({
       aria-modal="true"
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-5 md:px-6 md:py-8">
-        <div className="bg-white w-full max-w-6xl rounded-[1.8rem] md:rounded-[2.4rem] overflow-hidden shadow-2xl border border-black/5 my-2 max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div className="bg-[#F6F6F1] w-full max-w-6xl rounded-[1.8rem] md:rounded-[2.4rem] overflow-hidden shadow-2xl border border-black/5 my-2 max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] overflow-y-auto">
           {/* Header */}
           <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-black/5 px-4 md:px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <span className="text-[8px] font-black uppercase tracking-[0.22em] text-blendfort-naranja block mb-1">
-                  Resident Console
-                </span>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-[2px] bg-blendfort-naranja" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.22em] text-blendfort-naranja">
+                    Resident Console
+                  </span>
+                </div>
 
-                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight leading-tight text-black">
+                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight leading-tight text-slate-800">
                   Reporte Diario
                 </h2>
 
@@ -354,18 +357,20 @@ const ReporteDiarioListaModal = ({
 
           <form onSubmit={guardarReportes} className="p-4 md:p-5 space-y-4 md:space-y-5">
             {/* Resumen */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
-              <div className="bg-blendfort-fondo rounded-[1.2rem] border border-black/5 px-4 py-3">
-                <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/35 mb-1">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Personal Activo
                 </p>
-                <p className="text-base md:text-lg font-black tracking-tight">
+                <p className="text-base md:text-lg font-black tracking-tight text-slate-800">
                   {resumen.totalPersonal}
                 </p>
               </div>
 
-              <div className="bg-blendfort-fondo rounded-[1.2rem] border border-black/5 px-4 py-3">
-                <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/35 mb-1">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Asistieron
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-green-700">
@@ -373,8 +378,9 @@ const ReporteDiarioListaModal = ({
                 </p>
               </div>
 
-              <div className="bg-blendfort-fondo rounded-[1.2rem] border border-black/5 px-4 py-3">
-                <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/35 mb-1">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Faltaron
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-amber-700">
@@ -382,18 +388,19 @@ const ReporteDiarioListaModal = ({
                 </p>
               </div>
 
-              <div className="bg-blendfort-fondo rounded-[1.2rem] border border-black/5 px-4 py-3">
-                <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/35 mb-1">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Total del Día
                 </p>
-                <p className="text-base md:text-lg font-black tracking-tight">
+                <p className="text-base md:text-lg font-black tracking-tight text-slate-800">
                   {money(resumen.totalDia)}
                 </p>
               </div>
             </div>
 
             {/* Filtros y acciones */}
-            <div className="bg-blendfort-fondo/60 rounded-[1.4rem] border border-black/5 p-3.5 md:p-4">
+            <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-[170px_1fr] gap-3">
                 <div className="space-y-1">
                   <label className="text-[7px] font-black uppercase ml-3 opacity-40 tracking-widest">
@@ -403,7 +410,7 @@ const ReporteDiarioListaModal = ({
                     type="date"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
-                    className="w-full bg-white border border-black/5 px-4 h-[44px] md:h-[46px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
+                    className="w-full bg-blendfort-fondo border border-black/5 px-4 h-[46px] rounded-2xl text-[10px] font-black outline-none focus:border-black transition-all"
                   />
                 </div>
 
@@ -416,7 +423,7 @@ const ReporteDiarioListaModal = ({
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
                     placeholder="NOMBRE O CARGO..."
-                    className="w-full bg-white border border-black/5 px-4 h-[44px] md:h-[46px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
+                    className="w-full bg-blendfort-fondo border border-black/5 px-4 h-[46px] rounded-2xl text-[10px] font-black outline-none focus:border-black transition-all uppercase"
                   />
                 </div>
               </div>
@@ -471,7 +478,7 @@ const ReporteDiarioListaModal = ({
                     >
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
-                          <h3 className="text-[13px] font-black uppercase tracking-tight leading-tight">
+                          <h3 className="text-[13px] font-black uppercase tracking-tight leading-tight text-slate-800">
                             {row.empleado}
                           </h3>
                           <p className="text-[7px] font-bold uppercase tracking-[0.14em] text-black/35 mt-1">
@@ -584,7 +591,7 @@ const ReporteDiarioListaModal = ({
             </div>
 
             {/* Desktop */}
-            <div className="hidden md:block bg-white rounded-[1.4rem] border border-black/5 shadow-sm overflow-hidden">
+            <div className="hidden md:block bg-white rounded-[1.5rem] border border-black/5 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1120px]">
                   <thead className="bg-blendfort-fondo/70 border-b border-black/5">
@@ -638,7 +645,7 @@ const ReporteDiarioListaModal = ({
                             className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/30 transition-colors"
                           >
                             <td className="px-4 py-3.5">
-                              <p className="text-[10px] font-black uppercase leading-tight">
+                              <p className="text-[10px] font-black uppercase leading-tight text-slate-800">
                                 {row.empleado}
                               </p>
                             </td>
@@ -718,7 +725,7 @@ const ReporteDiarioListaModal = ({
                               />
                             </td>
 
-                            <td className="px-4 py-3.5 text-[10px] font-black">
+                            <td className="px-4 py-3.5 text-[10px] font-black text-slate-800">
                               {money(total)}
                             </td>
                           </tr>

@@ -81,62 +81,79 @@ const ModalEgreso = ({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[160] overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+    <div
+      className="fixed inset-0 z-[160] overflow-y-auto bg-black/55 backdrop-blur-sm animate-in fade-in duration-300"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
-        <div className="bg-white w-full max-w-2xl rounded-[2.7rem] md:rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-black/5 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto animate-in zoom-in-95 duration-300">
-          <div className="relative pt-10 md:pt-12 px-7 md:px-12 pb-6 flex justify-between items-end border-b border-black/5">
-            <div className="space-y-2 pr-10">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-[2px] bg-blendfort-naranja"></div>
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-black/40">
-                  Financial Record
-                </span>
-              </div>
-
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-                {editandoId ? "Editar Egreso" : "Nuevo Egreso"}
-              </h2>
-
-              {editandoId && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja"></span>
-                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-black/50">
-                    Edición activa
-                  </span>
-                </div>
-              )}
-            </div>
-
+        <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] animate-in zoom-in-95 duration-300 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto">
+          {/* Header */}
+          <div className="relative border-b border-black/5 bg-[linear-gradient(180deg,#FFF8E8_0%,#FFFFFF_100%)] px-5 pb-5 pt-5 md:px-7 md:pb-6 md:pt-6">
             <button
               onClick={onClose}
               type="button"
-              className="absolute top-6 md:top-8 right-6 md:right-8 bg-black text-white p-3 rounded-full hover:bg-blendfort-naranja transition-all shadow-lg active:scale-90"
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-slate-500 shadow-sm transition-all hover:bg-slate-800 hover:text-white"
               aria-label="Cerrar"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.8"
+              >
                 <path d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+
+            <div className="pr-12">
+              <div className="flex items-center gap-2">
+                <div className="h-[2px] w-6 bg-[#FCB017]" />
+                <span className="text-[10px] font-semibold text-[#C98500]">
+                  Registro financiero
+                </span>
+              </div>
+
+              <h2 className="mt-3 text-[26px] md:text-[32px] font-black uppercase tracking-tight leading-none text-slate-800">
+                {editandoId ? "Editar egreso" : "Nuevo egreso"}
+              </h2>
+
+              <p className="mt-2 text-[12px] font-medium text-slate-500">
+                Completa los datos del movimiento antes de guardar.
+              </p>
+
+              {editandoId && (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1 text-[11px] font-semibold text-[#C98500]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#FCB017]" />
+                  Edición activa
+                </div>
+              )}
+            </div>
           </div>
 
-          <form onSubmit={onSave} className="p-7 md:p-12 pt-7 md:pt-8 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Form */}
+          <form onSubmit={onSave} className="space-y-6 p-5 md:p-7">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {!esResidente || multiProyectoResidente ? (
                 <CustomSelect
                   label="Proyecto"
                   options={opcionesProyectoFinal}
                   value={norm(nuevoEgreso.proyecto)}
-                  onChange={(val) => setNuevoEgreso({ ...nuevoEgreso, proyecto: norm(val) })}
+                  onChange={(val) =>
+                    setNuevoEgreso({ ...nuevoEgreso, proyecto: norm(val) })
+                  }
                   placeholder={opcionesProyectoFinal.length ? "SELECCIONAR..." : "SIN PROYECTOS"}
                   allowCustom={false}
                   disabled={!opcionesProyectoFinal.length}
                 />
               ) : (
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
+                  <label className="ml-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                     Proyecto
                   </label>
-                  <div className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black uppercase border border-transparent">
+                  <div className="flex h-[54px] items-center rounded-[1.1rem] border border-black/5 bg-[#F9F9F6] px-4 text-[13px] font-black uppercase text-slate-800">
                     {proyectoFijoResidente || "SIN PROYECTO"}
                   </div>
                 </div>
@@ -146,19 +163,23 @@ const ModalEgreso = ({
                 label="Categoría"
                 options={categoriasSinManoObra}
                 value={norm(nuevoEgreso.categoria)}
-                onChange={(val) => setNuevoEgreso({ ...nuevoEgreso, categoria: norm(val) })}
+                onChange={(val) =>
+                  setNuevoEgreso({ ...nuevoEgreso, categoria: norm(val) })
+                }
                 placeholder={categoriasSinManoObra.length ? "CATEGORÍA..." : "SIN CATEGORÍAS"}
                 allowCustom={false}
                 disabled={!categoriasSinManoObra.length}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <CustomSelect
-                label="Pago"
+                label="Método de pago"
                 options={["EFECTIVO", "TRANSFERENCIA", "TARJETA"]}
                 value={norm(nuevoEgreso.metodoPago)}
-                onChange={(val) => setNuevoEgreso({ ...nuevoEgreso, metodoPago: norm(val) })}
+                onChange={(val) =>
+                  setNuevoEgreso({ ...nuevoEgreso, metodoPago: norm(val) })
+                }
                 placeholder="MÉTODO..."
                 allowCustom={false}
               />
@@ -167,117 +188,150 @@ const ModalEgreso = ({
                 label="Estado"
                 options={opcionesEstado}
                 value={norm(nuevoEgreso.estado || "PENDIENTE")}
-                onChange={(val) => setNuevoEgreso({ ...nuevoEgreso, estado: norm(val) })}
+                onChange={(val) =>
+                  setNuevoEgreso({ ...nuevoEgreso, estado: norm(val) })
+                }
                 placeholder="ESTADO..."
                 allowCustom={false}
               />
             </div>
 
-            <div className="space-y-8 animate-in slide-in-from-top-2 duration-500">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
-                    Fecha
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
-                    value={String(nuevoEgreso.fecha || "")}
-                    onChange={(e) => setNuevoEgreso({ ...nuevoEgreso, fecha: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
-                    Concepto
-                  </label>
-                  <input
-                    required
-                    placeholder="¿QUÉ SE COMPRÓ?"
-                    className="w-full bg-blendfort-fondo p-4.5 rounded-2xl text-[16px] md:text-[11px] font-black uppercase outline-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
-                    value={String(nuevoEgreso.concepto || "")}
-                    onChange={(e) =>
-                      setNuevoEgreso({ ...nuevoEgreso, concepto: e.target.value.toUpperCase() })
-                    }
-                  />
-                </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="ml-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Fecha
+                </label>
+                <input
+                  required
+                  type="date"
+                  className="h-[54px] w-full rounded-[1.1rem] border border-black/5 bg-[#F9F9F6] px-4 text-[13px] font-black outline-none transition-all focus:border-slate-300 focus:bg-white"
+                  value={String(nuevoEgreso.fecha || "")}
+                  onChange={(e) =>
+                    setNuevoEgreso({ ...nuevoEgreso, fecha: e.target.value })
+                  }
+                />
               </div>
 
-              <div className="flex flex-col items-center justify-center py-6 bg-blendfort-fondo rounded-[2.5rem] border border-black/5">
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] opacity-30 mb-2">
-                  Monto Total del Egreso
-                </span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-blendfort-naranja">$</span>
+              <div className="space-y-1">
+                <label className="ml-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Concepto
+                </label>
+                <input
+                  required
+                  placeholder="¿QUÉ SE COMPRÓ?"
+                  className="h-[54px] w-full rounded-[1.1rem] border border-black/5 bg-[#F9F9F6] px-4 text-[13px] font-black uppercase outline-none transition-all focus:border-slate-300 focus:bg-white"
+                  value={String(nuevoEgreso.concepto || "")}
+                  onChange={(e) =>
+                    setNuevoEgreso({
+                      ...nuevoEgreso,
+                      concepto: e.target.value.toUpperCase(),
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Monto */}
+            <div className="rounded-[1.6rem] border border-[#FCB017]/15 bg-[#FFF8E8]/60 px-5 py-5 md:px-6 md:py-6">
+              <div className="text-center">
+                <p className="text-[10px] font-semibold text-[#C98500]">
+                  Monto del egreso
+                </p>
+
+                <div className="mt-4 flex items-end justify-center gap-2">
+                  <span className="pb-1 text-[26px] font-black text-[#FCB017]">$</span>
                   <input
                     required
                     type="number"
                     step="any"
                     min="0"
                     placeholder="0.00"
-                    className="text-5xl font-black tracking-tighter text-black w-48 text-center outline-none bg-transparent"
+                    className="w-[180px] bg-transparent text-center text-[42px] md:text-[52px] font-black tracking-tight text-slate-800 outline-none"
                     value={nuevoEgreso.valor}
-                    onChange={(e) => setNuevoEgreso({ ...nuevoEgreso, valor: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase ml-4 opacity-30 tracking-widest">
-                    Detalles Adicionales
-                  </label>
-                  <textarea
-                    placeholder="NOTAS RELEVANTES..."
-                    className="w-full bg-blendfort-fondo p-5 rounded-[2rem] text-[16px] md:text-[11px] font-black uppercase outline-none h-24 resize-none focus:bg-white focus:border-black/5 border border-transparent transition-all"
-                    value={String(nuevoEgreso.detalles || "")}
                     onChange={(e) =>
-                      setNuevoEgreso({ ...nuevoEgreso, detalles: e.target.value.toUpperCase() })
+                      setNuevoEgreso({ ...nuevoEgreso, valor: e.target.value })
                     }
                   />
-                </div>
-
-                <div className="flex items-center justify-between px-6 md:px-8 py-5 bg-blendfort-fondo rounded-full border border-black/5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        nuevoEgreso.tieneFactura ? "bg-blendfort-naranja animate-pulse" : "bg-black/20"
-                      }`}
-                    ></div>
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-40">
-                      ¿Posee Factura SRI?
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNuevoEgreso({ ...nuevoEgreso, tieneFactura: !nuevoEgreso.tieneFactura })
-                    }
-                    className={`w-14 h-7 rounded-full transition-all relative ${
-                      nuevoEgreso.tieneFactura ? "bg-blendfort-naranja" : "bg-black/10"
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${
-                        nuevoEgreso.tieneFactura ? "left-8" : "left-1"
-                      }`}
-                    ></div>
-                  </button>
                 </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-black text-white py-6 md:py-7 rounded-full font-black text-[16px] md:text-[11px] uppercase tracking-[0.3em] md:tracking-[0.5em] hover:bg-blendfort-naranja hover:shadow-[0_20px_50px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-4"
-            >
-              {editandoId ? "Guardar Cambios" : "Guardar Reporte"}
-              <svg className="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
+            {/* Detalles */}
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="ml-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Detalles adicionales
+                </label>
+                <textarea
+                  placeholder="NOTAS RELEVANTES..."
+                  className="h-24 w-full resize-none rounded-[1.4rem] border border-black/5 bg-[#F9F9F6] px-4 py-4 text-[13px] font-black uppercase outline-none transition-all focus:border-slate-300 focus:bg-white"
+                  value={String(nuevoEgreso.detalles || "")}
+                  onChange={(e) =>
+                    setNuevoEgreso({
+                      ...nuevoEgreso,
+                      detalles: e.target.value.toUpperCase(),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-black/5 bg-[#F9F9F6] px-4 py-4 md:px-5">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-slate-700">
+                    ¿Posee factura SRI?
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Marca esta opción si el egreso tiene factura registrada.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNuevoEgreso({
+                      ...nuevoEgreso,
+                      tieneFactura: !nuevoEgreso.tieneFactura,
+                    })
+                  }
+                  className={`relative h-7 w-14 shrink-0 rounded-full transition-all ${
+                    nuevoEgreso.tieneFactura ? "bg-[#FCB017]" : "bg-slate-200"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-md transition-all ${
+                      nuevoEgreso.tieneFactura ? "left-8" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-black/10 bg-white px-5 text-[12px] font-semibold text-slate-600 transition-all hover:border-slate-300 hover:text-slate-800"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-slate-800 px-6 text-[12px] font-semibold text-white transition-all hover:bg-[#FCB017]"
+              >
+                <span>{editandoId ? "Guardar cambios" : "Guardar egreso"}</span>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </div>
           </form>
         </div>
       </div>

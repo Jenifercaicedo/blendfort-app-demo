@@ -11,33 +11,27 @@ const money = (n) => {
 
 const ManoObraTabla = ({ listaFinal = [], onDetalle, onPagarSemana }) => {
   return (
-    <div className="rounded-[2.5rem] border border-black/[0.04] bg-white shadow-sm overflow-hidden">
-      <div className="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin scrollbar-thumb-black/5">
-        <table className="w-full text-left border-collapse min-w-[820px]">
+    <div className="space-y-4">
+      <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[540px] scrollbar-thin scrollbar-thumb-black/5">
+        <table className="w-full text-left border-collapse min-w-[900px]">
           <thead className="sticky top-0 z-20 bg-white">
-            <tr className="border-b border-black/[0.04]">
-              <th className="px-5 md:px-6 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30">
-                Personal
+            <tr className="border-b border-black/[0.05] bg-slate-50/70">
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500">Personal</th>
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500 text-center">Días</th>
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500 text-center">
+                H. extras
               </th>
-              <th className="px-3 md:px-4 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30 text-center">
-                Días
-              </th>
-              <th className="px-3 md:px-4 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30 text-center">
-                H-Extras
-              </th>
-              <th className="px-3 md:px-4 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30 text-right">
-                Neto
-              </th>
-              <th className="px-3 md:px-4 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30 text-center">
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500 text-right">Neto</th>
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500 text-center">
                 Estado
               </th>
-              <th className="px-4 md:px-5 py-3 md:py-4 text-[7px] md:text-[8px] font-black uppercase tracking-[0.18em] text-black/30 text-right w-[110px]">
+              <th className="px-5 py-4 text-[11px] font-bold text-slate-500 text-right">
                 Acciones
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-black/[0.02]">
+          <tbody>
             {listaFinal.length ? (
               listaFinal.map((emp) => {
                 const estado = String(emp.estadoSemana || "PENDIENTE").toUpperCase().trim();
@@ -47,81 +41,72 @@ const ManoObraTabla = ({ listaFinal = [], onDetalle, onPagarSemana }) => {
                 return (
                   <tr
                     key={emp.nombre}
-                    className={`transition-colors ${
-                      yaPagado ? "hover:bg-green-50/40" : "hover:bg-blendfort-fondo/20"
+                    className={`border-b border-black/[0.04] transition-colors ${
+                      yaPagado ? "hover:bg-green-50/40" : "hover:bg-slate-50/60"
                     }`}
                   >
-                    <td className="px-5 md:px-6 py-3.5 md:py-4">
+                    <td className="px-5 py-4">
                       <button
                         type="button"
                         onClick={() => onDetalle?.(emp.nombre)}
-                        className="text-[10px] font-black uppercase text-black hover:text-blendfort-naranja transition-colors text-left"
+                        className="text-left"
                         title="Ver detalle"
                       >
-                        {emp.nombre}
+                        <p className="text-[13px] font-black text-slate-800 hover:text-[#C98500] transition-colors">
+                          {emp.nombre}
+                        </p>
+                        <p className="mt-1 text-[11px] font-medium text-slate-500">{emp.cargo}</p>
                       </button>
-                      <div className="text-[7px] font-bold text-black/30 uppercase tracking-widest mt-0.5">
-                        {emp.cargo}
-                      </div>
                     </td>
 
-                    <td className="px-3 md:px-4 py-3.5 md:py-4 text-center">
-                      <span className="text-[9px] font-black bg-blendfort-fondo px-3 py-1 rounded-full border border-black/5">
+                    <td className="px-5 py-4 text-center">
+                      <span className="inline-flex min-w-[36px] items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700">
                         {emp.dias}
                       </span>
                     </td>
 
-                    <td className="px-3 md:px-4 py-3.5 md:py-4 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`text-[9px] font-black ${
-                          Number(emp.extras) > 0 ? "text-black" : "text-black/15"
+                        className={`text-[12px] font-black ${
+                          Number(emp.extras) > 0 ? "text-slate-800" : "text-slate-300"
                         }`}
                       >
                         {Number(emp.extras) > 0 ? emp.extras : "—"}
                       </span>
                     </td>
 
-                    <td className="px-3 md:px-4 py-3.5 md:py-4 text-right">
+                    <td className="px-5 py-4 text-right">
                       <span
-                        className={`text-[11px] font-black tracking-tight ${
-                          neto > 0 ? "text-black" : "text-black/25"
+                        className={`text-[13px] font-black tracking-tight ${
+                          neto > 0 ? "text-slate-800" : "text-slate-300"
                         }`}
                       >
                         $ {money(neto)}
                       </span>
                     </td>
 
-                    <td className="px-3 md:px-4 py-3.5 md:py-4 text-center">
+                    <td className="px-5 py-4 text-center">
                       <span
-                        className={`text-[7px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
+                        className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${
                           yaPagado
-                            ? "bg-green-50 text-green-600 border-green-200"
-                            : "bg-amber-50 text-amber-600 border-amber-200"
+                            ? "border-green-200 bg-green-50 text-green-700"
+                            : "border-amber-200 bg-amber-50 text-amber-700"
                         }`}
                       >
                         {estado}
                       </span>
                     </td>
 
-                    <td className="px-4 md:px-5 py-3.5 md:py-4 text-right">
+                    <td className="px-5 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => onDetalle?.(emp.nombre)}
-                          className="w-9 h-9 rounded-full bg-blendfort-fondo text-black/70 flex items-center justify-center hover:bg-black hover:text-white transition-all shadow-sm active:scale-90"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-all hover:bg-slate-800 hover:text-white active:scale-90"
                           title="Ver detalle"
                           aria-label="Ver detalle"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                          >
-                            <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                            <path d="M19.5 7.125L16.875 4.5" />
-                          </svg>
+                          <i className="pi pi-eye text-[12px]" />
                         </button>
 
                         <button
@@ -130,27 +115,15 @@ const ManoObraTabla = ({ listaFinal = [], onDetalle, onPagarSemana }) => {
                             if (!yaPagado) onPagarSemana?.(emp.nombre);
                           }}
                           disabled={yaPagado}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                          className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                             yaPagado
-                              ? "bg-black/5 text-black/20 cursor-not-allowed"
-                              : "bg-green-50 text-green-600 hover:bg-green-600 hover:text-white active:scale-90"
+                              ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                              : "bg-green-50 text-green-700 hover:bg-green-600 hover:text-white active:scale-90"
                           }`}
-                          title={yaPagado ? "La semana ya está pagada" : "Marcar pagado (semana)"}
+                          title={yaPagado ? "La semana ya está pagada" : "Marcar pagado"}
                           aria-label="Pagar"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M4.5 12.75l6 6 9-13.5"
-                            />
-                          </svg>
+                          <i className="pi pi-check text-[12px]" />
                         </button>
                       </div>
                     </td>
@@ -159,15 +132,109 @@ const ManoObraTabla = ({ listaFinal = [], onDetalle, onPagarSemana }) => {
               })
             ) : (
               <tr>
-                <td colSpan="6" className="py-20 text-center">
-                  <p className="text-[9px] font-black uppercase tracking-[0.45em] opacity-20">
-                    No hay nómina para este filtro
+                <td colSpan="6" className="py-14 text-center">
+                  <p className="text-[12px] font-medium text-slate-400">
+                    No hay nómina para este filtro.
                   </p>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {listaFinal.length ? (
+          listaFinal.map((emp) => {
+            const estado = String(emp.estadoSemana || "PENDIENTE").toUpperCase().trim();
+            const yaPagado = estado === "PAGADO" || estado === "COMPLETADO";
+            const neto = Number(emp.neto) || 0;
+
+            return (
+              <div
+                key={emp.nombre}
+                className="rounded-[1.35rem] border border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => onDetalle?.(emp.nombre)}
+                      className="text-left"
+                    >
+                      <p className="text-[14px] font-black text-slate-800 leading-snug">
+                        {emp.nombre}
+                      </p>
+                    </button>
+                    <p className="mt-1 text-[12px] font-medium text-slate-500">{emp.cargo}</p>
+                  </div>
+
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                      yaPagado
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-amber-200 bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {estado}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] font-medium text-slate-500">Días</p>
+                    <p className="mt-1 text-[12px] font-black text-slate-800">{emp.dias}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-medium text-slate-500">H. extras</p>
+                    <p className="mt-1 text-[12px] font-black text-slate-800">
+                      {Number(emp.extras) > 0 ? emp.extras : "—"}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-[10px] font-medium text-slate-500">Neto</p>
+                    <p className="mt-1 text-[12px] font-black text-slate-800">$ {money(neto)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onDetalle?.(emp.nombre)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2.5 text-slate-700 transition hover:bg-slate-800 hover:text-white"
+                  >
+                    <i className="pi pi-eye text-[11px]" />
+                    <span className="text-[10px] font-semibold">Detalle</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!yaPagado) onPagarSemana?.(emp.nombre);
+                    }}
+                    disabled={yaPagado}
+                    className={`inline-flex items-center gap-2 rounded-xl px-3 py-2.5 transition ${
+                      yaPagado
+                        ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        : "bg-green-50 text-green-700 hover:bg-green-600 hover:text-white"
+                    }`}
+                  >
+                    <i className="pi pi-check text-[11px]" />
+                    <span className="text-[10px] font-semibold">Pagar</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-[1.35rem] border border-dashed border-black/10 p-8 text-center">
+            <p className="text-[12px] font-medium text-slate-400">
+              No hay nómina para este filtro.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

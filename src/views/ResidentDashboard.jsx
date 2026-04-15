@@ -29,11 +29,55 @@ const money = (n) =>
 
 const estadoCajaTone = (estado) => {
   const e = normalize(estado);
-  if (e === "DISPONIBLE") return "text-green-700 bg-green-50 border-green-100";
-  if (e === "POR AGOTARSE") return "text-amber-700 bg-amber-50 border-amber-100";
-  if (e === "AGOTADA") return "text-red-700 bg-red-50 border-red-100";
+  if (e === "DISPONIBLE") return "text-green-700 bg-green-50 border-green-200";
+  if (e === "POR AGOTARSE") return "text-amber-700 bg-amber-50 border-amber-200";
+  if (e === "AGOTADA") return "text-red-700 bg-red-50 border-red-200";
   if (e === "EXCEDIDA") return "text-red-800 bg-red-100 border-red-200";
-  return "text-black/55 bg-black/[0.03] border-black/10";
+  return "text-slate-600 bg-slate-100 border-slate-200";
+};
+
+const InfoPill = ({ icon, children, accent = false }) => (
+  <div
+    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+      accent
+        ? "border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]"
+        : "border-transparent bg-slate-100 text-slate-600"
+    }`}
+  >
+    <i className={`${icon} text-[11px]`} />
+    <span className="truncate">{children}</span>
+  </div>
+);
+
+const ActionButton = ({
+  onClick,
+  children,
+  icon,
+  dark = false,
+  accent = false,
+  disabled = false,
+  className = "",
+  type = "button",
+}) => {
+  const tone = accent
+    ? "bg-[#FCB017] text-white hover:bg-slate-800"
+    : dark
+    ? "bg-slate-800 text-white hover:bg-[#FCB017]"
+    : "bg-white text-slate-700 border border-black/10 hover:border-[#FCB017] hover:text-[#C98500]";
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-semibold transition-all active:scale-95 shadow-sm ${tone} ${
+        disabled ? "opacity-40 cursor-not-allowed" : ""
+      } ${className}`}
+    >
+      {icon ? <i className={`${icon} text-[11px]`} /> : null}
+      <span>{children}</span>
+    </button>
+  );
 };
 
 const ResidentDashboard = () => {
@@ -375,279 +419,261 @@ const ResidentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-blendfort-fondo flex flex-col px-4 py-3 md:px-7 md:py-4 lg:px-8 lg:py-5 font-sans text-black overflow-x-hidden">
-      <div className="w-full max-w-7xl mx-auto flex justify-between items-start md:items-center mb-2 md:mb-3 lg:mb-2">
-        <button
-          type="button"
-          onClick={() => {
-            window.location.href = "/";
-          }}
-          className="shrink-0 transition-transform active:scale-95"
-          aria-label="Ir al inicio"
-          title="Ir al inicio"
-        >
-          <img
-            src={logo}
-            alt="Blendfort"
-            className="h-16 sm:h-20 md:h-20 lg:h-24 xl:h-28 w-auto object-contain"
-          />
-        </button>
+    <div className="min-h-screen bg-[#F6F6F1] px-4 py-4 md:px-6 md:py-5 lg:px-8 lg:py-6 text-black overflow-x-hidden">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/";
+            }}
+            className="shrink-0 transition-transform active:scale-95"
+            aria-label="Ir al inicio"
+            title="Ir al inicio"
+          >
+            <img
+              src={logo}
+              alt="Blendfort"
+              className="h-16 sm:h-20 md:h-20 lg:h-24 xl:h-28 w-auto object-contain"
+            />
+          </button>
 
-        <button
-          onClick={logout}
-          className="group relative flex items-center gap-3 bg-white border border-black/10 pl-4 pr-2.5 py-2.5 rounded-2xl transition-all duration-300 hover:border-black hover:shadow-lg active:scale-95"
-        >
-          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-black/65 group-hover:text-black transition-colors">
-            Cerrar Sesión
-          </span>
-          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center transition-all duration-300 group-hover:bg-blendfort-naranja">
-            <svg
-              className="w-3.5 h-3.5 rotate-180"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </div>
-        </button>
-      </div>
+          <ActionButton
+            onClick={logout}
+            icon="pi pi-sign-out"
+            dark
+            className="shrink-0"
+          >
+            Salir
+          </ActionButton>
+        </div>
 
-      <div className="max-w-7xl mx-auto w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 items-start mb-6">
-          <div className="flex flex-col items-center lg:items-start space-y-2 md:space-y-2.5 w-full lg:-mt-1">
-            <div className="text-center lg:text-left">
-              <span className="text-blendfort-naranja font-black text-[10px] uppercase tracking-[0.24em] block mb-0.5">
-                BIENVENIDO DE NUEVO
-              </span>
-              <h1 className="text-3xl md:text-5xl font-black text-black uppercase tracking-tighter leading-[0.95]">
-                HOLA, <span className="text-[#a1a1a1]">{nombreUsuario}</span>!
-              </h1>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+              <i className="pi pi-user text-[11px]" />
+              <span>Portal residente</span>
             </div>
 
-            {multiProyecto ? (
-              <div className="w-full max-w-2xl">
-                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-                  <CustomSelect
-                    label="Proyecto activo"
-                    options={proyectosAsignados}
-                    value={proyectoActivo}
-                    onChange={(val) => setProyectoActivo(normalize(val))}
-                    placeholder="SELECCIONAR..."
-                    allowCustom={false}
-                    disabled={!proyectosAsignados.length}
-                  />
+            <h1 className="mt-3 text-[30px] md:text-[42px] xl:text-[48px] font-black tracking-tight text-slate-800 leading-none">
+              Hola, <span className="text-slate-400">{nombreUsuario}</span>
+            </h1>
 
-                  <button
-                    type="button"
-                    onClick={abrirManoObra}
-                    disabled={!tieneProyectosAsignados}
-                    className="h-[50px] px-4 md:px-5 rounded-xl bg-black text-white font-black text-[8px] md:text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                  >
-                    Mano de Obra
-                  </button>
+            <p className="mt-3 text-[13px] font-medium text-slate-500">
+              Gestiona tus egresos y reportes del proyecto asignado.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <InfoPill icon="pi pi-briefcase" accent={normalize(proyectoActivoFinal) !== ""}>
+                {proyectoActivoFinal || "SIN PROYECTO"}
+              </InfoPill>
+
+              <InfoPill icon="pi pi-wallet">
+                Total: {money(totalMes)}
+              </InfoPill>
+
+              {hayFiltros ? (
+                <InfoPill icon="pi pi-filter" accent>
+                  Filtros activos
+                </InfoPill>
+              ) : null}
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end md:max-w-2xl">
+              {multiProyecto ? (
+                <CustomSelect
+                  label="Proyecto activo"
+                  options={proyectosAsignados}
+                  value={proyectoActivo}
+                  onChange={(val) => setProyectoActivo(normalize(val))}
+                  placeholder="SELECCIONAR..."
+                  allowCustom={false}
+                  disabled={!proyectosAsignados.length}
+                />
+              ) : (
+                <div className="rounded-[1.4rem] border border-black/5 bg-white px-4 py-3.5 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                    Proyecto activo
+                  </p>
+                  <p className="mt-2 text-[14px] font-black text-slate-800 uppercase">
+                    {proyectoActivoFinal || "SIN PROYECTO"}
+                  </p>
                 </div>
-              </div>
-            ) : (
-              tieneProyectosAsignados && (
-                <div className="w-full max-w-sm">
-                  <button
-                    type="button"
-                    onClick={abrirManoObra}
-                    className="w-full h-[50px] px-4 rounded-xl bg-black text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm"
-                  >
-                    Mano de Obra
-                  </button>
-                </div>
-              )
-            )}
+              )}
+
+              <ActionButton
+                onClick={abrirManoObra}
+                icon="pi pi-users"
+                dark
+                disabled={!tieneProyectosAsignados}
+                className="h-[50px] sm:w-auto"
+              >
+                Mano de obra
+              </ActionButton>
+            </div>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
-            <div className="bg-white border border-black/[0.05] p-4 md:p-5 rounded-[1.4rem] md:rounded-[1.6rem] shadow-sm w-full max-w-sm">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2.5">
-                Caja Chica General
-              </p>
-
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-1.5 h-7 bg-blendfort-naranja rounded-full" />
+          <div className="rounded-[1.6rem] border border-black/5 bg-white p-4 md:p-5 shadow-[0_14px_40px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C98500]">
+                  Caja chica general
+                </p>
                 <h2
-                  className={`text-2xl md:text-3xl font-black tracking-tighter ${
-                    cajaExcedida ? "text-red-800" : "text-black"
+                  className={`mt-2 text-[28px] md:text-[32px] font-black tracking-tight leading-none ${
+                    cajaExcedida ? "text-red-700" : "text-slate-800"
                   }`}
                 >
                   {money(resumenCajaChica?.gastadoActual || 0)}
                 </h2>
+                <p className="mt-2 text-[12px] font-medium text-slate-500">
+                  Gastado del fondo asignado
+                </p>
               </div>
 
-              <p className="text-[8px] font-black uppercase tracking-[0.14em] text-black/35 mb-4">
-                Gastado del fondo general asignado
-              </p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#FCB017]/20 bg-[#FFF8E8] text-[#C98500]">
+                <i className="pi pi-credit-card text-[15px]" />
+              </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-                <div>
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
-                    Total Asignado
-                  </p>
-                  <p className="text-[10px] font-black">
-                    {money(resumenCajaChica?.montoActualAsignado || 0)}
-                  </p>
-                </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-[1rem] border border-black/5 bg-[#F9F9F6] p-3">
+                <p className="text-[10px] font-medium text-slate-500">Total asignado</p>
+                <p className="mt-2 text-[12px] font-black text-slate-800">
+                  {money(resumenCajaChica?.montoActualAsignado || 0)}
+                </p>
+              </div>
 
-                <div className="text-right">
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
-                    Saldo
-                  </p>
+              <div className="rounded-[1rem] border border-black/5 bg-[#F9F9F6] p-3">
+                <p className="text-[10px] font-medium text-slate-500">Saldo</p>
+                <p
+                  className={`mt-2 text-[12px] font-black ${
+                    saldoCajaNegativo ? "text-red-700" : "text-slate-800"
+                  }`}
+                >
+                  {money(resumenCajaChica?.saldoActual || 0)}
+                </p>
+              </div>
 
-                  {saldoCajaNegativo ? (
-                    <span className="inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] text-red-800 bg-red-100 border-red-200">
-                      {money(resumenCajaChica?.saldoActual || 0)}
-                    </span>
-                  ) : (
-                    <p className="text-[10px] font-black">
-                      {money(resumenCajaChica?.saldoActual || 0)}
-                    </p>
-                  )}
-                </div>
+              <div className="rounded-[1rem] border border-black/5 bg-[#F9F9F6] p-3">
+                <p className="text-[10px] font-medium text-slate-500">Desembolso</p>
+                <p className="mt-2 text-[12px] font-black text-slate-800">
+                  {resumenCajaChica?.fechaUltimoDesembolso || "SIN REGISTRO"}
+                </p>
+              </div>
 
-                <div>
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
-                    Desembolso
-                  </p>
-                  <p className="text-[10px] font-black">
-                    {resumenCajaChica?.fechaUltimoDesembolso || "SIN REGISTRO"}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-[7px] font-bold text-[#a1a1a1] uppercase tracking-[0.14em] mb-1">
-                    Estado
-                  </p>
-                  <span
-                    className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${estadoCajaTone(
-                      resumenCajaChica?.estado
-                    )}`}
-                  >
-                    {normalize(resumenCajaChica?.estado || "SIN FONDO")}
-                  </span>
-                </div>
+              <div className="rounded-[1rem] border border-black/5 bg-[#F9F9F6] p-3">
+                <p className="text-[10px] font-medium text-slate-500">Estado</p>
+                <span
+                  className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${estadoCajaTone(
+                    resumenCajaChica?.estado
+                  )}`}
+                >
+                  {normalize(resumenCajaChica?.estado || "SIN FONDO")}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[1.8rem] md:rounded-[2.2rem] border border-black/5 shadow-xl overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 md:p-5 border-b border-black/5 bg-blendfort-fondo/30">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-[2px] bg-blendfort-naranja" />
-                <span className="text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.28em]">
-                  Resident Console
-                </span>
-              </div>
-              <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">
-                Reportes de Egresos
-              </h3>
-              <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.18em] mt-1.5">
-                {multiProyecto
-                  ? `PROYECTO ACTIVO: ${proyectoActivoFinal}`
-                  : `PROYECTO: ${proyectoActivoFinal || "—"}`}
-              </p>
-            </div>
-
-            <div className="w-full md:w-auto">
-              <div className="grid grid-cols-3 gap-2 md:flex md:gap-2.5 md:items-center md:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowFiltros((v) => !v)}
-                  className={`h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-white border transition-all duration-300 active:scale-95 shadow-sm hover:border-blendfort-naranja flex items-center justify-center md:justify-start gap-2 ${
-                    hayFiltros ? "border-blendfort-naranja/40" : "border-black/5"
-                  }`}
-                >
-                  <svg
-                    className="w-3.5 h-3.5 opacity-50"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-                  </svg>
-                  <span className="text-[8px] font-black uppercase tracking-[0.16em] text-black/60">
-                    Filtros
+        <div className="rounded-[1.8rem] border border-black/5 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.04)] overflow-hidden">
+          <div className="border-b border-black/5 bg-[#F9F9F6] px-4 py-4 md:px-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-[2px] bg-[#FCB017]" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C98500]">
+                    Reportes de egresos
                   </span>
-                  {hayFiltros && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja animate-pulse" />
-                  )}
-                </button>
+                </div>
 
-                <button
-                  type="button"
+                <h3 className="mt-2 text-[24px] font-black tracking-tight text-slate-800">
+                  Egresos
+                </h3>
+
+                <p className="mt-2 text-[12px] font-medium text-slate-500">
+                  {multiProyecto
+                    ? `Proyecto activo: ${proyectoActivoFinal || "—"}`
+                    : `Proyecto: ${proyectoActivoFinal || "—"}`}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:justify-end">
+                <ActionButton
+                  onClick={() => setShowFiltros((v) => !v)}
+                  icon="pi pi-filter"
+                  className="px-3 md:px-4"
+                >
+                  <span className="hidden sm:inline">Filtros</span>
+                </ActionButton>
+
+                <ActionButton
                   onClick={abrirReporteLista}
-                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-blendfort-naranja text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-black transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+                  icon="pi pi-plus"
+                  accent
+                  className="px-3 md:px-4"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
-                    <span className="text-sm font-light">+</span>
-                  </div>
-                  <span className="text-[8px] md:text-[9px]">Reporte</span>
-                </button>
+                  <span className="hidden sm:inline">Reporte</span>
+                </ActionButton>
 
-                <button
-                  type="button"
+                <ActionButton
                   onClick={abrirModalNuevo}
-                  className="h-10 md:h-auto w-full md:w-auto px-0 md:px-4 py-2.5 rounded-xl bg-black text-white font-black text-[9px] uppercase tracking-[0.16em] hover:bg-blendfort-naranja transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+                  icon="pi pi-plus"
+                  dark
+                  className="px-3 md:px-4"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
-                    <span className="text-sm font-light">+</span>
-                  </div>
-                  <span className="text-[8px] md:text-[9px]">Egreso</span>
-                </button>
+                  <span className="hidden sm:inline">Egreso</span>
+                </ActionButton>
               </div>
             </div>
           </div>
 
           {showFiltros && (
-            <div className="p-4 md:p-5 border-b border-black/5 animate-in fade-in zoom-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CustomSelect
-                  label="Categoría"
-                  options={["TODAS...", ...(opcionesCategorias || [])]}
-                  value={filtroCategoria ? filtroCategoria : "TODAS..."}
-                  onChange={(val) => {
-                    const v = String(val || "");
-                    setFiltroCategoria(v === "TODAS..." ? "" : v);
-                  }}
-                  placeholder="TODAS..."
-                  allowCustom={false}
-                />
+            <div className="border-b border-black/5 p-4 md:p-5 animate-in fade-in zoom-in duration-300">
+              <div className="rounded-[1.5rem] border border-black/5 bg-[#F9F9F6] p-4 md:p-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                  <div className="md:col-span-5">
+                    <CustomSelect
+                      label="Categoría"
+                      options={["TODAS...", ...(opcionesCategorias || [])]}
+                      value={filtroCategoria ? filtroCategoria : "TODAS..."}
+                      onChange={(val) => {
+                        const v = String(val || "");
+                        setFiltroCategoria(v === "TODAS..." ? "" : v);
+                      }}
+                      placeholder="TODAS..."
+                      allowCustom={false}
+                    />
+                  </div>
 
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
-                    Fecha
-                  </label>
-                  <input
-                    type="date"
-                    value={filtroFecha}
-                    onChange={(e) => setFiltroFecha(e.target.value)}
-                    className="w-full bg-white border border-black/5 p-4 rounded-xl text-[10px] font-black outline-none h-[50px] focus:border-black transition-all shadow-sm"
-                  />
+                  <div className="md:col-span-5 space-y-1">
+                    <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
+                      Fecha
+                    </label>
+                    <input
+                      type="date"
+                      value={filtroFecha}
+                      onChange={(e) => setFiltroFecha(e.target.value)}
+                      className="w-full h-[50px] bg-white border border-black/5 px-4 rounded-xl text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
+                    />
+                  </div>
+
+                  {hayFiltros && (
+                    <div className="md:col-span-2 flex items-end">
+                      <button
+                        type="button"
+                        onClick={limpiarFiltros}
+                        className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-black/10 text-slate-600 transition-all active:scale-95 hover:border-[#FCB017] hover:text-[#C98500] shadow-sm h-[50px]"
+                      >
+                        <i className="pi pi-filter-slash text-[12px]" />
+                        <span className="hidden lg:inline text-[12px] font-semibold">
+                          Limpiar
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {hayFiltros && (
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={limpiarFiltros}
-                    className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-                  >
-                    <span className="text-[8px] font-black uppercase tracking-[0.18em]">
-                      Limpiar
-                    </span>
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -661,6 +687,10 @@ const ResidentDashboard = () => {
             />
           </div>
         </div>
+
+        <footer className="pt-1 text-center text-[10px] font-medium text-slate-400">
+          Blendfort Control Interno v1.0
+        </footer>
       </div>
 
       <ModalConfirmar
@@ -717,10 +747,6 @@ const ResidentDashboard = () => {
         mensaje={modalExito.mensaje}
         onClose={() => setModalExito({ show: false, mensaje: "" })}
       />
-
-      <footer className="mt-8 text-center opacity-20 text-[9px] font-bold uppercase tracking-[0.22em] text-black">
-        Blendfort Control Interno v1.0
-      </footer>
     </div>
   );
 };

@@ -2,22 +2,40 @@ import React from "react";
 import Login from "./views/Login";
 import ResidentDashboard from "./views/ResidentDashboard";
 import AdminDashboard from "./views/AdminDashboard";
+import ClienteDashboard from "./views/ClienteDashboard";
 import { AppProvider, useAppContext } from "./context/AppContext";
+import {
+  ClienteAccessProvider,
+  useClienteAccess,
+} from "./context/ClienteAccessContext";
 
 function App() {
   return (
     <AppProvider>
-      <MainApp />
+      <ClienteAccessProvider>
+        <MainApp />
+      </ClienteAccessProvider>
     </AppProvider>
   );
 }
 
 function MainApp() {
-  const { usuario } = useAppContext();
+  const { usuario, authLoading } = useAppContext();
+  const { clienteSesion, clienteLoading } = useClienteAccess();
 
   const rol = String(usuario || "").toUpperCase().trim();
 
-  if (!usuario) {
+  if (authLoading || clienteLoading) {
+    return (
+      <div className="min-h-screen bg-blendfort-fondo flex items-center justify-center">
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+          Cargando...
+        </p>
+      </div>
+    );
+  }
+
+  if (!usuario && !clienteSesion) {
     return (
       <div className="min-h-screen bg-blendfort-fondo">
         <Login />
@@ -37,6 +55,14 @@ function MainApp() {
     return (
       <div className="min-h-screen bg-blendfort-fondo">
         <AdminDashboard />
+      </div>
+    );
+  }
+
+  if (clienteSesion?.activo) {
+    return (
+      <div className="min-h-screen bg-blendfort-fondo">
+        <ClienteDashboard />
       </div>
     );
   }

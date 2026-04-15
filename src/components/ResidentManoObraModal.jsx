@@ -550,29 +550,27 @@ const ResidentManoObraModal = ({
   };
 
   const filtrosPanel = (
-    <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
+    <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-sm mb-5">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-end">
+        <CustomSelect
+          label="Semana"
+          options={opcionesSemana.map((s) => (s === "TODAS" ? "TODAS" : weekLabel(s)))}
+          value={filtroSemana === "TODAS" ? "TODAS" : weekLabel(filtroSemana)}
+          onChange={(val) => {
+            if (String(val || "").toUpperCase() === "TODAS") {
+              setFiltroSemana("TODAS");
+              return;
+            }
+
+            const match = opcionesSemana.find((s) => weekLabel(s) === val);
+            setFiltroSemana(match || "TODAS");
+          }}
+          placeholder={opcionesSemana.length > 1 ? "TODAS" : "SIN SEMANAS"}
+          allowCustom={false}
+          disabled={opcionesSemana.length <= 1}
+        />
+
         <div>
-          <CustomSelect
-            label="Semana"
-            options={opcionesSemana.map((s) => (s === "TODAS" ? "TODAS" : weekLabel(s)))}
-            value={filtroSemana === "TODAS" ? "TODAS" : weekLabel(filtroSemana)}
-            onChange={(val) => {
-              if (String(val || "").toUpperCase() === "TODAS") {
-                setFiltroSemana("TODAS");
-                return;
-              }
-
-              const match = opcionesSemana.find((s) => weekLabel(s) === val);
-              setFiltroSemana(match || "TODAS");
-            }}
-            placeholder={opcionesSemana.length > 1 ? "TODAS" : "SIN SEMANAS"}
-            allowCustom={false}
-            disabled={opcionesSemana.length <= 1}
-          />
-        </div>
-
-        <div className="lg:col-span-1">
           <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
             Buscar trabajador
           </label>
@@ -581,7 +579,7 @@ const ResidentManoObraModal = ({
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="NOMBRE, CARGO, ESTADO..."
-            className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[50px] rounded-xl text-[10px] font-black outline-none focus:border-black transition-all"
+            className="w-full mt-1 bg-blendfort-fondo border border-black/5 px-4 h-[54px] rounded-2xl text-[10px] font-black outline-none focus:border-black transition-all uppercase"
           />
         </div>
 
@@ -609,7 +607,7 @@ const ResidentManoObraModal = ({
           <button
             type="button"
             onClick={limpiarFiltros}
-            className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
           >
             <svg
               className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
@@ -618,11 +616,7 @@ const ResidentManoObraModal = ({
               stroke="currentColor"
               strokeWidth="2.5"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
 
             <span className="text-[8px] font-black uppercase tracking-[0.18em]">
@@ -644,15 +638,18 @@ const ResidentManoObraModal = ({
       />
 
       <div className="absolute inset-0 flex items-end md:items-center justify-center p-0 md:p-6">
-        <div className="relative w-full h-[92dvh] md:h-auto md:max-h-[90vh] md:max-w-6xl bg-blendfort-fondo rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-black/5">
+        <div className="relative w-full h-[92dvh] md:h-auto md:max-h-[90vh] md:max-w-6xl bg-[#F6F6F1] rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-black/5">
           <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-black/5 px-4 md:px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <span className="text-[9px] font-black uppercase tracking-[0.22em] text-blendfort-naranja block mb-1">
-                  Resident Console
-                </span>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-[2px] bg-blendfort-naranja" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.22em] text-blendfort-naranja">
+                    Resident Console
+                  </span>
+                </div>
 
-                <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight leading-tight">
+                <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight leading-tight text-slate-800">
                   Control de Mano de Obra
                 </h2>
 
@@ -707,45 +704,49 @@ const ResidentManoObraModal = ({
           </div>
 
           <div className="h-[calc(92dvh-84px)] md:h-auto md:max-h-[calc(90vh-84px)] overflow-y-auto px-4 md:px-6 py-4 md:py-5">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-              <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   {vistaActiva === "pagos" ? "Total a Pagar" : "Total Mano de Obra"}
                 </p>
-                <p className="text-lg md:text-xl font-black tracking-tight">
+                <p className="text-base md:text-xl font-black tracking-tight text-slate-800">
                   {money(resumen.totalGeneral)}
                 </p>
               </div>
 
-              <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Total Pagado
                 </p>
-                <p className="text-lg md:text-xl font-black tracking-tight text-green-700">
+                <p className="text-base md:text-xl font-black tracking-tight text-green-700">
                   {money(resumen.totalPagado)}
                 </p>
               </div>
 
-              <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   Total Pendiente
                 </p>
-                <p className="text-lg md:text-xl font-black tracking-tight text-amber-700">
+                <p className="text-base md:text-xl font-black tracking-tight text-amber-700">
                   {money(resumen.totalPendiente)}
                 </p>
               </div>
 
-              <div className="bg-white rounded-[1.4rem] border border-black/5 p-4 shadow-sm">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#a1a1a1] mb-2">
+              <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
+                <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
                   {vistaActiva === "pagos" ? "Pagos" : "Trabajadores"}
                 </p>
-                <p className="text-lg md:text-xl font-black tracking-tight">
+                <p className="text-base md:text-xl font-black tracking-tight text-slate-800">
                   {resumen.trabajadores}
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-[1.4rem] border border-black/5 p-3 md:p-4 shadow-sm mb-5">
+            <div className="rounded-[1.5rem] border border-black/5 bg-white p-3 md:p-4 shadow-sm mb-5">
               <div className="grid grid-cols-2 gap-2 md:w-fit">
                 <button
                   type="button"
@@ -793,7 +794,7 @@ const ResidentManoObraModal = ({
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight">
+                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight text-slate-800">
                               {row.nombre}
                             </h3>
 
@@ -917,7 +918,7 @@ const ResidentManoObraModal = ({
                               className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/40 transition-colors"
                             >
                               <td className="px-4 py-4">
-                                <p className="text-[10px] font-black uppercase leading-tight">
+                                <p className="text-[10px] font-black uppercase leading-tight text-slate-800">
                                   {row.nombre}
                                 </p>
                               </td>
@@ -994,7 +995,7 @@ const ResidentManoObraModal = ({
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight">
+                            <h3 className="text-sm font-black uppercase tracking-tight leading-tight text-slate-800">
                               {row.nombre}
                             </h3>
 
@@ -1041,7 +1042,7 @@ const ResidentManoObraModal = ({
                             <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
                               Bonos
                             </p>
-                            <p className="font-black text-black">{money(row.bonos)}</p>
+                            <p className="font-black">{money(row.bonos)}</p>
                           </div>
 
                           <div>
@@ -1055,7 +1056,9 @@ const ResidentManoObraModal = ({
                             <p className="text-[7px] font-black uppercase tracking-[0.16em] text-black/30 mb-1">
                               Neto a pagar
                             </p>
-                            <p className="font-black text-lg tracking-tight">{money(row.neto)}</p>
+                            <p className="font-black text-lg tracking-tight text-slate-800">
+                              {money(row.neto)}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1114,7 +1117,7 @@ const ResidentManoObraModal = ({
                               className="border-b border-black/[0.04] last:border-b-0 hover:bg-blendfort-fondo/40 transition-colors"
                             >
                               <td className="px-4 py-4">
-                                <p className="text-[10px] font-black uppercase leading-tight">
+                                <p className="text-[10px] font-black uppercase leading-tight text-slate-800">
                                   {row.nombre}
                                 </p>
                               </td>

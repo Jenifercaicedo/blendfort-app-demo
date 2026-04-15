@@ -1,4 +1,3 @@
-// ManoObraDetalleModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import CustomSelect from "./CustomSelect";
 
@@ -55,9 +54,42 @@ const formatDiaES = (iso) => {
   return `${pad2(d)} de ${mes}`;
 };
 
+const Chip = ({ children, tone = "default", icon = "" }) => {
+  const toneClass =
+    tone === "success"
+      ? "bg-green-50 text-green-700 border-green-200"
+      : tone === "warning"
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : tone === "accent"
+      ? "bg-[#FFF8E8] text-[#C98500] border-[#FCB017]/20"
+      : "bg-slate-100 text-slate-600 border-slate-200";
+
+  return (
+    <div
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${toneClass}`}
+    >
+      {icon ? <i className={`${icon} text-[11px]`} /> : null}
+      <span>{children}</span>
+    </div>
+  );
+};
+
+const DataRow = ({ label, value, accent = false, danger = false }) => (
+  <div className="flex items-center justify-between gap-4 py-2.5">
+    <span className="text-[11px] font-medium text-slate-500">{label}</span>
+    <span
+      className={`text-[12px] font-black tracking-tight text-right ${
+        danger ? "text-red-600" : accent ? "text-[#C98500]" : "text-slate-800"
+      }`}
+    >
+      {value}
+    </span>
+  </div>
+);
+
 const ManoObraDetalleModal = ({
   show,
-  detalle, // { nombre, rows }
+  detalle,
   proyectoActivo,
   semanaActiva,
   onClose,
@@ -143,172 +175,69 @@ const ManoObraDetalleModal = ({
       aria-modal="true"
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
-        <div className="bg-white w-full max-w-md rounded-[2.4rem] md:rounded-[3rem] shadow-2xl overflow-hidden border border-black/5 animate-in zoom-in-95 duration-300 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto my-2 md:my-4">
-          {/* Header */}
-          <div className="bg-black text-white relative px-7 sm:px-8 pt-9 sm:pt-10 pb-7 sm:pb-8">
+        <div className="bg-white w-full max-w-lg rounded-[2rem] md:rounded-[2.7rem] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.45)] overflow-hidden border border-black/5 animate-in zoom-in-95 duration-300 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="relative px-6 md:px-8 pt-7 md:pt-8 pb-5 border-b border-black/5 bg-white">
             <button
               onClick={onClose}
               type="button"
-              className="absolute top-5 right-5 sm:top-6 sm:right-6 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-blendfort-naranja transition-all"
+              className="absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-slate-600 hover:border-[#FCB017] hover:text-[#C98500] transition-all"
               aria-label="Cerrar"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <i className="pi pi-times text-[13px]" />
             </button>
 
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-[2px] bg-blendfort-naranja"></div>
-              <span className="text-[8px] font-black uppercase tracking-[0.45em] text-white/60">
-                Payroll Profile
-              </span>
-            </div>
-
-            <h4 className="text-2xl font-black uppercase tracking-tight leading-tight">
-              {detalle.nombre}
-            </h4>
-
-            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50 mt-1">
-              {String(proyectoActivo || "SIN PROYECTO").toUpperCase()}
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
-                  RANGO
+            <div className="pr-12">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-[2px] bg-[#FCB017]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#C98500]">
+                  Detalle de nómina
                 </span>
-                <span className="text-[8px] font-black uppercase tracking-widest">{rango}</span>
-              </span>
+              </div>
 
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
-                  DÍAS
-                </span>
-                <span className="text-[8px] font-black uppercase tracking-widest">{resumen.dias}</span>
-              </span>
+              <h4 className="mt-3 text-[28px] md:text-[30px] font-black tracking-tight text-slate-800 leading-none">
+                {detalle.nombre}
+              </h4>
 
-              <span
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${
-                  resumen.estadoSemana === "PAGADO"
-                    ? "bg-green-500/10 border-green-500/20"
-                    : "bg-amber-500/10 border-amber-500/20"
-                }`}
-              >
-                <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50">
-                  EST
-                </span>
-                <span
-                  className={`text-[8px] font-black uppercase tracking-widest ${
-                    resumen.estadoSemana === "PAGADO" ? "text-green-300" : "text-amber-300"
-                  }`}
-                >
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Chip icon="pi pi-calendar" tone="accent">
+                  {rango}
+                </Chip>
+
+                <Chip icon="pi pi-check-circle" tone={resumen.estadoSemana === "PAGADO" ? "success" : "warning"}>
                   {resumen.estadoSemana}
-                </span>
-              </span>
+                </Chip>
+
+                <Chip icon="pi pi-briefcase">
+                  {String(proyectoActivo || "SIN PROYECTO").toUpperCase()}
+                </Chip>
+              </div>
             </div>
           </div>
 
-          {/* Body */}
-          <div className="p-7 sm:p-8 space-y-6">
-            {/* Identidad */}
-            <div className="bg-blendfort-fondo rounded-[2.5rem] border border-black/5 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20">
-                  Identidad
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-black/40">
-                  Nómina
-                </span>
-              </div>
+          <div className="p-6 md:p-8 space-y-5">
+            <div className="rounded-[1.5rem] border border-black/5 bg-[#F9F9F6] p-4 md:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C98500]">
+                Resumen
+              </p>
 
-              <div className="space-y-3 text-[10px]">
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Proyecto
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-black">
-                    {String(proyectoActivo || "SIN PROYECTO").toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Periodo
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-black">{rango}</span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Semana
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-black">
-                    {semanaActiva ? String(semanaActiva) : "NO FILTRADA"}
-                  </span>
-                </div>
+              <div className="mt-4 divide-y divide-black/5">
+                <DataRow label="Proyecto" value={String(proyectoActivo || "SIN PROYECTO").toUpperCase()} />
+                <DataRow label="Periodo" value={rango} />
+                <DataRow label="Semana" value={semanaActiva ? String(semanaActiva) : "NO FILTRADA"} />
+                <DataRow label="Días trabajados" value={resumen.dias} />
+                <DataRow label="Horas extra" value={resumen.horas} />
+                <DataRow label="Bonos" value={money(resumen.bonos)} />
+                <DataRow label="Descuentos" value={`- ${money(resumen.desc)}`} danger />
+                <DataRow label="Total neto" value={money(resumen.neto)} accent />
               </div>
             </div>
 
-            {/* Compensación */}
-            <div className="bg-white rounded-[2.5rem] border border-black/5 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20">
-                  Compensación
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-black/40">
-                  Resumen
-                </span>
-              </div>
+            <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 md:p-5 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C98500]">
+                Editar día
+              </p>
 
-              <div className="space-y-3 text-[10px]">
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Horas extras
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-black">{resumen.horas}</span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Bonos
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-black">
-                    {money(resumen.bonos)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-widest">
-                    Descuentos
-                  </span>
-                  <span className="font-black uppercase tracking-tight text-red-500">
-                    - {money(resumen.desc)}
-                  </span>
-                </div>
-
-                <div className="pt-4 mt-2 border-t border-black/5 flex items-center justify-between">
-                  <span className="text-[8px] font-black uppercase opacity-20 tracking-[0.25em]">
-                    Total Neto
-                  </span>
-                  <span className="text-[11px] font-black uppercase tracking-tight text-black">
-                    {money(resumen.neto)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Editar día */}
-            <div className="bg-blendfort-fondo rounded-[2.5rem] border border-black/5 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-black/20">
-                  Corrección
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-black/40">
-                  Editar día
-                </span>
-              </div>
-
-              <div className="space-y-4">
+              <div className="mt-4 space-y-4">
                 <CustomSelect
                   label="Día"
                   options={opcionesDias.map((x) => x.label)}
@@ -323,9 +252,9 @@ const ManoObraDetalleModal = ({
                 />
 
                 {rowSeleccionadoAnulado && (
-                  <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-100">
-                    <p className="text-[8px] font-black uppercase tracking-[0.25em] text-red-700">
-                      Este reporte está anulado y no puede editarse
+                  <div className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold text-red-700">
+                      Este reporte está anulado y no puede editarse.
                     </p>
                   </div>
                 )}
@@ -334,31 +263,34 @@ const ManoObraDetalleModal = ({
                   type="button"
                   onClick={() => rowSeleccionado && onEditReporte?.(rowSeleccionado)}
                   disabled={!rowSeleccionado || rowSeleccionadoAnulado}
-                  className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] transition-all active:scale-95 ${
+                  className={`w-full rounded-full py-4 text-[13px] font-semibold transition-all active:scale-95 ${
                     rowSeleccionado && !rowSeleccionadoAnulado
-                      ? "bg-black text-white hover:bg-blendfort-naranja"
-                      : "bg-black/10 text-black/30 cursor-not-allowed"
+                      ? "bg-slate-800 text-white hover:bg-[#FCB017]"
+                      : "bg-slate-100 text-slate-300 cursor-not-allowed"
                   }`}
                 >
-                  Editar Reporte
+                  Editar reporte
                 </button>
               </div>
             </div>
 
-            {/* Acciones */}
-            <div className="pt-2 flex items-center justify-between">
-              <div className="text-[7px] font-black uppercase opacity-20 tracking-[0.3em]">
-                ACCIONES
-              </div>
+            <div className="flex items-center justify-between gap-4 pt-1">
+              <p className="text-[11px] font-medium text-slate-400">
+                {!semanaActiva
+                  ? "Filtra por semana para pagar correctamente."
+                  : resumen.estadoSemana === "PAGADO"
+                  ? "La semana ya figura como pagada."
+                  : "Puedes editar un día o pagar la semana completa."}
+              </p>
 
               <button
                 type="button"
                 onClick={() => onPagarSemana?.(detalle.nombre)}
                 disabled={!puedePagar}
-                className={`h-11 px-6 rounded-full font-black uppercase tracking-[0.35em] transition-all shadow-lg active:scale-95 ${
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-semibold transition-all ${
                   puedePagar
-                    ? "bg-black text-white hover:bg-blendfort-naranja"
-                    : "bg-black/10 text-black/30 cursor-not-allowed"
+                    ? "bg-slate-800 text-white hover:bg-[#FCB017]"
+                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
                 title={
                   !semanaActiva
@@ -368,16 +300,9 @@ const ManoObraDetalleModal = ({
                     : "Marcar semana como pagada"
                 }
               >
-                Pagar Semana
+                <i className="pi pi-check text-[11px]" />
+                <span>Pagar semana</span>
               </button>
-            </div>
-
-            <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-black/20">
-              {!semanaActiva
-                ? "Tip: filtra por semana para pagar correctamente."
-                : resumen.estadoSemana === "PAGADO"
-                ? "La semana ya figura como pagada."
-                : "Puedes editar un día o pagar la semana completa."}
             </div>
           </div>
         </div>

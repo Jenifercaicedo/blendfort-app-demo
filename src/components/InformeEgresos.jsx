@@ -9,9 +9,6 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-// Regla única:
-// - ANULADO no suma
-// - MANO DE OBRA solo suma si está PAGADO o COMPLETADO
 const shouldCountInTotals = (e) => {
   const cat = normalize(e?.categoria);
   const est = normalize(e?.estado || "PENDIENTE");
@@ -23,6 +20,30 @@ const shouldCountInTotals = (e) => {
   }
 
   return true;
+};
+
+const money = (n) =>
+  Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const InfoPill = ({ icon, children, accent = false, tone = "default" }) => {
+  const toneClass =
+    tone === "warning"
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : accent
+      ? "bg-[#FFF8E8] text-[#C98500] border-[#FCB017]/20"
+      : "bg-slate-100 text-slate-600 border-transparent";
+
+  return (
+    <div
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${toneClass}`}
+    >
+      <i className={`${icon} text-[11px]`} />
+      <span className="truncate">{children}</span>
+    </div>
+  );
 };
 
 const InformeEgresos = ({
@@ -40,7 +61,7 @@ const InformeEgresos = ({
   setIdAEliminar,
   setEgresoSeleccionado,
   editandoId,
-  totalFiltrado, // compatibilidad
+  totalFiltrado,
   onBack,
   onNuevoEgreso,
 }) => {
@@ -48,9 +69,9 @@ const InformeEgresos = ({
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
   const opcionesCategorias = useMemo(() => {
-    const unique = [...new Set(
-      (egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean)
-    )];
+    const unique = [
+      ...new Set((egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean)),
+    ];
 
     const sinMO = unique.filter((c) => c !== "MANO DE OBRA").sort();
 
@@ -68,8 +89,6 @@ const InformeEgresos = ({
 
       if (categoriaActual !== categoriaFiltro) return false;
 
-      // Si se filtra por MANO DE OBRA, solo mostrar lo contable:
-      // PAGADO o COMPLETADO
       if (categoriaFiltro === "MANO DE OBRA") {
         const estadoActual = normalize(e?.estado || "PENDIENTE");
         return estadoActual === "PAGADO" || estadoActual === "COMPLETADO";
@@ -105,33 +124,39 @@ const InformeEgresos = ({
   };
 
   const filtrosUI = (
-    <div className="bg-blendfort-fondo/50 p-6 rounded-[2.5rem] border border-black/[0.02]">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <FilterSelect
-          label="Proyecto"
-          options={opcionesProyectos}
-          value={filtroProyecto}
-          onChange={setFiltroProyecto}
-          placeholder="TODOS..."
-        />
+    <div className="rounded-[1.6rem] border border-black/5 bg-white p-4 md:p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-3">
+          <FilterSelect
+            label="Proyecto"
+            options={opcionesProyectos}
+            value={filtroProyecto}
+            onChange={setFiltroProyecto}
+            placeholder="TODOS..."
+          />
+        </div>
 
-        <FilterSelect
-          label="Residente"
-          options={opcionesResidentes}
-          value={filtroResidente}
-          onChange={setFiltroResidente}
-          placeholder="TODOS..."
-        />
+        <div className="md:col-span-3">
+          <FilterSelect
+            label="Residente"
+            options={opcionesResidentes}
+            value={filtroResidente}
+            onChange={setFiltroResidente}
+            placeholder="TODOS..."
+          />
+        </div>
 
-        <FilterSelect
-          label="Categoría"
-          options={opcionesCategorias}
-          value={filtroCategoria}
-          onChange={setFiltroCategoria}
-          placeholder="TODAS..."
-        />
+        <div className="md:col-span-3">
+          <FilterSelect
+            label="Categoría"
+            options={opcionesCategorias}
+            value={filtroCategoria}
+            onChange={setFiltroCategoria}
+            placeholder="TODAS..."
+          />
+        </div>
 
-        <div className="space-y-1">
+        <div className="md:col-span-2 space-y-1">
           <label className="text-[8px] font-black uppercase ml-4 opacity-40 tracking-widest">
             Fecha
           </label>
@@ -139,206 +164,121 @@ const InformeEgresos = ({
             type="date"
             value={filtroFecha}
             onChange={(e) => setFiltroFecha(e.target.value)}
-            className="w-full bg-white border border-black/5 p-4 rounded-2xl text-[10px] font-black outline-none h-[53px] focus:border-black transition-all shadow-sm"
+            className="w-full bg-white border border-black/5 p-4 rounded-xl text-[10px] font-black outline-none h-[50px] focus:border-black transition-all shadow-sm"
           />
         </div>
-      </div>
 
-      {hayFiltros && (
-        <div className="mt-5 flex justify-start">
-          <button
-            onClick={limpiarTodo}
-            type="button"
-            className="flex items-center gap-3 px-6 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
-          >
-            <svg
-              className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-blendfort-naranja group-hover:rotate-180 transition-all duration-500 ease-in-out"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
+        {hayFiltros && (
+          <div className="md:col-span-1 flex items-end">
+            <button
+              onClick={limpiarTodo}
+              type="button"
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-black/10 text-slate-600 transition-all active:scale-95 hover:border-[#FCB017] hover:text-[#C98500] shadow-sm h-[50px]"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
-            <span className="text-[8px] font-black uppercase tracking-[0.25em]">
-              Limpiar Filtros
-            </span>
-          </button>
-        </div>
-      )}
+              <i className="pi pi-filter-slash text-[12px]" />
+              <span className="hidden lg:inline text-[12px] font-semibold">
+                Limpiar
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div className="animate-in fade-in zoom-in duration-500 max-w-7xl mx-auto p-2 md:px-0">
-      <div className="bg-white rounded-[3rem] md:rounded-[3.5rem] border border-black/5 shadow-2xl relative overflow-hidden">
-        {/* HEADER */}
-        <div className="flex justify-between items-center p-5 md:p-6 border-b border-black/5 bg-white">
-          <button
-            onClick={onBack}
-            type="button"
-            className="w-10 h-10 rounded-full bg-white border border-black/5 shadow-sm flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
-            aria-label="Volver"
-            title="Volver"
-          >
-            <svg
-              className="w-4 h-4 rotate-180"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </button>
+    <div className="space-y-4 md:space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+            <i className="pi pi-wallet text-[11px]" />
+            <span>Control de egresos</span>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <h2 className="mt-3 text-[28px] md:text-[34px] xl:text-[38px] font-black tracking-tight text-slate-800 leading-none">
+            Egresos
+          </h2>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {filtroCategoria ? (
+              <InfoPill icon="pi pi-tag">{normalize(filtroCategoria)}</InfoPill>
+            ) : null}
+
+            {hayManoObraPendiente ? (
+              <InfoPill icon="pi pi-info-circle" tone="warning">
+                Mano de obra pendiente no suma
+              </InfoPill>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="w-full xl:w-auto flex flex-col gap-3 xl:items-end">
+          <div className="rounded-[1.5rem] border border-[#FCB017]/20 bg-[#FFF8E8] px-4 py-3 md:px-5 md:py-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)] xl:min-w-[280px]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C98500]">
+              Total filtrado
+            </p>
+
+            <div className="mt-2 flex items-end gap-2">
+              <span className="text-[11px] font-black text-[#C98500] uppercase tracking-[0.12em]">
+                USD
+              </span>
+              <span className="text-[24px] md:text-[30px] font-black tracking-tight text-slate-800 leading-none">
+                $ {money(totalContable)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end items-center gap-2">
             <button
               type="button"
               onClick={() => setShowFiltros((v) => !v)}
-              className={`md:hidden group relative flex items-center gap-3 px-5 py-3 rounded-full border shadow-sm transition-all duration-300 active:scale-95 ${
+              className={`md:hidden relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
                 showFiltros
-                  ? "bg-[#fff4db] border-blendfort-naranja/45 text-[#a16207] shadow-[0_8px_20px_rgba(245,158,11,0.12)]"
+                  ? "border-[#FCB017] bg-[#FFF8E8] text-[#C98500]"
                   : hayFiltros
-                  ? "bg-[#fffaf0] border-blendfort-naranja/35 text-[#a16207] shadow-[0_6px_16px_rgba(245,158,11,0.08)]"
-                  : "bg-white border-blendfort-naranja/20 text-black/55 hover:bg-[#fffaf0] hover:border-blendfort-naranja/35 hover:text-[#a16207]"
+                  ? "border-[#FCB017]/30 bg-[#FFF8E8] text-[#C98500]"
+                  : "border-black/10 bg-white text-slate-600"
               }`}
               aria-label="Filtros"
               title="Filtros"
             >
-              <div className="relative flex items-center justify-center">
-                <div
-                  className={`absolute inset-0 rounded-full blur-md transition-opacity duration-300 ${
-                    showFiltros || hayFiltros ? "opacity-100 bg-blendfort-naranja/10" : "opacity-0"
-                  }`}
-                />
-                <svg
-                  className={`relative w-4 h-4 transition-colors duration-300 ${
-                    showFiltros || hayFiltros
-                      ? "text-blendfort-naranja"
-                      : "text-black/40 group-hover:text-blendfort-naranja"
-                  }`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-                </svg>
-
-                {hayFiltros && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blendfort-naranja shadow-sm border border-white" />
-                )}
-              </div>
-
-              <span
-                className={`text-[9px] font-black uppercase tracking-[0.32em] transition-colors duration-300 ${
-                  showFiltros || hayFiltros
-                    ? "text-[#a16207]"
-                    : "text-black/55 group-hover:text-[#a16207]"
-                }`}
-              >
-                FILTROS
-              </span>
+              <i className="pi pi-filter text-[13px]" />
+              {hayFiltros && (
+                <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FCB017]" />
+              )}
             </button>
 
             <button
               type="button"
               onClick={onNuevoEgreso}
-              className="group flex items-center gap-3 px-7 py-3 rounded-full bg-blendfort-naranja text-white shadow-sm hover:bg-black transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 md:px-4 md:py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#FCB017] active:scale-95 shadow-sm"
               aria-label="Nuevo egreso"
               title="Nuevo egreso"
             >
-              <span className="text-base font-black leading-none">+</span>
-              <span className="text-[9px] font-black uppercase tracking-[0.35em]">
-                NUEVO
-              </span>
+              <i className="pi pi-plus text-[12px]" />
+              <span>Nuevo egreso</span>
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="p-8 md:p-14 relative">
-          <div className="mb-8">
-            <div className="flex items-start justify-between gap-6 flex-wrap">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-4 h-[2px] bg-blendfort-naranja"></div>
-                  <span className="text-[7px] md:text-[8px] font-black text-blendfort-naranja uppercase tracking-[0.4em]">
-                    Financial Audit
-                  </span>
-                </div>
+      <div className="hidden md:block">{filtrosUI}</div>
 
-                <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-black leading-none">
-                  Auditoría Global
-                </h3>
-
-                <p className="text-[9px] font-bold opacity-30 uppercase tracking-[0.25em] mt-3">
-                  Balance y Control de Egresos
-                </p>
-
-                {filtroCategoria && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.03] border border-black/5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blendfort-naranja" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-black/60">
-                      Categoría: {filtroCategoria}
-                    </span>
-                  </div>
-                )}
-
-                {hayManoObraPendiente && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-100">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-amber-700">
-                      Mano de obra pendiente no suma
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="ml-auto">
-                <div className="bg-blendfort-fondo/50 border border-black/5 rounded-[2rem] px-6 py-4 shadow-sm text-right">
-                  <div className="text-[7px] font-black uppercase tracking-[0.35em] text-black/30">
-                    Total Filtrado
-                  </div>
-                  <div className="mt-1 text-2xl md:text-3xl font-black tracking-tighter text-black">
-                    <span className="text-[10px] font-black text-blendfort-naranja uppercase mr-2">
-                      USD
-                    </span>
-                    $ {Number(totalContable || 0).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* FILTROS DESKTOP: SIEMPRE VISIBLES */}
-          <div className="hidden md:block mb-10">{filtrosUI}</div>
-
-          {/* FILTROS MOBILE: DESPLEGABLES */}
-          {showFiltros && (
-            <div className="md:hidden mb-10 animate-in fade-in zoom-in duration-300">
-              {filtrosUI}
-            </div>
-          )}
-
-          <div className="relative overflow-hidden">
-            <TablaAdmin
-              egresos={egresosFiltrados}
-              onEdit={prepararEdicion}
-              onDelete={setIdAEliminar}
-              onSelect={setEgresoSeleccionado}
-              editandoId={editandoId}
-              totalFiltrado={totalContable}
-            />
-          </div>
+      {showFiltros && (
+        <div className="md:hidden animate-in fade-in zoom-in duration-300">
+          {filtrosUI}
         </div>
+      )}
+
+      <div className="rounded-[1.8rem] border border-black/5 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.04)] overflow-hidden">
+        <TablaAdmin
+          egresos={egresosFiltrados}
+          onEdit={prepararEdicion}
+          onDelete={setIdAEliminar}
+          onSelect={setEgresoSeleccionado}
+          editandoId={editandoId}
+          totalFiltrado={totalContable}
+        />
       </div>
     </div>
   );
