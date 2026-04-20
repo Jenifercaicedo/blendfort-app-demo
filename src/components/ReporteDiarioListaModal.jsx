@@ -40,13 +40,36 @@ const calcTotal = (row) => {
   return Math.max(0, Number(total.toFixed(2)));
 };
 
+const InputConUnidad = ({
+  value,
+  onChange,
+  disabled = false,
+  unit = "",
+  type = "number",
+  className = "",
+}) => {
+  return (
+    <div className="relative">
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={`w-full bg-blendfort-fondo border border-black/5 px-3 pr-10 h-10 rounded-xl text-[10px] font-black outline-none disabled:opacity-40 ${className}`}
+      />
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+        {unit}
+      </span>
+    </div>
+  );
+};
+
 const ReporteDiarioListaModal = ({
   show,
   onClose,
   proyectoActivo,
   registradoPor = "ADMIN",
   onSuccess,
-  onOpenIndividual,
 }) => {
   const { personal, addReporteDiario } = useAppContext();
 
@@ -300,7 +323,6 @@ const ReporteDiarioListaModal = ({
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-5 md:px-6 md:py-8">
         <div className="bg-[#F6F6F1] w-full max-w-6xl rounded-[1.8rem] md:rounded-[2.4rem] overflow-hidden shadow-2xl border border-black/5 my-2 max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-4rem)] overflow-y-auto">
-          {/* Header */}
           <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-black/5 px-4 md:px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -337,30 +359,18 @@ const ReporteDiarioListaModal = ({
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 md:w-[360px]">
-              <button
-                type="button"
-                className="h-11 md:h-12 rounded-2xl bg-black text-white font-black text-[8px] uppercase tracking-[0.18em] shadow-sm"
-              >
+            <div className="mt-4">
+              <div className="inline-flex h-11 md:h-12 items-center px-5 rounded-2xl bg-black text-white font-black text-[8px] uppercase tracking-[0.18em] shadow-sm">
                 Lista
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenIndividual}
-                className="h-11 md:h-12 rounded-2xl bg-blendfort-fondo text-black/60 hover:bg-black hover:text-white font-black text-[8px] uppercase tracking-[0.18em] transition-all"
-              >
-                Individual
-              </button>
+              </div>
             </div>
           </div>
 
           <form onSubmit={guardarReportes} className="p-4 md:p-5 space-y-4 md:space-y-5">
-            {/* Resumen */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Personal Activo
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-slate-800">
@@ -370,7 +380,7 @@ const ReporteDiarioListaModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Asistieron
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-green-700">
@@ -380,7 +390,7 @@ const ReporteDiarioListaModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Faltaron
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-amber-700">
@@ -390,7 +400,7 @@ const ReporteDiarioListaModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Total del Día
                 </p>
                 <p className="text-base md:text-lg font-black tracking-tight text-slate-800">
@@ -399,7 +409,6 @@ const ReporteDiarioListaModal = ({
               </div>
             </div>
 
-            {/* Filtros y acciones */}
             <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-[170px_1fr] gap-3">
                 <div className="space-y-1">
@@ -459,7 +468,6 @@ const ReporteDiarioListaModal = ({
               </div>
             </div>
 
-            {/* Mobile */}
             <div className="md:hidden space-y-2.5">
               {filasFiltradas.length === 0 ? (
                 <div className="bg-white rounded-[1.4rem] border border-dashed border-black/10 p-6 text-center shadow-sm">
@@ -520,46 +528,43 @@ const ReporteDiarioListaModal = ({
 
                         <div>
                           <label className="text-[7px] font-black uppercase tracking-[0.14em] text-black/30 mb-1 block">
-                            H. Extras
+                            H. Extras (hrs)
                           </label>
-                          <input
-                            type="number"
+                          <InputConUnidad
                             value={row.horasExtras}
                             onChange={(e) =>
                               updateFila(row.key, { horasExtras: e.target.value })
                             }
                             disabled={!row.asistio}
-                            className="w-full bg-blendfort-fondo border border-black/5 px-3 h-10 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                            unit="hrs"
                           />
                         </div>
 
                         <div>
                           <label className="text-[7px] font-black uppercase tracking-[0.14em] text-black/30 mb-1 block">
-                            Bonos
+                            Bonos ($)
                           </label>
-                          <input
-                            type="number"
+                          <InputConUnidad
                             value={row.bonos}
                             onChange={(e) =>
                               updateFila(row.key, { bonos: e.target.value })
                             }
                             disabled={!row.asistio}
-                            className="w-full bg-blendfort-fondo border border-black/5 px-3 h-10 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                            unit="$"
                           />
                         </div>
 
                         <div>
                           <label className="text-[7px] font-black uppercase tracking-[0.14em] text-black/30 mb-1 block">
-                            Desc.
+                            Desc. ($)
                           </label>
-                          <input
-                            type="number"
+                          <InputConUnidad
                             value={row.descuentos}
                             onChange={(e) =>
                               updateFila(row.key, { descuentos: e.target.value })
                             }
                             disabled={!row.asistio}
-                            className="w-full bg-blendfort-fondo border border-black/5 px-3 h-10 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                            unit="$"
                           />
                         </div>
 
@@ -590,7 +595,6 @@ const ReporteDiarioListaModal = ({
               )}
             </div>
 
-            {/* Desktop */}
             <div className="hidden md:block bg-white rounded-[1.5rem] border border-black/5 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1120px]">
@@ -609,13 +613,13 @@ const ReporteDiarioListaModal = ({
                         Valor Día
                       </th>
                       <th className="text-left px-4 py-3.5 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        H. Extra
+                        H. Extras (hrs)
                       </th>
                       <th className="text-left px-4 py-3.5 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Bonos
+                        Bonos ($)
                       </th>
                       <th className="text-left px-4 py-3.5 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
-                        Desc.
+                        Desc. ($)
                       </th>
                       <th className="text-left px-4 py-3.5 text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
                         Observación
@@ -679,38 +683,38 @@ const ReporteDiarioListaModal = ({
                             </td>
 
                             <td className="px-4 py-3.5">
-                              <input
-                                type="number"
+                              <InputConUnidad
                                 value={row.horasExtras}
                                 onChange={(e) =>
                                   updateFila(row.key, { horasExtras: e.target.value })
                                 }
                                 disabled={!row.asistio}
-                                className="w-[86px] bg-blendfort-fondo border border-black/5 px-3 h-9 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                                unit="hrs"
+                                className="w-[96px]"
                               />
                             </td>
 
                             <td className="px-4 py-3.5">
-                              <input
-                                type="number"
+                              <InputConUnidad
                                 value={row.bonos}
                                 onChange={(e) =>
                                   updateFila(row.key, { bonos: e.target.value })
                                 }
                                 disabled={!row.asistio}
-                                className="w-[92px] bg-blendfort-fondo border border-black/5 px-3 h-9 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                                unit="$"
+                                className="w-[96px]"
                               />
                             </td>
 
                             <td className="px-4 py-3.5">
-                              <input
-                                type="number"
+                              <InputConUnidad
                                 value={row.descuentos}
                                 onChange={(e) =>
                                   updateFila(row.key, { descuentos: e.target.value })
                                 }
                                 disabled={!row.asistio}
-                                className="w-[92px] bg-blendfort-fondo border border-black/5 px-3 h-9 rounded-xl text-[10px] font-black outline-none disabled:opacity-40"
+                                unit="$"
+                                className="w-[96px]"
                               />
                             </td>
 
@@ -737,10 +741,9 @@ const ReporteDiarioListaModal = ({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.16em] text-black/25 text-center md:text-left">
-                Se cargarán reportes individuales por cada trabajador activo del proyecto.
+                Se guardará un registro por cada trabajador con asistencia o cambios en el proyecto.
               </p>
 
               <div className="flex justify-center md:justify-end gap-2">

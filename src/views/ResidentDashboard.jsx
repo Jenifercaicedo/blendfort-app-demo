@@ -7,7 +7,6 @@ import TablaEgresos from "../components/TablaEgresos";
 import ModalConfirmar from "../components/ModalConfirmar";
 import ModalEgreso from "../components/ModalEgreso";
 import ModalExito from "../components/ModalExito";
-import ReporteDiarioModal from "../components/ReporteDiarioModal";
 import ReporteDiarioListaModal from "../components/ReporteDiarioListaModal";
 import CustomSelect from "../components/CustomSelect";
 import ResidentManoObraModal from "../components/ResidentManoObraModal";
@@ -165,7 +164,6 @@ const ResidentDashboard = () => {
   const [showModalNuevo, setShowModalNuevo] = useState(false);
   const [idAEliminar, setIdAEliminar] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
-  const [showReporteDiario, setShowReporteDiario] = useState(false);
   const [showReporteDiarioLista, setShowReporteDiarioLista] = useState(false);
   const [showManoObraModal, setShowManoObraModal] = useState(false);
 
@@ -328,18 +326,7 @@ const ResidentDashboard = () => {
       return;
     }
 
-    setShowReporteDiario(false);
     setShowReporteDiarioLista(true);
-  };
-
-  const abrirReporteIndividual = () => {
-    if (!tieneProyectosAsignados || !proyectoActivoFinal) {
-      mostrarExito("NO TIENES UN PROYECTO ACTIVO ASIGNADO");
-      return;
-    }
-
-    setShowReporteDiarioLista(false);
-    setShowReporteDiario(true);
   };
 
   const abrirManoObra = () => {
@@ -747,22 +734,9 @@ const ResidentDashboard = () => {
         onClose={() => setShowReporteDiarioLista(false)}
         proyectoActivo={proyectoActivoFinal}
         registradoPor={nombreUsuario}
-        onOpenIndividual={abrirReporteIndividual}
         onSuccess={(msg) => {
           mostrarExito(msg || "REPORTES GUARDADOS");
           setShowReporteDiarioLista(false);
-        }}
-      />
-
-      <ReporteDiarioModal
-        show={showReporteDiario}
-        onClose={() => setShowReporteDiario(false)}
-        proyectoActivo={proyectoActivoFinal}
-        registradoPor={nombreUsuario}
-        onOpenLista={abrirReporteLista}
-        onSuccess={(msg) => {
-          mostrarExito(msg || "REPORTE GUARDADO");
-          setShowReporteDiario(false);
         }}
       />
 

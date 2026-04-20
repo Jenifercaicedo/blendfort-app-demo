@@ -607,10 +607,10 @@ const ResidentManoObraModal = ({
           <button
             type="button"
             onClick={limpiarFiltros}
-            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white border border-black/5 text-black/40 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
+            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white border border-black/10 text-slate-600 transition-all duration-300 active:scale-95 group hover:border-blendfort-naranja hover:text-black shadow-sm"
           >
             <svg
-              className="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-opacity"
+              className="w-3.5 h-3.5 opacity-60 group-hover:opacity-80 transition-opacity"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -707,7 +707,7 @@ const ResidentManoObraModal = ({
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   {vistaActiva === "pagos" ? "Total a Pagar" : "Total Mano de Obra"}
                 </p>
                 <p className="text-base md:text-xl font-black tracking-tight text-slate-800">
@@ -717,7 +717,7 @@ const ResidentManoObraModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Total Pagado
                 </p>
                 <p className="text-base md:text-xl font-black tracking-tight text-green-700">
@@ -727,7 +727,7 @@ const ResidentManoObraModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   Total Pendiente
                 </p>
                 <p className="text-base md:text-xl font-black tracking-tight text-amber-700">
@@ -737,7 +737,7 @@ const ResidentManoObraModal = ({
 
               <div className="rounded-[1.35rem] border border-[#FCB017]/20 bg-white p-4 shadow-sm">
                 <div className="w-5 h-[2px] bg-blendfort-naranja mb-3" />
-                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-black/30 mb-2">
+                <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
                   {vistaActiva === "pagos" ? "Pagos" : "Trabajadores"}
                 </p>
                 <p className="text-base md:text-xl font-black tracking-tight text-slate-800">
