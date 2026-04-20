@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import logo from "../assets/blendfort-logo-largo.png";
 import { useAppContext } from "../context/AppContext";
+import { supabase } from "../lib/supabase";
 
 import TablaEgresos from "../components/TablaEgresos";
 import ModalConfirmar from "../components/ModalConfirmar";
@@ -34,6 +35,15 @@ const estadoCajaTone = (estado) => {
   if (e === "AGOTADA") return "text-red-700 bg-red-50 border-red-200";
   if (e === "EXCEDIDA") return "text-red-800 bg-red-100 border-red-200";
   return "text-slate-600 bg-slate-100 border-slate-200";
+};
+
+const RESUMEN_CAJA_DEFAULT = {
+  existe: false,
+  montoActualAsignado: 0,
+  gastadoActual: 0,
+  saldoActual: 0,
+  estado: "SIN FONDO",
+  fechaUltimoDesembolso: "",
 };
 
 const InfoPill = ({ icon, children, accent = false }) => (
@@ -85,14 +95,11 @@ const ResidentDashboard = () => {
     nombreUsuario,
     logout,
     egresos,
-    proyectos,
     personal,
     getProyectosAsignados,
     addEgreso,
     updateEgreso,
     deleteEgreso,
-    cajaChicaResidente,
-    getResumenCajaChicaResidente,
     canEditEgreso,
     canDeleteEgreso,
   } = useAppContext();
@@ -101,7 +108,7 @@ const ResidentDashboard = () => {
     return (getProyectosAsignados?.(nombreUsuario) || [])
       .map(normalize)
       .filter(Boolean);
-  }, [getProyectosAsignados, nombreUsuario, proyectos]);
+  }, [getProyectosAsignados, nombreUsuario]);
 
   const [proyectoActivo, setProyectoActivo] = useState("");
 
@@ -164,6 +171,55 @@ const ResidentDashboard = () => {
 
   const [modalExito, setModalExito] = useState({ show: false, mensaje: "" });
   const mostrarExito = (mensaje) => setModalExito({ show: true, mensaje });
+
+  const [resumenCajaChica, setResumenCajaChica] = useState(RESUMEN_CAJA_DEFAULT);
+
+  useEffect(() => {
+    let active = true;
+
+    const cargarResumenCajaChica = async () => {
+      if (!nombreUsuario) {
+        if (active) setResumenCajaChica(RESUMEN_CAJA_DEFAULT);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("v_caja_chica_residente_resumen")
+          .select(
+            "monto_actual_asignado, gastado_actual, saldo_actual, estado, fecha_ultimo_desembolso"
+          )
+          .eq("residente_key", normalize(nombreUsuario))
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!active) return;
+
+        if (!data) {
+          setResumenCajaChica(RESUMEN_CAJA_DEFAULT);
+          return;
+        }
+
+        setResumenCajaChica({
+          existe: true,
+          montoActualAsignado: Number(data?.monto_actual_asignado || 0),
+          gastadoActual: Number(data?.gastado_actual || 0),
+          saldoActual: Number(data?.saldo_actual || 0),
+          estado: normalize(data?.estado || "SIN FONDO"),
+          fechaUltimoDesembolso: data?.fecha_ultimo_desembolso || "",
+        });
+      } catch (error) {
+        console.error("Error cargando resumen de caja chica residente:", error);
+        if (active) setResumenCajaChica(RESUMEN_CAJA_DEFAULT);
+      }
+    };
+
+    cargarResumenCajaChica();
+
+    return () => {
+      active = false;
+    };
+  }, [nombreUsuario, egresos]);
 
   const initialForm = {
     proyecto: "",
@@ -248,30 +304,6 @@ const ResidentDashboard = () => {
       (reg) => normalize(reg?.categoria) === "MANO DE OBRA"
     );
   }, [registrosScope]);
-
-  const resumenCajaChica = useMemo(() => {
-    if (!nombreUsuario || typeof getResumenCajaChicaResidente !== "function") {
-      return {
-        existe: false,
-        montoActualAsignado: 0,
-        gastadoActual: 0,
-        saldoActual: 0,
-        estado: "SIN FONDO",
-        fechaUltimoDesembolso: "",
-      };
-    }
-
-    return (
-      getResumenCajaChicaResidente(nombreUsuario) || {
-        existe: false,
-        montoActualAsignado: 0,
-        gastadoActual: 0,
-        saldoActual: 0,
-        estado: "SIN FONDO",
-        fechaUltimoDesembolso: "",
-      }
-    );
-  }, [getResumenCajaChicaResidente, nombreUsuario, cajaChicaResidente]);
 
   const saldoCajaNegativo = Number(resumenCajaChica?.saldoActual || 0) < 0;
   const cajaExcedida =
