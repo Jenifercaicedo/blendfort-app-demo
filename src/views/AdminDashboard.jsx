@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "primereact/sidebar";
 import logo from "../assets/blendfort-logo-largo.png";
 import { useAppContext } from "../context/AppContext";
+import { supabase } from "../lib/supabase";
 
 // Componentes
 import ModalProyecto from "../components/ModalProyecto";
@@ -31,6 +32,14 @@ const money = (n) => {
   return num.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  });
+};
+
+const money2 = (n) => {
+  const num = Number(n) || 0;
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 };
 
@@ -382,7 +391,6 @@ const AdminDashboard = () => {
     egresos,
     proyectos,
     personal,
-    cajaChicaProyecto,
 
     // egresos
     addEgreso,
@@ -413,6 +421,13 @@ const AdminDashboard = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
+  const [resumenCajaChica, setResumenCajaChica] = useState({
+    total_desembolsado: 0,
+    total_gastado: 0,
+    fondos_activos: 0,
+    residentes_en_alerta: 0,
+  });
+
   // filtros internos para otros módulos
   const [filtroProyecto, setFiltroProyecto] = useState("");
   const [filtroResidente, setFiltroResidente] = useState("");
@@ -430,8 +445,20 @@ const AdminDashboard = () => {
     setModalExitoShow({ show: true, mensaje });
   };
 
+  const irAlInicio = () => {
+    limpiarFiltros();
+    setSeccionActiva(null);
+    setMobileSidebarOpen(false);
+    setProfileMenuOpen(false);
+  };
+
   const irASeccion = (seccion) => {
-    setSeccionActiva(seccion === "dashboard" ? null : seccion);
+    if (seccion === "dashboard") {
+      irAlInicio();
+      return;
+    }
+
+    setSeccionActiva(seccion);
     setMobileSidebarOpen(false);
     setProfileMenuOpen(false);
   };
@@ -441,6 +468,30 @@ const AdminDashboard = () => {
     setSeccionActiva("presupuesto");
     setMobileSidebarOpen(false);
   };
+
+  const cargarResumenCajaChica = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("v_caja_chica_resumen")
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      setResumenCajaChica({
+        total_desembolsado: Number(data?.total_desembolsado || 0),
+        total_gastado: Number(data?.total_gastado || 0),
+        fondos_activos: Number(data?.fondos_activos || 0),
+        residentes_en_alerta: Number(data?.residentes_en_alerta || 0),
+      });
+    } catch (error) {
+      console.error("Error cargando resumen de caja chica:", error);
+    }
+  };
+
+  useEffect(() => {
+    cargarResumenCajaChica();
+  }, [egresos, seccionActiva]);
 
   /* ===========================
      Egreso form
@@ -587,6 +638,7 @@ const AdminDashboard = () => {
         mostrarExitoCentral("EGRESO REGISTRADO");
       }
 
+      await cargarResumenCajaChica();
       cerrarModal();
     } catch (error) {
       console.error("Error guardando egreso:", error);
@@ -599,6 +651,7 @@ const AdminDashboard = () => {
       await deleteEgreso(idAEliminar);
       setIdAEliminar(null);
       mostrarExitoCentral("REGISTRO ANULADO");
+      await cargarResumenCajaChica();
     } catch (error) {
       console.error("Error anulando egreso:", error);
       setToast({ show: true, mensaje: "NO SE PUDO ANULAR EL EGRESO", tipo: "error" });
@@ -738,26 +791,8 @@ const AdminDashboard = () => {
     }, 0);
   }, [egresos]);
 
-  const saldoCajaChicaTotal = useMemo(() => {
-    return (cajaChicaProyecto || []).reduce(
-      (acc, c) => acc + (Number(c?.saldoActual ?? c?.saldo_actual) || 0),
-      0
-    );
-  }, [cajaChicaProyecto]);
-
-  const ingresosCajaChicaTotal = useMemo(() => {
-    return (cajaChicaProyecto || []).reduce(
-      (acc, c) => acc + (Number(c?.montoActualAsignado ?? c?.monto_actual_asignado) || 0),
-      0
-    );
-  }, [cajaChicaProyecto]);
-
-  const gastosCajaChicaTotal = useMemo(() => {
-    return (cajaChicaProyecto || []).reduce(
-      (acc, c) => acc + (Number(c?.gastadoActual ?? c?.gastado_actual) || 0),
-      0
-    );
-  }, [cajaChicaProyecto]);
+  const totalCajaChicaDashboard = Number(resumenCajaChica.total_desembolsado || 0);
+  const gastosCajaChicaDashboard = Number(resumenCajaChica.total_gastado || 0);
 
   const personalEnObra = useMemo(() => {
     return (personal || []).filter((p) => normalize(p?.estado || "ACTIVO") === "ACTIVO").length;
@@ -842,8 +877,8 @@ const AdminDashboard = () => {
           icon="pi pi-credit-card"
           iconWrap="bg-green-100 text-green-700"
           label="Caja Chica"
-          value={`$${money(saldoCajaChicaTotal)}`}
-          hint={`Gastos: $${money(gastosCajaChicaTotal)}`}
+          value={`$${money2(totalCajaChicaDashboard)}`}
+          hint={`Gastado: $${money2(gastosCajaChicaDashboard)}`}
           onClick={() => irASeccion("cajaChica")}
           clickable
         />
@@ -1114,14 +1149,22 @@ const AdminDashboard = () => {
         {/* Sidebar Desktop */}
         <aside className="hidden bg-[#FCB017] text-white lg:flex lg:min-h-full lg:flex-col">
           <div className="border-b border-white/15 px-4 py-4">
-  <div className="flex items-center justify-center">
-    <img
-      src={logo}
-      alt="Blendfort"
-      className="h-14 w-auto object-contain"
-    />
-  </div>
-</div>
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={irAlInicio}
+                className="rounded-2xl p-2 transition hover:bg-white/10"
+                aria-label="Ir al inicio"
+                title="Ir al inicio"
+              >
+                <img
+                  src={logo}
+                  alt="Blendfort"
+                  className="h-14 w-auto object-contain"
+                />
+              </button>
+            </div>
+          </div>
 
           <div className="flex-1 px-4 py-5">
             <div className="space-y-2">
@@ -1182,7 +1225,15 @@ const AdminDashboard = () => {
               </button>
 
               <div className="flex justify-center">
-                <img src={logo} alt="Blendfort" className="h-14 w-auto object-contain" />
+                <button
+                  type="button"
+                  onClick={irAlInicio}
+                  className="rounded-2xl p-1 transition hover:bg-slate-50"
+                  aria-label="Ir al inicio"
+                  title="Ir al inicio"
+                >
+                  <img src={logo} alt="Blendfort" className="h-14 w-auto object-contain" />
+                </button>
               </div>
 
               <button
@@ -1355,20 +1406,30 @@ const AdminDashboard = () => {
         content={({ closeIconRef, hide }) => (
           <div className="flex h-full flex-col bg-[#FCB017] text-white">
             <div className="flex items-center justify-between border-b border-white/15 px-4 py-4">
-  <img
-    src={logo}
-    alt="Blendfort"
-    className="h-14 w-auto object-contain brightness-[10]"
-  />
-  <button
-    ref={closeIconRef}
-    type="button"
-    onClick={hide}
-    className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/10 text-white"
-  >
-    <i className="pi pi-times text-[16px]" />
-  </button>
-</div>
+              <button
+                type="button"
+                onClick={irAlInicio}
+                className="rounded-2xl p-1 transition hover:bg-white/10"
+                aria-label="Ir al inicio"
+                title="Ir al inicio"
+              >
+                <img
+                  src={logo}
+                  alt="Blendfort"
+                  className="h-14 w-auto object-contain brightness-[10]"
+                />
+              </button>
+
+              <button
+                ref={closeIconRef}
+                type="button"
+                onClick={hide}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/10 text-white"
+              >
+                <i className="pi pi-times text-[16px]" />
+              </button>
+            </div>
+
             <div className="flex-1 px-4 py-4">
               <div className="space-y-2">
                 {navItems.map((item) => (
