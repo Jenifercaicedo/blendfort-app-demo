@@ -867,37 +867,37 @@ const AdminDashboard = () => {
   }, [proyectos, egresos]);
 
   const dashboardEgresos = useMemo(() => {
-    return (egresos || [])
-      .filter((item) => isOperationalExpense(item))
-      .filter((item) => {
-        const okProyecto =
-          filtroProyecto === "" || normalize(item?.proyecto) === normalize(filtroProyecto);
+  return (egresos || [])
+    .filter((item) => isOperationalExpense(item))
+    .filter((item) => {
+      const okProyecto =
+        filtroProyecto === "" || normalize(item?.proyecto) === normalize(filtroProyecto);
 
-        const okResidente =
-          filtroResidente === "" ||
-          normalize(item?.residente) === normalize(filtroResidente);
+      const okResidente =
+        filtroResidente === "" ||
+        normalize(item?.residente) === normalize(filtroResidente);
 
-        const okFecha = filtroFecha === "" || iso10(item?.fecha) === iso10(filtroFecha);
+      const okFecha = filtroFecha === "" || iso10(item?.fecha) === iso10(filtroFecha);
 
-        const okCategoria =
-          filtroCategoriaDashboard === "" ||
-          normalize(item?.categoria) === normalize(filtroCategoriaDashboard);
+      const okCategoria =
+        filtroCategoriaDashboard === "" ||
+        normalize(item?.categoria) === normalize(filtroCategoriaDashboard);
 
-        return okProyecto && okResidente && okFecha && okCategoria;
-      })
-      .sort((a, b) => String(b?.fecha || "").localeCompare(String(a?.fecha || "")));
-  }, [egresos, filtroProyecto, filtroResidente, filtroFecha, filtroCategoriaDashboard]);
+      return okProyecto && okResidente && okFecha && okCategoria;
+    })
+    .sort((a, b) => String(b?.fecha || "").localeCompare(String(a?.fecha || "")));
+}, [egresos, filtroProyecto, filtroResidente, filtroFecha, filtroCategoriaDashboard]);
 
   const proyectosDashboard = useMemo(() => {
     return (proyectosConMeta || []).slice(0, 3);
   }, [proyectosConMeta]);
 
   const totalFiltrado = useMemo(() => {
-    return (dashboardEgresos || []).reduce((acc, e) => {
-      if (!shouldCountOperationalTotals(e)) return acc;
-      return acc + (Number(e?.valor) || 0);
-    }, 0);
-  }, [dashboardEgresos]);
+  return (dashboardEgresos || []).reduce((acc, e) => {
+    if (!shouldCountOperationalTotals(e)) return acc;
+    return acc + (Number(e?.valor) || 0);
+  }, 0);
+}, [dashboardEgresos]);
 
   /* ===========================
      Render content by section
