@@ -512,14 +512,18 @@ const ResidentManoObraModal = ({
   const weekMetaMap = useMemo(() => buildWeekMetaMap(registrosMO), [registrosMO]);
 
   const opcionesSemana = useMemo(() => {
-    return Array.from(weekMetaMap.values())
+    const semanas = Array.from(weekMetaMap.values())
       .sort((a, b) => {
         const aEnd = a?.endDate || "";
         const bEnd = b?.endDate || "";
+
         if (aEnd !== bEnd) return bEnd.localeCompare(aEnd);
+
         return String(b?.key || "").localeCompare(String(a?.key || ""));
       })
       .map((item) => item.key);
+
+    return ["TODAS", ...semanas];
   }, [weekMetaMap]);
 
   const getWeekLabel = (weekKey) => {
@@ -528,10 +532,12 @@ const ResidentManoObraModal = ({
   };
 
   const registrosBaseFiltrados = useMemo(() => {
-    let rows = [...registrosMO];
+    let rows = [...(registrosMO || [])];
 
-    if (normalize(filtroSemana) !== "TODAS") {
-      rows = rows.filter((r) => resolveSemanaKey(r) === normalize(filtroSemana));
+    const semanaSeleccionada = normalize(filtroSemana || "TODAS");
+
+    if (semanaSeleccionada !== "TODAS") {
+      rows = rows.filter((r) => normalize(resolveSemanaKey(r)) === semanaSeleccionada);
     }
 
     if (busqueda.trim()) {
@@ -554,18 +560,20 @@ const ResidentManoObraModal = ({
         const cargo = normalize(base?.cargo || r?.cargo || r?.rol);
         const estado = normalize(r?.estado);
         const semana = normalize(getWeekLabel(resolveSemanaKey(r)));
+        const fecha = normalize(iso10(r?.fecha));
 
         return (
           nombre.includes(q) ||
           cargo.includes(q) ||
           estado.includes(q) ||
-          semana.includes(q)
+          semana.includes(q) ||
+          fecha.includes(q)
         );
       });
     }
 
-    return rows;
-  }, [registrosMO, filtroSemana, busqueda, personalMap]);
+    return rows.sort((a, b) => String(b?.fecha || "").localeCompare(String(a?.fecha || "")));
+  }, [registrosMO, filtroSemana, busqueda, personalMap, weekMetaMap]);
 
   const filasNominaBase = useMemo(
     () => buildNominaRows(registrosBaseFiltrados, personalMap),
@@ -729,21 +737,22 @@ const ResidentManoObraModal = ({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-end">
         <CustomSelect
           label="Semana"
-          options={["TODAS", ...opcionesSemana.map((s) => getWeekLabel(s))]}
-          value={filtroSemana === "TODAS" ? "TODAS" : getWeekLabel(filtroSemana)}
+          options={opcionesSemana.map((s) => getWeekLabel(s))}
+          value={getWeekLabel(filtroSemana)}
           onChange={(val) => {
-            const current = String(val || "").toUpperCase();
-            if (current === "TODAS") {
+            const valor = String(val || "").trim();
+
+            if (!valor || normalize(valor) === "TODAS") {
               setFiltroSemana("TODAS");
               return;
             }
 
-            const match = opcionesSemana.find((s) => getWeekLabel(s) === val);
+            const match = opcionesSemana.find((s) => getWeekLabel(s) === valor);
             setFiltroSemana(match || "TODAS");
           }}
-          placeholder={opcionesSemana.length ? "TODAS" : "SIN SEMANAS"}
+          placeholder="TODAS"
           allowCustom={false}
-          disabled={!opcionesSemana.length}
+          disabled={opcionesSemana.length <= 1}
         />
 
         <div>
@@ -973,7 +982,8 @@ const ResidentManoObraModal = ({
               <div className="hidden md:block">{filtrosPanel}</div>
               {showFiltrosMobile && <div className="md:hidden">{filtrosPanel}</div>}
 
-              {vistaActiva === "nomina" ? (
+              <div className="max-h-[52vh] overflow-y-auto overscroll-contain pr-1 md:max-h-[58vh]">
+                {vistaActiva === "nomina" ? (
                 <>
                   <div className="md:hidden space-y-3">
                     {filasNomina.length === 0 ? (
@@ -1367,7 +1377,8 @@ const ResidentManoObraModal = ({
                     </div>
                   </div>
                 </>
-              )}
+                )}
+              </div>
 
               <div className="mt-5 px-1">
                 <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.16em] text-black/30">
