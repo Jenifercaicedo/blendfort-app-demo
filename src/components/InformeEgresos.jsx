@@ -9,16 +9,18 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const shouldCountInTotals = (e) => {
+const isPayrollRecord = (e) => {
   const cat = normalize(e?.categoria);
+  const tipo = normalize(e?.tipoRegistro || e?.tipo_registro);
+  return cat === "MANO DE OBRA" || tipo === "REPORTE_DIARIO";
+};
+
+const isOperationalExpense = (e) => !isPayrollRecord(e);
+
+const shouldCountOperationalTotals = (e) => {
   const est = normalize(e?.estado || "PENDIENTE");
-
   if (est === "ANULADO") return false;
-
-  if (cat === "MANO DE OBRA") {
-    return est === "PAGADO" || est === "COMPLETADO";
-  }
-
+  if (!isOperationalExpense(e)) return false;
   return true;
 };
 
@@ -68,35 +70,30 @@ const InformeEgresos = ({
   const [showFiltros, setShowFiltros] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
-  const opcionesCategorias = useMemo(() => {
-    const unique = [
-      ...new Set((egresos || []).map((e) => normalize(e?.categoria)).filter(Boolean)),
-    ];
-
-    const sinMO = unique.filter((c) => c !== "MANO DE OBRA").sort();
-
-    return unique.includes("MANO DE OBRA")
-      ? ["MANO DE OBRA", ...sinMO]
-      : sinMO;
+  const egresosBase = useMemo(() => {
+    return (egresos || []).filter((e) => isOperationalExpense(e));
   }, [egresos]);
 
+  const opcionesCategorias = useMemo(() => {
+    const unique = [
+      ...new Set(egresosBase.map((e) => normalize(e?.categoria)).filter(Boolean)),
+    ]
+      .filter((c) => c !== "MANO DE OBRA")
+      .sort();
+
+    if (!unique.includes("OFICINA")) {
+      unique.push("OFICINA");
+    }
+
+    return unique;
+  }, [egresosBase]);
+
   const egresosFiltrados = useMemo(() => {
-    return (egresos || []).filter((e) => {
+    return egresosBase.filter((e) => {
       if (!filtroCategoria) return true;
-
-      const categoriaActual = normalize(e?.categoria);
-      const categoriaFiltro = normalize(filtroCategoria);
-
-      if (categoriaActual !== categoriaFiltro) return false;
-
-      if (categoriaFiltro === "MANO DE OBRA") {
-        const estadoActual = normalize(e?.estado || "PENDIENTE");
-        return estadoActual === "PAGADO" || estadoActual === "COMPLETADO";
-      }
-
-      return true;
+      return normalize(e?.categoria) === normalize(filtroCategoria);
     });
-  }, [egresos, filtroCategoria]);
+  }, [egresosBase, filtroCategoria]);
 
   const hayFiltros = useMemo(
     () => Boolean(filtroProyecto || filtroResidente || filtroFecha || filtroCategoria),
@@ -105,17 +102,9 @@ const InformeEgresos = ({
 
   const totalContable = useMemo(() => {
     return (egresosFiltrados || []).reduce((acc, curr) => {
-      if (!shouldCountInTotals(curr)) return acc;
+      if (!shouldCountOperationalTotals(curr)) return acc;
       return acc + (Number(curr?.valor) || 0);
     }, 0);
-  }, [egresosFiltrados]);
-
-  const hayManoObraPendiente = useMemo(() => {
-    return (egresosFiltrados || []).some((e) => {
-      const cat = normalize(e?.categoria);
-      if (cat !== "MANO DE OBRA") return false;
-      return !shouldCountInTotals(e);
-    });
   }, [egresosFiltrados]);
 
   const limpiarTodo = () => {
@@ -196,18 +185,16 @@ const InformeEgresos = ({
           </div>
 
           <h2 className="mt-3 text-[28px] md:text-[34px] xl:text-[38px] font-black tracking-tight text-slate-800 leading-none">
-            Egresos
+            Egresos operativos
           </h2>
 
           <div className="mt-3 flex flex-wrap gap-2">
+            <InfoPill icon="pi pi-info-circle" accent>
+              Sin mano de obra
+            </InfoPill>
+
             {filtroCategoria ? (
               <InfoPill icon="pi pi-tag">{normalize(filtroCategoria)}</InfoPill>
-            ) : null}
-
-            {hayManoObraPendiente ? (
-              <InfoPill icon="pi pi-info-circle" tone="warning">
-                Mano de obra pendiente no suma
-              </InfoPill>
             ) : null}
           </div>
         </div>
@@ -215,7 +202,7 @@ const InformeEgresos = ({
         <div className="w-full xl:w-auto flex flex-col gap-3 xl:items-end">
           <div className="rounded-[1.5rem] border border-[#FCB017]/20 bg-[#FFF8E8] px-4 py-3 md:px-5 md:py-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)] xl:min-w-[280px]">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C98500]">
-              Total filtrado
+              Total filtrado operativo
             </p>
 
             <div className="mt-2 flex items-end gap-2">

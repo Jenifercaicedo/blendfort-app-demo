@@ -329,12 +329,12 @@ const ReporteDiarioListaModal = ({
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-5 h-[2px] bg-blendfort-naranja" />
                   <span className="text-[8px] font-black uppercase tracking-[0.22em] text-blendfort-naranja">
-                    Resident Console
+                    Control de mano de obra
                   </span>
                 </div>
 
                 <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight leading-tight text-slate-800">
-                  Reporte Diario
+                  Reporte diario en lista
                 </h2>
 
                 <p className="text-[8px] md:text-[9px] font-bold opacity-35 uppercase tracking-[0.16em] mt-1">

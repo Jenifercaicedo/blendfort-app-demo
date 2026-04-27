@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { useAppContext } from "../context/AppContext";
 
 const normU = (s) =>
   String(s || "")
@@ -35,6 +36,22 @@ const toneTipo = (tipo) => {
   return "bg-blendfort-naranja/10 text-blendfort-naranja border-blendfort-naranja/20";
 };
 
+const toneAccess = (accessType) => {
+  if (accessType === "PRINCIPAL") {
+    return "bg-[#FFF8E8] text-[#C98500] border-[#FCB017]/25";
+  }
+  if (accessType === "ADICIONAL") {
+    return "bg-sky-50 text-sky-700 border-sky-200";
+  }
+  return "bg-black/5 text-black/50 border-black/10";
+};
+
+const getAccessLabel = (accessType) => {
+  if (accessType === "PRINCIPAL") return "RESIDENTE PRINCIPAL";
+  if (accessType === "ADICIONAL") return "RESIDENTE ADICIONAL";
+  return "SOLO OPERATIVO";
+};
+
 const PersonalDetailModal = ({
   empleado,
   onClose,
@@ -44,6 +61,8 @@ const PersonalDetailModal = ({
   onToggleEstado,
   onDelete,
 }) => {
+  const { getResidentesProyecto } = useAppContext();
+
   if (!empleado) return null;
 
   const nombre = normU(empleado.nombre || "SIN NOMBRE");
@@ -71,6 +90,54 @@ const PersonalDetailModal = ({
   const valorHoraExtra =
     Number(referencia?.valorHoraExtra ?? empleado.valorHoraExtraPrincipal ?? 0) || 0;
 
+  const asignacionesConAcceso = useMemo(() => {
+    return asignaciones.map((asig) => {
+      const proyecto = normU(asig?.proyecto || "");
+      const rol = normU(asig?.rol || "OPERARIO");
+      const estado = normU(asig?.estado || "ACTIVO");
+
+      let accessType = "OPERATIVO";
+
+      if (rol === "RESIDENTE" && estado === "ACTIVO" && proyecto) {
+        const residentesProyecto =
+          typeof getResidentesProyecto === "function"
+            ? getResidentesProyecto(proyecto) || []
+            : [];
+
+        const match = residentesProyecto.find(
+          (r) => normU(r?.residente_nombre) === nombre
+        );
+
+        if (match?.es_principal) {
+          accessType = "PRINCIPAL";
+        } else {
+          accessType = "ADICIONAL";
+        }
+      }
+
+      return {
+        ...asig,
+        accessType,
+      };
+    });
+  }, [asignaciones, getResidentesProyecto, nombre]);
+
+  const accesoPrincipal = useMemo(() => {
+    const principalActivo = asignacionesConAcceso.find(
+      (a) => a.accessType === "PRINCIPAL" && normU(a?.estado || "ACTIVO") === "ACTIVO"
+    );
+
+    if (principalActivo) return "PRINCIPAL";
+
+    const adicionalActivo = asignacionesConAcceso.find(
+      (a) => a.accessType === "ADICIONAL" && normU(a?.estado || "ACTIVO") === "ACTIVO"
+    );
+
+    if (adicionalActivo) return "ADICIONAL";
+
+    return "OPERATIVO";
+  }, [asignacionesConAcceso]);
+
   return (
     <div
       className="fixed inset-0 z-[150] overflow-y-auto bg-black/55 backdrop-blur-sm animate-in fade-in duration-300"
@@ -82,7 +149,6 @@ const PersonalDetailModal = ({
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
         <div className="bg-white w-full max-w-5xl rounded-[2.2rem] md:rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-black/5 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto">
-          {/* Header más claro */}
           <div className="relative px-6 md:px-8 pt-7 md:pt-8 pb-6 border-b border-black/5 bg-[linear-gradient(180deg,rgba(245,247,251,0.98)_0%,rgba(255,255,255,0.98)_100%)]">
             <button
               onClick={onClose}
@@ -158,13 +224,24 @@ const PersonalDetailModal = ({
                     </span>
                   </span>
                 )}
+
+                <span
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${toneAccess(
+                    accesoPrincipal
+                  )}`}
+                >
+                  <span className="text-[7px] font-black uppercase tracking-[0.22em]">
+                    ACCESO
+                  </span>
+                  <span className="text-[8px] font-black uppercase tracking-widest">
+                    {getAccessLabel(accesoPrincipal)}
+                  </span>
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Body */}
           <div className="p-6 md:p-8 space-y-6">
-            {/* Resumen general */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="bg-blendfort-fondo rounded-[2rem] border border-black/5 p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -272,12 +349,11 @@ const PersonalDetailModal = ({
                 </div>
 
                 <p className="mt-4 text-[8px] font-bold uppercase tracking-[0.18em] text-black/25 leading-relaxed">
-                  Gestiona cada proyecto desde la lista inferior. Aquí agregas nuevas asignaciones.
+                  Gestiona cada proyecto desde la lista inferior. Cada fila define si la asignación es de acceso resident o solo operativa.
                 </p>
               </div>
             </div>
 
-            {/* Asignaciones */}
             <div className="bg-white rounded-[2rem] border border-black/5 shadow-sm overflow-hidden">
               <div className="px-5 md:px-6 py-4 border-b border-black/5 bg-blendfort-fondo/45">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -299,16 +375,15 @@ const PersonalDetailModal = ({
                 </div>
               </div>
 
-              {/* Mobile */}
               <div className="md:hidden p-4 space-y-3">
-                {asignaciones.length === 0 ? (
+                {asignacionesConAcceso.length === 0 ? (
                   <div className="rounded-[1.4rem] border border-dashed border-black/10 p-8 text-center">
                     <p className="text-[9px] font-black uppercase tracking-[0.18em] text-black/30">
                       No hay asignaciones
                     </p>
                   </div>
                 ) : (
-                  asignaciones.map((asig) => {
+                  asignacionesConAcceso.map((asig) => {
                     const estado = normU(asig.estado || "ACTIVO");
                     const tipo = normU(asig.tipo || "CAMPO");
                     const rol = normU(asig.rol || "OPERARIO");
@@ -354,6 +429,14 @@ const PersonalDetailModal = ({
 
                           <span className="inline-flex px-2.5 py-1 rounded-lg border bg-white border-black/5 text-[8px] font-black uppercase tracking-[0.12em] text-black/55">
                             {rol}
+                          </span>
+
+                          <span
+                            className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${toneAccess(
+                              asig.accessType
+                            )}`}
+                          >
+                            {getAccessLabel(asig.accessType)}
                           </span>
                         </div>
 
@@ -444,9 +527,8 @@ const PersonalDetailModal = ({
                 )}
               </div>
 
-              {/* Desktop */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full min-w-[1080px]">
+                <table className="w-full min-w-[1240px]">
                   <thead className="bg-white border-b border-black/5">
                     <tr>
                       <th className="px-5 py-4 text-left text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
@@ -457,6 +539,9 @@ const PersonalDetailModal = ({
                       </th>
                       <th className="px-5 py-4 text-left text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
                         Tipo & Rol
+                      </th>
+                      <th className="px-5 py-4 text-left text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
+                        Acceso
                       </th>
                       <th className="px-5 py-4 text-left text-[8px] font-black uppercase tracking-[0.18em] text-black/35">
                         Estado
@@ -471,16 +556,16 @@ const PersonalDetailModal = ({
                   </thead>
 
                   <tbody>
-                    {asignaciones.length === 0 ? (
+                    {asignacionesConAcceso.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="px-5 py-10 text-center">
+                        <td colSpan="7" className="px-5 py-10 text-center">
                           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-black/30">
                             No hay asignaciones
                           </p>
                         </td>
                       </tr>
                     ) : (
-                      asignaciones.map((asig) => {
+                      asignacionesConAcceso.map((asig) => {
                         const estado = normU(asig.estado || "ACTIVO");
                         const tipo = normU(asig.tipo || "CAMPO");
                         const rol = normU(asig.rol || "OPERARIO");
@@ -522,6 +607,16 @@ const PersonalDetailModal = ({
                                   {rol}
                                 </span>
                               </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span
+                                className={`inline-flex px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-[0.12em] ${toneAccess(
+                                  asig.accessType
+                                )}`}
+                              >
+                                {getAccessLabel(asig.accessType)}
+                              </span>
                             </td>
 
                             <td className="px-5 py-4">
@@ -608,7 +703,7 @@ const PersonalDetailModal = ({
             </div>
 
             <div className="text-[8px] font-bold uppercase tracking-[0.22em] text-black/22">
-              Tip: aquí gestionas proyectos del empleado. Cada fila es una asignación independiente.
+              Tip: aquí gestionas proyectos del empleado. Cada fila es una asignación independiente y muestra si abre acceso resident o si es solo operativa.
             </div>
           </div>
         </div>

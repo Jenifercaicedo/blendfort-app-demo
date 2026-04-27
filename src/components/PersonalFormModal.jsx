@@ -1,5 +1,45 @@
-import React from "react";
+import React, { useMemo } from "react";
 import CustomSelect from "./CustomSelect";
+import { useAppContext } from "../context/AppContext";
+
+const norm = (s) =>
+  String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+const money = (n) => {
+  const num = Number(n || 0);
+  return `$ ${num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+const toRoleAndType = (cargo) => {
+  const tipoPersonal = norm(cargo?.tipo_personal);
+  const tipoPago = norm(cargo?.tipo_pago || "DIARIO");
+
+  if (tipoPersonal === "RESIDENTE") {
+    return {
+      rol: "RESIDENTE",
+      tipo: tipoPago === "MENSUAL" ? "OFICINA" : "CAMPO",
+    };
+  }
+
+  if (tipoPersonal === "OFICINA" || tipoPersonal === "ADMINISTRATIVO") {
+    return {
+      rol: "OFICINA",
+      tipo: "OFICINA",
+    };
+  }
+
+  return {
+    rol: "OPERARIO",
+    tipo: "CAMPO",
+  };
+};
 
 const PersonalFormModal = ({
   show,
@@ -10,7 +50,62 @@ const PersonalFormModal = ({
   setEmpleado,
   opcionesProyectos,
   nombreInputRef,
+  modoAsignacion = "normal",
+  empleadoOrigenMovimiento = null,
 }) => {
+  const { catalogoCargos } = useAppContext();
+
+  const cargosActivos = useMemo(() => {
+    return (catalogoCargos || []).filter((c) => c?.activo !== false);
+  }, [catalogoCargos]);
+
+  const opcionesCargoCatalogo = useMemo(() => {
+    return cargosActivos.map((c) => norm(c?.nombre)).filter(Boolean);
+  }, [cargosActivos]);
+
+  const cargoSeleccionado = useMemo(() => {
+    if (!empleado?.cargoCatalogoId) return null;
+    return (
+      cargosActivos.find((c) => String(c?.id) === String(empleado.cargoCatalogoId)) || null
+    );
+  }, [cargosActivos, empleado?.cargoCatalogoId]);
+
+  const esResidente = norm(empleado?.rol) === "RESIDENTE";
+  const esOficina = norm(empleado?.tipo) === "OFICINA";
+  const esMensual = norm(empleado?.tipoPago || "DIARIO") === "MENSUAL";
+  const usaCatalogo = Boolean(empleado?.cargoCatalogoId);
+  const tieneProyecto = Boolean(String(empleado?.proyecto || "").trim());
+
+  const tituloSuperior = useMemo(() => {
+    if (editando) return "Actualizar asignación";
+    if (modoAsignacion === "duplicar") return "Nueva asignación";
+    if (modoAsignacion === "mover") return "Reasignar proyecto";
+    return "Nuevo personal";
+  }, [editando, modoAsignacion]);
+
+  const tituloPrincipal = useMemo(() => {
+    if (editando) return "Editar asignación";
+    if (modoAsignacion === "duplicar") return "Asignar a otro proyecto";
+    if (modoAsignacion === "mover") return "Mover de proyecto";
+    return "Nuevo empleado";
+  }, [editando, modoAsignacion]);
+
+  const subtituloOperacion = useMemo(() => {
+    if (editando) {
+      return "Actualiza la asignación sin alterar el flujo actual del proyecto.";
+    }
+
+    if (modoAsignacion === "duplicar") {
+      return "Esta acción crea una nueva asignación adicional para el mismo empleado.";
+    }
+
+    if (modoAsignacion === "mover") {
+      return "Esta acción crea la nueva asignación y luego inactiva la anterior.";
+    }
+
+    return "Configura el cargo, proyecto y tipo de pago manteniendo la lógica actual.";
+  }, [editando, modoAsignacion]);
+
   if (!show) return null;
 
   const onChangeNumero = (key) => (e) => {
@@ -55,7 +150,58 @@ const PersonalFormModal = ({
     setEmpleado(aplicarTipo(empleado, tipo));
   };
 
-  const esOficina = empleado.tipo === "OFICINA";
+  const setCargoCatalogo = (cargoNombre) => {
+    const nombreN = norm(cargoNombre);
+    const cargo = cargosActivos.find((c) => norm(c?.nombre) === nombreN) || null;
+
+    if (!cargo) {
+      setEmpleado({
+        ...empleado,
+        cargoCatalogoId: "",
+        codigoCargo: "",
+        tipoPago: empleado?.tipoPago || "DIARIO",
+      });
+      return;
+    }
+
+    const roleAndType = toRoleAndType(cargo);
+
+    setEmpleado({
+      ...empleado,
+      cargoCatalogoId: cargo.id,
+      codigoCargo: norm(cargo.codigo),
+      cargo: norm(cargo.nombre),
+      tipoPago: norm(cargo.tipo_pago || "DIARIO"),
+      rol: roleAndType.rol,
+      tipo: roleAndType.tipo,
+      valorDia: Number(cargo.valor_dia || 0),
+      valorHoraExtra: Number(cargo.valor_hora_extra || 0),
+      salarioMensual: Number(cargo.salario_mensual || 0),
+    });
+  };
+
+  const limpiarCargoCatalogo = () => {
+    setEmpleado({
+      ...empleado,
+      cargoCatalogoId: "",
+      codigoCargo: "",
+      tipoPago: empleado?.tipoPago || "DIARIO",
+    });
+  };
+
+  const textoAcceso = useMemo(() => {
+    if (!esResidente) {
+      return "Esta asignación es operativa y no abre acceso al portal residente.";
+    }
+
+    if (!tieneProyecto) {
+      return "Esta asignación dará acceso resident cuando selecciones un proyecto.";
+    }
+
+    return `Esta asignación dará acceso resident al proyecto ${norm(
+      empleado?.proyecto
+    )}.`;
+  }, [esResidente, tieneProyecto, empleado?.proyecto]);
 
   return (
     <div
@@ -73,18 +219,36 @@ const PersonalFormModal = ({
               <div className="flex items-center gap-2">
                 <div className="w-6 h-[2px] bg-[#FCB017]" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#C98500]">
-                  {editando ? "Actualizar empleado" : "Nuevo empleado"}
+                  {tituloSuperior}
                 </span>
               </div>
 
               <h3 className="mt-3 text-[28px] md:text-[30px] font-black tracking-tight text-slate-800 leading-none">
-                {editando ? "Editar empleado" : "Nuevo empleado"}
+                {tituloPrincipal}
               </h3>
+
+              <p className="mt-3 text-[12px] font-medium leading-relaxed text-slate-500 max-w-[620px]">
+                {subtituloOperacion}
+              </p>
 
               {editando && (
                 <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
                   <i className="pi pi-pencil text-[11px]" />
                   <span>Edición activa</span>
+                </div>
+              )}
+
+              {!editando && modoAsignacion === "duplicar" && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
+                  <i className="pi pi-copy text-[11px]" />
+                  <span>Asignación adicional</span>
+                </div>
+              )}
+
+              {!editando && modoAsignacion === "mover" && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-700">
+                  <i className="pi pi-arrow-right-arrow-left text-[11px]" />
+                  <span>Movimiento entre proyectos</span>
                 </div>
               )}
             </div>
@@ -100,6 +264,28 @@ const PersonalFormModal = ({
           </div>
 
           <form onSubmit={onSave} className="p-6 md:p-8 space-y-6">
+            {modoAsignacion === "mover" && empleadoOrigenMovimiento?.proyecto ? (
+              <div className="rounded-[1.4rem] border border-black/5 bg-[#F9F9F6] p-4 md:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-700">
+                    <i className="pi pi-send text-[12px]" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Proyecto de origen
+                    </p>
+                    <p className="mt-2 text-[14px] font-black uppercase text-slate-800">
+                      {norm(empleadoOrigenMovimiento?.proyecto)}
+                    </p>
+                    <p className="mt-2 text-[12px] font-medium text-slate-500">
+                      Al guardar, la asignación anterior se inactivará y se creará la nueva.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1 md:col-span-2">
                 <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
@@ -116,17 +302,32 @@ const PersonalFormModal = ({
                 />
               </div>
 
+              <CustomSelect
+                label="Cargo catálogo"
+                options={opcionesCargoCatalogo}
+                value={cargoSeleccionado ? norm(cargoSeleccionado.nombre) : ""}
+                onChange={setCargoCatalogo}
+                placeholder={opcionesCargoCatalogo.length ? "SELECCIONAR..." : "SIN CARGOS"}
+                allowCustom={false}
+                disabled={!opcionesCargoCatalogo.length}
+              />
+
               <div className="space-y-1">
                 <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
-                  Cargo
+                  Cargo visible
                 </label>
                 <input
                   required
                   type="text"
-                  placeholder="EJ. ALBAÑIL / MAESTRO / RESIDENTE"
+                  placeholder="EJ. MAESTRO / AYUDANTE / RESIDENTE"
                   className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black uppercase outline-none focus:border-black transition-all shadow-sm"
                   value={empleado.cargo}
-                  onChange={(e) => setEmpleado({ ...empleado, cargo: e.target.value })}
+                  onChange={(e) =>
+                    setEmpleado({
+                      ...empleado,
+                      cargo: e.target.value,
+                    })
+                  }
                 />
               </div>
 
@@ -156,10 +357,50 @@ const PersonalFormModal = ({
                 placeholder="SELECCIONAR..."
               />
 
-              <div className="md:col-span-2">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                  Tipo de pago
+                </label>
+                <input
+                  type="text"
+                  value={String(empleado.tipoPago || "DIARIO").toUpperCase()}
+                  readOnly
+                  className="w-full bg-[#F9F9F6] border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black uppercase outline-none shadow-sm text-slate-700"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex flex-wrap items-center gap-2">
                 <p className="text-[11px] font-medium text-slate-500">
-                  El rol recomienda el tipo, pero puedes ajustarlo manualmente.
+                  El cargo de catálogo autocompleta valores, pero puedes ajustarlos manualmente.
                 </p>
+
+                {usaCatalogo ? (
+                  <button
+                    type="button"
+                    onClick={limpiarCargoCatalogo}
+                    className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-[#FCB017] hover:text-[#C98500]"
+                  >
+                    <i className="pi pi-times text-[10px]" />
+                    Quitar vínculo catálogo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-black/5 bg-[#FFF8E8] p-4 md:p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FCB017]/15 text-[#C98500]">
+                  <i className="pi pi-key text-[12px]" />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C98500]">
+                    Acceso al portal
+                  </p>
+                  <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-600">
+                    {textoAcceso}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -194,102 +435,117 @@ const PersonalFormModal = ({
                     Configuración de pago
                   </p>
                   <p className="mt-1 text-[12px] font-medium text-slate-500">
-                    {esOficina ? "Salario mensual" : "Jornal diario"}
+                    {esMensual ? "Salario mensual" : "Jornal diario"}
                   </p>
                 </div>
 
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600">
-                  <i className="pi pi-wallet text-[11px]" />
-                  <span>{esOficina ? "OFICINA" : "CAMPO"}</span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
+                  <i className="pi pi-briefcase text-[10px] text-[#C98500]" />
+                  {usaCatalogo ? "Desde catálogo" : "Manual"}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {!esOficina ? (
-                  <div className="space-y-1">
+                {esMensual ? (
+                  <div className="space-y-1 md:col-span-2">
                     <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
-                      Valor día
+                      Salario mensual
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
-                        $
-                      </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
+                      value={empleado.salarioMensual}
+                      onChange={onChangeNumero("salarioMensual")}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                        Valor por día
+                      </label>
                       <input
-                        required
                         type="number"
-                        step="any"
                         min="0"
-                        className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
+                        step="any"
+                        placeholder="0"
+                        className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
                         value={empleado.valorDia}
                         onChange={onChangeNumero("valorDia")}
                       />
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
-                      Salario mensual
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
-                        $
-                      </span>
+
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
+                        Valor hora extra
+                      </label>
                       <input
-                        required
                         type="number"
-                        step="any"
                         min="0"
-                        className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
-                        value={empleado.salarioMensual ?? ""}
-                        onChange={onChangeNumero("salarioMensual")}
+                        step="any"
+                        placeholder="0"
+                        className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
+                        value={empleado.valorHoraExtra}
+                        onChange={onChangeNumero("valorHoraExtra")}
                       />
                     </div>
-                  </div>
+                  </>
                 )}
-
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase ml-3 md:ml-4 opacity-40 tracking-widest">
-                    Valor hora extra
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-black/30">
-                      $
-                    </span>
-                    <input
-                      required
-                      type="number"
-                      step="any"
-                      min="0"
-                      className="w-full bg-white border border-black/5 px-4 py-3.5 pl-8 rounded-xl text-[16px] md:text-[11px] font-black outline-none focus:border-black transition-all shadow-sm"
-                      value={empleado.valorHoraExtra}
-                      onChange={onChangeNumero("valorHoraExtra")}
-                    />
-                  </div>
-                </div>
               </div>
 
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
-                {esOficina
-                  ? "Oficina usa salario mensual. No aparece en mano de obra."
-                  : "Campo usa jornal diario. Aparece en mano de obra si el rol es OPERARIO."}
-              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-[1.2rem] border border-black/5 bg-white px-4 py-3 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    Referencia principal
+                  </p>
+                  <p className="mt-2 text-[15px] font-black text-slate-800">
+                    {esMensual
+                      ? money(empleado.salarioMensual || 0)
+                      : money(empleado.valorDia || 0)}
+                  </p>
+                </div>
+
+                <div className="rounded-[1.2rem] border border-black/5 bg-white px-4 py-3 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    {esMensual ? "Tipo de pago" : "Hora extra"}
+                  </p>
+                  <p className="mt-2 text-[15px] font-black text-[#C98500]">
+                    {esMensual
+                      ? String(empleado.tipoPago || "MENSUAL").toUpperCase()
+                      : money(empleado.valorHoraExtra || 0)}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-slate-800 text-white py-4.5 md:py-5 rounded-full font-semibold text-[14px] uppercase tracking-[0.16em] hover:bg-[#FCB017] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm"
-            >
-              <i className="pi pi-check text-[12px]" />
-              {editando ? "Actualizar" : "Guardar"}
-            </button>
+            <div className="flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-5 py-3 text-[12px] font-semibold text-slate-600 transition hover:border-black/20 hover:text-slate-800"
+              >
+                Cancelar
+              </button>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full text-[11px] font-semibold text-slate-400 hover:text-slate-700 py-1 text-center"
-            >
-              Cancelar
-            </button>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-800 px-6 py-3 text-[12px] font-semibold text-white transition hover:bg-[#FCB017]"
+              >
+                <i className={`pi ${editando ? "pi-check" : "pi-plus"} text-[11px]`} />
+                <span>
+                  {editando
+                    ? "Guardar cambios"
+                    : modoAsignacion === "duplicar"
+                    ? "Crear asignación"
+                    : modoAsignacion === "mover"
+                    ? "Mover asignación"
+                    : "Crear empleado"}
+                </span>
+              </button>
+            </div>
           </form>
         </div>
       </div>

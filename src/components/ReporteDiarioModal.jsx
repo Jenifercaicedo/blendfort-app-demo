@@ -29,6 +29,30 @@ const num0 = (n) => {
   return Number.isFinite(v) ? v : 0;
 };
 
+const InputConUnidad = ({
+  value,
+  onChange,
+  disabled = false,
+  unit = "",
+  type = "number",
+  className = "",
+}) => {
+  return (
+    <div className="relative">
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={`w-full bg-white border border-black/5 px-4 pr-12 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none disabled:opacity-50 shadow-sm ${className}`}
+      />
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
+        {unit}
+      </span>
+    </div>
+  );
+};
+
 const ReporteDiarioModal = ({
   show,
   onClose,
@@ -37,7 +61,6 @@ const ReporteDiarioModal = ({
   onSuccess,
   mode = "create",
   reporteInicial = null,
-  onOpenLista,
 }) => {
   const { personal, addReporteDiario, updateReporteDiario } = useAppContext();
 
@@ -104,6 +127,17 @@ const ReporteDiarioModal = ({
 
     return [...new Set(lista)].sort((a, b) => a.localeCompare(b));
   }, [personal, noOperariosHints, proyectoActivo]);
+
+  const opcionesEmpleado = useMemo(() => {
+    const base = [...operarios];
+    const actual = normU(form.empleado);
+
+    if (actual && !base.includes(actual)) {
+      base.unshift(actual);
+    }
+
+    return [...new Set(base)];
+  }, [operarios, form.empleado]);
 
   const empleadoObj = useMemo(() => {
     const pick = normU(form.empleado);
@@ -188,7 +222,7 @@ const ReporteDiarioModal = ({
         fecha: form.fecha,
 
         concepto: normU(form.empleado),
-        cargo: normU(empleadoObj?.cargo || "OPERARIO"),
+        cargo: normU(empleadoObj?.cargo || reporteInicial?.cargo || "OPERARIO"),
 
         asistio,
         numHorasExtras: horas,
@@ -253,27 +287,6 @@ const ReporteDiarioModal = ({
                 {normU(proyectoActivo || "SIN PROYECTO")}
               </p>
 
-              {!esEdicion && (
-                <div className="pt-2">
-                  <div className="grid grid-cols-2 gap-2 sm:w-fit">
-                    <button
-                      type="button"
-                      onClick={onOpenLista}
-                      className="h-10 px-4 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-800 hover:text-white font-semibold text-[12px] transition-all"
-                    >
-                      Lista
-                    </button>
-
-                    <button
-                      type="button"
-                      className="h-10 px-4 rounded-xl bg-slate-800 text-white font-semibold text-[12px] shadow-sm"
-                    >
-                      Individual
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {esEdicion && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/20 bg-[#FFF8E8] px-3 py-1.5 text-[11px] font-semibold text-[#C98500]">
@@ -301,10 +314,7 @@ const ReporteDiarioModal = ({
             </button>
           </div>
 
-          <form
-            onSubmit={guardar}
-            className="p-6 md:p-8 space-y-6"
-          >
+          <form onSubmit={guardar} className="p-6 md:p-8 space-y-6">
             {esAnulado && (
               <div className="px-4 py-3 rounded-[1rem] bg-red-50 border border-red-200">
                 <p className="text-[11px] font-semibold text-red-700">
@@ -330,16 +340,16 @@ const ReporteDiarioModal = ({
 
               <CustomSelect
                 label="Empleado"
-                options={operarios}
+                options={opcionesEmpleado}
                 value={form.empleado}
                 onChange={(val) => setForm({ ...form, empleado: val })}
                 placeholder={
-                  operarios.length
+                  opcionesEmpleado.length
                     ? "BUSCAR..."
                     : "NO HAY OPERARIOS ACTIVOS EN ESTE PROYECTO"
                 }
                 allowCustom={false}
-                disabled={!operarios.length || esAnulado}
+                disabled={!opcionesEmpleado.length || esAnulado}
               />
             </div>
 
@@ -348,9 +358,7 @@ const ReporteDiarioModal = ({
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-2 h-2 rounded-full shrink-0 ${
-                      form.asistio
-                        ? "bg-[#FCB017] animate-pulse"
-                        : "bg-black/20"
+                      form.asistio ? "bg-[#FCB017] animate-pulse" : "bg-black/20"
                     }`}
                   />
                   <span className="text-[12px] font-semibold text-slate-600 leading-tight">
@@ -377,50 +385,46 @@ const ReporteDiarioModal = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    H. extras
+                    H. extras (hrs)
                   </label>
-                  <input
-                    ref={inputRef}
-                    type="number"
-                    placeholder="0"
-                    disabled={!form.asistio || esAnulado}
-                    className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none disabled:opacity-50 shadow-sm"
+                  <InputConUnidad
                     value={form.horasExtras}
                     onChange={(e) =>
                       setForm({ ...form, horasExtras: e.target.value })
                     }
+                    disabled={!form.asistio || esAnulado}
+                    unit="hrs"
+                    className="w-full"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    Bonos (+)
+                    Bonos ($)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    disabled={!form.asistio || esAnulado}
-                    className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none disabled:opacity-50 shadow-sm"
+                  <InputConUnidad
                     value={form.bonos}
                     onChange={(e) =>
                       setForm({ ...form, bonos: e.target.value })
                     }
+                    disabled={!form.asistio || esAnulado}
+                    unit="$"
+                    className="w-full"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase ml-3 opacity-40 tracking-widest">
-                    Desc. (-)
+                    Desc. ($)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    disabled={!form.asistio || esAnulado}
-                    className="w-full bg-white border border-black/5 px-4 py-3.5 rounded-xl text-[16px] md:text-[11px] font-black outline-none disabled:opacity-50 shadow-sm"
+                  <InputConUnidad
                     value={form.descuentos}
                     onChange={(e) =>
                       setForm({ ...form, descuentos: e.target.value })
                     }
+                    disabled={!form.asistio || esAnulado}
+                    unit="$"
+                    className="w-full"
                   />
                 </div>
               </div>

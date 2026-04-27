@@ -56,6 +56,27 @@ const shouldCountInTotals = (e) => {
   return true;
 };
 
+const isPayrollRecord = (e) => {
+  const cat = normalize(e?.categoria);
+  const tipo = normalize(e?.tipoRegistro || e?.tipo_registro);
+  return cat === "MANO DE OBRA" || tipo === "REPORTE_DIARIO";
+};
+
+const isOperationalExpense = (e) => !isPayrollRecord(e);
+
+const shouldCountOperationalTotals = (e) => {
+  const est = normalize(e?.estado || "PENDIENTE");
+  if (est === "ANULADO") return false;
+  if (!isOperationalExpense(e)) return false;
+  return true;
+};
+
+const shouldCountPayrollPaidTotals = (e) => {
+  if (!isPayrollRecord(e)) return false;
+  const est = normalize(e?.estado || "PENDIENTE");
+  return est === "PAGADO" || est === "COMPLETADO";
+};
+
 const statusTone = (estado) => {
   const e = normalize(estado);
   if (e === "PAGADO") return "bg-green-100 text-green-700";
@@ -165,7 +186,7 @@ const MetricCard = ({ icon, iconWrap, label, value, hint, onClick, clickable = f
   </button>
 );
 
-const ProjectOverviewCard = ({ proyecto, totalGastado, index, onOpen }) => {
+const ProjectOverviewCard = ({ proyecto, totalGastado, totalOperativo = 0, totalManoObra = 0, index, onOpen }) => {
   const presupuesto = Number(proyecto?.presupuesto) || 0;
   const progress =
     presupuesto > 0 ? Math.min((totalGastado / presupuesto) * 100, 100) : 0;
@@ -226,6 +247,16 @@ const ProjectOverviewCard = ({ proyecto, totalGastado, index, onOpen }) => {
           className={`h-full rounded-full ${progressBarClass}`}
           style={{ width: `${progress}%` }}
         />
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-black/5 bg-[#F9F9F6] px-3 py-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+          Desglose
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-600">
+          <span>Operativo: ${money(totalOperativo)}</span>
+          <span>M.O. pagada: ${money(totalManoObra)}</span>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
@@ -786,7 +817,21 @@ const AdminDashboard = () => {
       const f = e?.fecha ? new Date(e.fecha) : null;
       if (!f || Number.isNaN(f.getTime())) return acc;
       if (f.getFullYear() !== y || f.getMonth() !== m) return acc;
-      if (!shouldCountInTotals(e)) return acc;
+      if (!shouldCountOperationalTotals(e)) return acc;
+      return acc + (Number(e?.valor) || 0);
+    }, 0);
+  }, [egresos]);
+
+  const manoObraPagadaMes = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    return (egresos || []).reduce((acc, e) => {
+      const f = e?.fecha ? new Date(e.fecha) : null;
+      if (!f || Number.isNaN(f.getTime())) return acc;
+      if (f.getFullYear() !== y || f.getMonth() !== m) return acc;
+      if (!shouldCountPayrollPaidTotals(e)) return acc;
       return acc + (Number(e?.valor) || 0);
     }, 0);
   }, [egresos]);
@@ -800,21 +845,30 @@ const AdminDashboard = () => {
 
   const proyectosConMeta = useMemo(() => {
     return (proyectos || []).map((p) => {
-      const totalGastado = (egresos || []).reduce((acc, e) => {
+      const totalOperativo = (egresos || []).reduce((acc, e) => {
         if (normalize(e?.proyecto) !== normalize(p?.nombre)) return acc;
-        if (!shouldCountInTotals(e)) return acc;
+        if (!shouldCountOperationalTotals(e)) return acc;
+        return acc + (Number(e?.valor) || 0);
+      }, 0);
+
+      const totalManoObraPagada = (egresos || []).reduce((acc, e) => {
+        if (normalize(e?.proyecto) !== normalize(p?.nombre)) return acc;
+        if (!shouldCountPayrollPaidTotals(e)) return acc;
         return acc + (Number(e?.valor) || 0);
       }, 0);
 
       return {
         ...p,
-        totalGastado,
+        totalOperativo,
+        totalManoObraPagada,
+        totalGastado: totalOperativo + totalManoObraPagada,
       };
     });
   }, [proyectos, egresos]);
 
   const dashboardEgresos = useMemo(() => {
     return (egresos || [])
+      .filter((item) => isOperationalExpense(item))
       .filter((item) => {
         const okProyecto =
           filtroProyecto === "" || normalize(item?.proyecto) === normalize(filtroProyecto);
@@ -840,7 +894,7 @@ const AdminDashboard = () => {
 
   const totalFiltrado = useMemo(() => {
     return (dashboardEgresos || []).reduce((acc, e) => {
-      if (!shouldCountInTotals(e)) return acc;
+      if (!shouldCountOperationalTotals(e)) return acc;
       return acc + (Number(e?.valor) || 0);
     }, 0);
   }, [dashboardEgresos]);
@@ -866,9 +920,9 @@ const AdminDashboard = () => {
         <MetricCard
           icon="pi pi-wallet"
           iconWrap="bg-[#FFF2D6] text-[#C98500]"
-          label="Egresos del Mes"
+          label="Egresos Operativos"
           value={`$${money(egresosDelMes)}`}
-          hint="Movimiento actual"
+          hint="Sin mano de obra"
           onClick={() => irASeccion("informes")}
           clickable
         />
@@ -886,10 +940,10 @@ const AdminDashboard = () => {
         <MetricCard
           icon="pi pi-users"
           iconWrap="bg-amber-100 text-amber-700"
-          label="Personal en Obra"
-          value={`${personalEnObra}`}
-          hint="Operación activa"
-          onClick={() => irASeccion("gestionPersonal")}
+          label="Mano de Obra Pagada"
+          value={`$${money(manoObraPagadaMes)}`}
+          hint={`${personalEnObra} colaboradores activos`}
+          onClick={() => irASeccion("manoDeObra")}
           clickable
         />
       </div>
@@ -935,6 +989,8 @@ const AdminDashboard = () => {
                     key={p?.id || p?.nombre}
                     proyecto={p}
                     totalGastado={p?.totalGastado || 0}
+                    totalOperativo={p?.totalOperativo || 0}
+                    totalManoObra={p?.totalManoObraPagada || 0}
                     index={index}
                     onOpen={() => abrirProyectoDesdeDashboard(p?.nombre)}
                   />
@@ -952,7 +1008,7 @@ const AdminDashboard = () => {
               >
                 <div>
                   <h3 className="text-[16px] font-black tracking-tight text-slate-800">
-                    Egresos Recientes
+                    Egresos Operativos Recientes
                   </h3>
                   <p className="mt-1 text-[12px] font-semibold text-slate-500">
                     Total: <span className="text-slate-800">${money(totalFiltrado)}</span>
@@ -1010,7 +1066,7 @@ const AdminDashboard = () => {
                             colSpan="4"
                             className="px-5 py-8 text-center text-[13px] font-bold text-slate-500"
                           >
-                            No hay egresos recientes.
+                            No hay egresos operativos recientes.
                           </td>
                         </tr>
                       ) : (
@@ -1057,7 +1113,7 @@ const AdminDashboard = () => {
                 {dashboardEgresos.length === 0 ? (
                   <div className="rounded-[22px] border border-dashed border-black/10 bg-white px-4 py-10 text-center">
                     <p className="text-[13px] font-bold text-slate-500">
-                      No hay egresos recientes.
+                      No hay egresos operativos recientes.
                     </p>
                   </div>
                 ) : (
@@ -1512,6 +1568,7 @@ const AdminDashboard = () => {
           "TRAMITES",
           "TRANSPORTE",
           "ASERRADERO",
+          "OFICINA",
           "MANO DE OBRA",
         ]}
       />

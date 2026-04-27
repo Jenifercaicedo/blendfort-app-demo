@@ -45,6 +45,15 @@ const RESUMEN_CAJA_DEFAULT = {
   fechaUltimoDesembolso: "",
 };
 
+const isManoObraRecord = (reg) => normalize(reg?.categoria) === "MANO DE OBRA";
+const isOperationalExpense = (reg) => !isManoObraRecord(reg);
+
+const shouldCountOperationalTotals = (reg) => {
+  const estado = normalize(reg?.estado || "PENDIENTE");
+  if (estado === "ANULADO") return false;
+  return isOperationalExpense(reg);
+};
+
 const InfoPill = ({ icon, children, accent = false }) => (
   <div
     className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
@@ -245,7 +254,8 @@ const ResidentDashboard = () => {
       "TRAMITES",
       "TRANSPORTE",
       "ASERRADERO",
-      "MANO DE OBRA",
+      "OFICINA",
+
     ],
     []
   );
@@ -262,8 +272,16 @@ const ResidentDashboard = () => {
     );
   }, [registrosProyecto, proyectoActivoFinal]);
 
+  const registrosManoObraProyecto = useMemo(() => {
+    return (registrosScope || []).filter((reg) => isManoObraRecord(reg));
+  }, [registrosScope]);
+
+  const registrosOperativosScope = useMemo(() => {
+    return (registrosScope || []).filter((reg) => isOperationalExpense(reg));
+  }, [registrosScope]);
+
   const registrosFiltrados = useMemo(() => {
-    return registrosScope.filter((reg) => {
+    return registrosOperativosScope.filter((reg) => {
       const coincideCat =
         filtroCategoria === "" ||
         normalize(reg?.categoria) === normalize(filtroCategoria);
@@ -273,21 +291,14 @@ const ResidentDashboard = () => {
 
       return coincideCat && coincideFecha;
     });
-  }, [registrosScope, filtroCategoria, filtroFecha]);
+  }, [registrosOperativosScope, filtroCategoria, filtroFecha]);
 
   const totalMes = useMemo(() => {
-    return (registrosScope || []).reduce((acc, curr) => {
-      const cat = normalize(curr?.categoria);
-      const est = normalize(curr?.estado || "PENDIENTE");
-
-      const esMO = cat === "MANO DE OBRA";
-      const moPagada = est === "PAGADO" || est === "COMPLETADO";
-
-      if (esMO && !moPagada) return acc;
-
+    return (registrosOperativosScope || []).reduce((acc, curr) => {
+      if (!shouldCountOperationalTotals(curr)) return acc;
       return acc + (Number(curr?.valor) || 0);
     }, 0);
-  }, [registrosScope]);
+  }, [registrosOperativosScope]);
 
   const personalProyectoActivo = useMemo(() => {
     if (!proyectoActivoFinal) return [];
@@ -296,12 +307,6 @@ const ResidentDashboard = () => {
       (p) => normalize(p?.proyecto) === normalize(proyectoActivoFinal)
     );
   }, [personal, proyectoActivoFinal]);
-
-  const registrosManoObraProyecto = useMemo(() => {
-    return (registrosScope || []).filter(
-      (reg) => normalize(reg?.categoria) === "MANO DE OBRA"
-    );
-  }, [registrosScope]);
 
   const saldoCajaNegativo = Number(resumenCajaChica?.saldoActual || 0) < 0;
   const cajaExcedida =
@@ -371,8 +376,20 @@ const ResidentDashboard = () => {
 
       const categoriaFinal = normalize(nuevoEgreso.categoria);
 
-      const fuenteFondosFinal =
-        categoriaFinal === "MANO DE OBRA" ? "GENERAL" : "CAJA_CHICA";
+      if (!proyectoFinal) {
+        mostrarExito("SELECCIONA UN PROYECTO");
+        return;
+      }
+
+      if (!categoriaFinal) {
+        mostrarExito("SELECCIONA UNA CATEGORÍA");
+        return;
+      }
+
+      if (categoriaFinal === "MANO DE OBRA") {
+        mostrarExito("MANO DE OBRA SE REGISTRA DESDE REPORTE");
+        return;
+      }
 
       const payload = {
         ...nuevoEgreso,
@@ -389,7 +406,7 @@ const ResidentDashboard = () => {
         valor: Number(nuevoEgreso.valor) || 0,
         tieneFactura: Boolean(nuevoEgreso.tieneFactura),
         tipoRegistro: "EGRESO",
-        fuenteFondos: fuenteFondosFinal,
+        fuenteFondos: "CAJA_CHICA",
       };
 
       if (editandoId) {
@@ -479,7 +496,7 @@ const ResidentDashboard = () => {
             </h1>
 
             <p className="mt-3 text-[13px] font-medium text-slate-500">
-              Gestiona tus egresos y reportes del proyecto asignado.
+              Gestiona tus egresos operativos y registra la mano de obra por separado.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -488,7 +505,11 @@ const ResidentDashboard = () => {
               </InfoPill>
 
               <InfoPill icon="pi pi-wallet">
-                Total: {money(totalMes)}
+                Operativo: {money(totalMes)}
+              </InfoPill>
+
+              <InfoPill icon="pi pi-users">
+                MO: {registrosManoObraProyecto.length} reporte(s)
               </InfoPill>
 
               {hayFiltros ? (
@@ -602,7 +623,7 @@ const ResidentDashboard = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-[2px] bg-[#FCB017]" />
                   <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C98500]">
-                    Reportes de egresos
+                    Egresos operativos
                   </span>
                 </div>
 
@@ -614,6 +635,10 @@ const ResidentDashboard = () => {
                   {multiProyecto
                     ? `Proyecto activo: ${proyectoActivoFinal || "—"}`
                     : `Proyecto: ${proyectoActivoFinal || "—"}`}
+                </p>
+
+                <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                  Mano de obra se registra y consulta desde su módulo.
                 </p>
               </div>
 
@@ -632,7 +657,7 @@ const ResidentDashboard = () => {
                   accent
                   className="px-3 md:px-4"
                 >
-                  <span className="hidden sm:inline">Reporte</span>
+                  <span className="hidden sm:inline">Reporte MO</span>
                 </ActionButton>
 
                 <ActionButton

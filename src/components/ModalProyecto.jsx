@@ -9,11 +9,29 @@ const normalize = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+const normalizeUpper = (s) =>
+  String(s || "")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
 const ModalProyecto = ({ show, onClose, onSave, data, setData, mensajeExito }) => {
-  const { personal } = useAppContext();
+  const { personal, profiles, getResidentesProyecto } = useAppContext();
 
   const residentRoleAllowList = useMemo(
-    () => new Set(["RESIDENTE", "INGENIERO", "ARQUITECTO", "ARQUITECTA", "ING.", "ING"]),
+    () =>
+      new Set([
+        "RESIDENTE",
+        "INGENIERO",
+        "INGENIERA",
+        "ARQUITECTO",
+        "ARQUITECTA",
+        "ING.",
+        "ING",
+        "ARQ",
+        "ARQ.",
+      ]),
     []
   );
 
@@ -23,20 +41,82 @@ const ModalProyecto = ({ show, onClose, onSave, data, setData, mensajeExito }) =
   );
 
   const opcionesResidentes = useMemo(() => {
-    const lista = (personal || [])
+    const fromProfiles = (profiles || [])
       .filter((p) => {
-        const rolRaw = String(p.rol || "").toUpperCase().trim();
-        const cargoN = normalize(p.cargo);
+        const rolRaw = String(p?.rol || "").toUpperCase().trim();
+        return residentRoleAllowList.has(rolRaw);
+      })
+      .map((p) => normalizeUpper(p?.nombre))
+      .filter(Boolean);
 
-        if (rolRaw) return residentRoleAllowList.has(rolRaw);
+    const fromPersonal = (personal || [])
+      .filter((p) => {
+        const rolRaw = String(p?.rol || "").toUpperCase().trim();
+        const cargoN = normalize(p?.cargo);
+
+        if (rolRaw && residentRoleAllowList.has(rolRaw)) return true;
 
         return cargoAllowHints.some((h) => cargoN.includes(normalize(h)));
       })
-      .map((p) => String(p.nombre || "").toUpperCase().trim())
+      .map((p) => normalizeUpper(p?.nombre))
       .filter(Boolean);
 
+    const selected = normalizeUpper(data?.residente);
+
+    const lista = [...fromProfiles, ...fromPersonal];
+    if (selected) lista.push(selected);
+
     return [...new Set(lista)].sort((a, b) => a.localeCompare(b));
-  }, [personal, residentRoleAllowList, cargoAllowHints]);
+  }, [profiles, personal, residentRoleAllowList, cargoAllowHints, data?.residente]);
+
+  const residentesProyectoActual = useMemo(() => {
+    if (!data?.id || typeof getResidentesProyecto !== "function") return [];
+
+    const rows = getResidentesProyecto(data.id) || [];
+    const dedupe = new Map();
+
+    for (const row of rows) {
+      const nombre = normalizeUpper(row?.residente_nombre);
+      if (!nombre) continue;
+
+      if (!dedupe.has(nombre)) {
+        dedupe.set(nombre, {
+          nombre,
+          esPrincipal: Boolean(row?.es_principal),
+          activo: row?.activo !== false,
+          origen: row?.origen || "",
+        });
+      } else if (row?.es_principal) {
+        dedupe.set(nombre, {
+          ...dedupe.get(nombre),
+          esPrincipal: true,
+        });
+      }
+    }
+
+    return Array.from(dedupe.values()).sort((a, b) => {
+      if (a.esPrincipal !== b.esPrincipal) return a.esPrincipal ? -1 : 1;
+      return a.nombre.localeCompare(b.nombre);
+    });
+  }, [data?.id, getResidentesProyecto]);
+
+  const residentePrincipalActual = useMemo(() => {
+    const current = normalizeUpper(data?.residente);
+    if (!current) return null;
+
+    const found = residentesProyectoActual.find(
+      (r) => normalizeUpper(r?.nombre) === current
+    );
+
+    return (
+      found || {
+        nombre: current,
+        esPrincipal: true,
+        activo: true,
+        origen: "FORM_STATE",
+      }
+    );
+  }, [data?.residente, residentesProyectoActual]);
 
   if (!show) return null;
 
@@ -128,15 +208,45 @@ const ModalProyecto = ({ show, onClose, onSave, data, setData, mensajeExito }) =
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-              <CustomSelect
-                label="Residente a Cargo"
-                options={opcionesResidentes}
-                value={data.residente}
-                onChange={(val) => setData({ ...data, residente: val })}
-                placeholder={opcionesResidentes.length ? "SELECCIONAR..." : "NO HAY RESIDENTES"}
-                allowCustom={false}
-                disabled={!opcionesResidentes.length}
-              />
+              <div className="space-y-4">
+                <CustomSelect
+                  label="Residente Principal"
+                  options={opcionesResidentes}
+                  value={data.residente}
+                  onChange={(val) =>
+                    setData({
+                      ...data,
+                      residente: String(val || "").toUpperCase().trim(),
+                    })
+                  }
+                  placeholder={
+                    opcionesResidentes.length
+                      ? "SELECCIONAR..."
+                      : "NO HAY RESIDENTES DISPONIBLES"
+                  }
+                  allowCustom={false}
+                  disabled={!opcionesResidentes.length}
+                />
+
+                <div className="rounded-[1.1rem] md:rounded-[1.3rem] border border-[#FCB017]/20 bg-[#FFF8E8] px-4 py-3.5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FCB017]/15 text-[#C98500]">
+                      <i className="pi pi-info-circle text-[14px]" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C98500]">
+                        Lógica del proyecto
+                      </p>
+                      <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-600">
+                        Aquí defines solo el <span className="font-black text-slate-800">residente principal</span>.
+                        Los residentes adicionales de la obra se gestionan después desde
+                        <span className="font-black text-slate-800"> Gestión Personal</span>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-1">
                 <label className="text-[9px] font-black uppercase ml-3 md:ml-4 opacity-30 tracking-widest">
@@ -153,6 +263,48 @@ const ModalProyecto = ({ show, onClose, onSave, data, setData, mensajeExito }) =
                 />
               </div>
             </div>
+
+            {(data.id || data.residente) && (
+              <div className="rounded-[1.2rem] md:rounded-[1.4rem] border border-black/5 bg-[#FAFAF7] px-4 py-4 md:px-5">
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Estructura de residentes
+                    </p>
+                    <p className="mt-2 text-[12px] font-semibold text-slate-500">
+                      Proyecto con un residente principal y posibilidad de residentes adicionales.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {residentePrincipalActual ? (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-[#FCB017]/25 bg-[#FFF8E8] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#C98500]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#FCB017]" />
+                        Principal · {residentePrincipalActual.nombre}
+                      </span>
+                    ) : null}
+
+                    {residentesProyectoActual
+                      .filter((r) => !r.esPrincipal)
+                      .map((r) => (
+                        <span
+                          key={r.nombre}
+                          className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                          Adicional · {r.nombre}
+                        </span>
+                      ))}
+
+                    {!residentePrincipalActual && residentesProyectoActual.length === 0 ? (
+                      <span className="inline-flex items-center rounded-full border border-dashed border-black/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                        Sin residentes vinculados todavía
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <div className="space-y-1">

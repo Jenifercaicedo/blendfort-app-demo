@@ -92,6 +92,7 @@ const ManoObraDetalleModal = ({
   detalle,
   proyectoActivo,
   semanaActiva,
+  semanaLabel = "",
   onClose,
   onPagarSemana,
   onEditReporte,
@@ -203,7 +204,10 @@ const ManoObraDetalleModal = ({
                   {rango}
                 </Chip>
 
-                <Chip icon="pi pi-check-circle" tone={resumen.estadoSemana === "PAGADO" ? "success" : "warning"}>
+                <Chip
+                  icon="pi pi-check-circle"
+                  tone={resumen.estadoSemana === "PAGADO" ? "success" : "warning"}
+                >
                   {resumen.estadoSemana}
                 </Chip>
 
@@ -221,9 +225,15 @@ const ManoObraDetalleModal = ({
               </p>
 
               <div className="mt-4 divide-y divide-black/5">
-                <DataRow label="Proyecto" value={String(proyectoActivo || "SIN PROYECTO").toUpperCase()} />
+                <DataRow
+                  label="Proyecto"
+                  value={String(proyectoActivo || "SIN PROYECTO").toUpperCase()}
+                />
                 <DataRow label="Periodo" value={rango} />
-                <DataRow label="Semana" value={semanaActiva ? String(semanaActiva) : "NO FILTRADA"} />
+                <DataRow
+                  label="Semana"
+                  value={semanaActiva ? semanaLabel || rango : "NO FILTRADA"}
+                />
                 <DataRow label="Días trabajados" value={resumen.dias} />
                 <DataRow label="Horas extra" value={resumen.horas} />
                 <DataRow label="Bonos" value={money(resumen.bonos)} />

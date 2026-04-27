@@ -2,11 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { supabase } from "../lib/supabase";
 import {
   normalizeEgreso,
-  normalizePersonal,
   normalizeCajaChicaProyecto,
   normalizeCajaChicaDesembolso,
   normalizeMovimientoCajaChica,
-  normalizeCajaChicaResidente,
 } from "../utils/normalizers";
 import {
   cargarCajaChicaResidenteDB,
@@ -130,6 +128,11 @@ export const AppProvider = ({ children }) => {
   const [proyectos, setProyectos] = useState([]);
   const [personal, setPersonal] = useState([]);
 
+  // NUEVO MODELO BASE
+  const [profiles, setProfiles] = useState([]);
+  const [catalogoCargos, setCatalogoCargos] = useState([]);
+  const [proyectoResidentes, setProyectoResidentes] = useState([]);
+
   // CAJA CHICA
   const [cajaChicaProyecto, setCajaChicaProyecto] = useState([]);
   const [cajaChicaDesembolsos, setCajaChicaDesembolsos] = useState([]);
@@ -139,6 +142,11 @@ export const AppProvider = ({ children }) => {
   const [loadingProyectos, setLoadingProyectos] = useState(true);
   const [loadingEgresos, setLoadingEgresos] = useState(true);
   const [loadingPersonal, setLoadingPersonal] = useState(true);
+
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
+  const [loadingCatalogoCargos, setLoadingCatalogoCargos] = useState(true);
+  const [loadingProyectoResidentes, setLoadingProyectoResidentes] = useState(true);
+
   const [loadingCajaChicaProyecto, setLoadingCajaChicaProyecto] = useState(true);
   const [loadingCajaChicaDesembolsos, setLoadingCajaChicaDesembolsos] = useState(true);
   const [loadingMovimientosCajaChica, setLoadingMovimientosCajaChica] = useState(true);
@@ -451,17 +459,149 @@ export const AppProvider = ({ children }) => {
      CARGAR PERSONAL
   =========================== */
   const cargarPersonal = async () => {
-  try {
-    setLoadingPersonal(true);
+    try {
+      setLoadingPersonal(true);
 
-    const data = await cargarPersonalMultiproyectoDB();
-    setPersonal(data || []);
-  } catch (error) {
-    console.error("Error cargando personal:", error);
-  } finally {
-    setLoadingPersonal(false);
-  }
-};
+      const data = await cargarPersonalMultiproyectoDB();
+      setPersonal(data || []);
+    } catch (error) {
+      console.error("Error cargando personal:", error);
+    } finally {
+      setLoadingPersonal(false);
+    }
+  };
+
+  /* ===========================
+     CARGAR PROFILES
+  =========================== */
+  const cargarProfiles = async () => {
+    try {
+      setLoadingProfiles(true);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nombre, rol, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setProfiles(data || []);
+    } catch (error) {
+      console.error("Error cargando profiles:", error);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  /* ===========================
+     CARGAR CATÁLOGO DE CARGOS
+  =========================== */
+  const cargarCatalogoCargos = async () => {
+    try {
+      setLoadingCatalogoCargos(true);
+
+      const { data, error } = await supabase
+        .from("catalogo_cargos")
+        .select("*")
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+
+      setCatalogoCargos(data || []);
+    } catch (error) {
+      console.error("Error cargando catálogo de cargos:", error);
+    } finally {
+      setLoadingCatalogoCargos(false);
+    }
+  };
+
+  /* ===========================
+     CRUD CATÁLOGO DE CARGOS
+  =========================== */
+  const addCatalogoCargo = async (payload) => {
+    const cargoFinal = {
+      codigo: norm(payload?.codigo),
+      nombre: norm(payload?.nombre),
+      tipo_personal: norm(payload?.tipo_personal || payload?.tipoPersonal || "CAMPO"),
+      tipo_pago: norm(payload?.tipo_pago || payload?.tipoPago || "DIARIO"),
+      valor_dia: safeNum(payload?.valor_dia ?? payload?.valorDia),
+      valor_hora_extra: safeNum(payload?.valor_hora_extra ?? payload?.valorHoraExtra),
+      salario_mensual: safeNum(payload?.salario_mensual ?? payload?.salarioMensual),
+      activo: payload?.activo !== false,
+    };
+
+    const { data, error } = await supabase
+      .from("catalogo_cargos")
+      .insert([cargoFinal])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await cargarCatalogoCargos();
+    return data;
+  };
+
+  const updateCatalogoCargo = async (id, payload) => {
+    const cargoPatch = {
+      codigo: norm(payload?.codigo),
+      nombre: norm(payload?.nombre),
+      tipo_personal: norm(payload?.tipo_personal || payload?.tipoPersonal || "CAMPO"),
+      tipo_pago: norm(payload?.tipo_pago || payload?.tipoPago || "DIARIO"),
+      valor_dia: safeNum(payload?.valor_dia ?? payload?.valorDia),
+      valor_hora_extra: safeNum(payload?.valor_hora_extra ?? payload?.valorHoraExtra),
+      salario_mensual: safeNum(payload?.salario_mensual ?? payload?.salarioMensual),
+      activo: payload?.activo !== false,
+    };
+
+    const { data, error } = await supabase
+      .from("catalogo_cargos")
+      .update(cargoPatch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await cargarCatalogoCargos();
+    return data;
+  };
+
+  const toggleCatalogoCargoActivo = async (id, nextActivo) => {
+    const { data, error } = await supabase
+      .from("catalogo_cargos")
+      .update({ activo: Boolean(nextActivo) })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await cargarCatalogoCargos();
+    return data;
+  };
+
+  /* ===========================
+     CARGAR RESIDENTES POR PROYECTO
+  =========================== */
+  const cargarProyectoResidentes = async () => {
+    try {
+      setLoadingProyectoResidentes(true);
+
+      const { data, error } = await supabase
+        .from("v_proyecto_residentes_activos")
+        .select("*")
+        .order("proyecto_nombre", { ascending: true });
+
+      if (error) throw error;
+
+      setProyectoResidentes(data || []);
+    } catch (error) {
+      console.error("Error cargando proyecto_residentes:", error);
+    } finally {
+      setLoadingProyectoResidentes(false);
+    }
+  };
 
   /* ===========================
      CARGAR CAJA CHICA
@@ -547,6 +687,10 @@ export const AppProvider = ({ children }) => {
       setProyectos([]);
       setEgresos([]);
       setPersonal([]);
+      setProfiles([]);
+      setCatalogoCargos([]);
+      setProyectoResidentes([]);
+
       setCajaChicaProyecto([]);
       setCajaChicaResidente([]);
       setCajaChicaDesembolsos([]);
@@ -555,6 +699,10 @@ export const AppProvider = ({ children }) => {
       setLoadingProyectos(false);
       setLoadingEgresos(false);
       setLoadingPersonal(false);
+      setLoadingProfiles(false);
+      setLoadingCatalogoCargos(false);
+      setLoadingProyectoResidentes(false);
+
       setLoadingCajaChicaProyecto(false);
       setLoadingCajaChicaResidente(false);
       setLoadingCajaChicaDesembolsos(false);
@@ -565,6 +713,10 @@ export const AppProvider = ({ children }) => {
     cargarProyectos();
     cargarEgresos();
     cargarPersonal();
+    cargarProfiles();
+    cargarCatalogoCargos();
+    cargarProyectoResidentes();
+
     cargarCajaChicaProyecto();
     cargarCajaChicaResidente();
     cargarCajaChicaDesembolsos();
@@ -572,183 +724,373 @@ export const AppProvider = ({ children }) => {
   }, [authLoading, usuario]);
 
   /* ===========================
+     MAPAS AUXILIARES NUEVOS
+  =========================== */
+  const profilesByNormalizedName = useMemo(() => {
+    const map = new Map();
+
+    for (const p of profiles || []) {
+      const key = norm(p?.nombre);
+      if (!key) continue;
+      map.set(key, p);
+    }
+
+    return map;
+  }, [profiles]);
+
+  const proyectosById = useMemo(() => {
+    const map = new Map();
+
+    for (const p of proyectos || []) {
+      if (!p?.id) continue;
+      map.set(String(p.id), p);
+    }
+
+    return map;
+  }, [proyectos]);
+
+  /* ===========================
      CRUD PROYECTOS
   =========================== */
   const addProyecto = async (payload) => {
-  const proyectoFinal = {
-    nombre: norm(payload?.nombre),
-    residente: norm(payload?.residente),
-    dueno: norm(payload?.dueno),
-    ubicacion: norm(payload?.ubicacion),
-    tiempo: norm(payload?.tiempo),
-    presupuesto: safeNum(payload?.presupuesto),
+    const proyectoFinal = {
+      nombre: norm(payload?.nombre),
+      residente: norm(payload?.residente),
+      dueno: norm(payload?.dueno),
+      ubicacion: norm(payload?.ubicacion),
+      tiempo: norm(payload?.tiempo),
+      presupuesto: safeNum(payload?.presupuesto),
+    };
+
+    const { data, error } = await supabase
+      .from("proyectos")
+      .insert([proyectoFinal])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    try {
+      await asegurarAsignacionResidentePrincipalDB({
+        proyectoId: data.id,
+        proyectoNombre: data.nombre,
+        residenteNombre: data.residente,
+      });
+    } catch (syncError) {
+      console.error(
+        "Proyecto creado, pero no se pudo sincronizar la asignación del residente principal:",
+        syncError
+      );
+    }
+
+    await Promise.all([
+      cargarProyectos(),
+      cargarProyectoResidentes(),
+      cargarPersonal(),
+      cargarProfiles(),
+    ]);
+
+    return data;
   };
-
-  const { data, error } = await supabase
-    .from("proyectos")
-    .insert([proyectoFinal])
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  try {
-    await asegurarAsignacionResidentePrincipalDB({
-      proyectoId: data.id,
-      proyectoNombre: data.nombre,
-      residenteNombre: data.residente,
-    });
-  } catch (syncError) {
-    console.error(
-      "Proyecto creado, pero no se pudo sincronizar la asignación del residente principal:",
-      syncError
-    );
-  }
-
-  setProyectos((prev) => [data, ...(prev || [])]);
-  await cargarPersonal();
-  return data;
-};
 
   const updateProyecto = async (id, payload) => {
-  const proyectoActual =
-    (proyectos || []).find((p) => p.id === id) || null;
+    const proyectoFinal = {
+      nombre: norm(payload?.nombre),
+      residente: norm(payload?.residente),
+      dueno: norm(payload?.dueno),
+      ubicacion: norm(payload?.ubicacion),
+      tiempo: norm(payload?.tiempo),
+      presupuesto: safeNum(payload?.presupuesto),
+    };
 
-  const nombreAnterior = norm(proyectoActual?.nombre);
+    const { data, error } = await supabase
+      .from("proyectos")
+      .update(proyectoFinal)
+      .eq("id", id)
+      .select()
+      .single();
 
-  const proyectoFinal = {
-    nombre: norm(payload?.nombre),
-    residente: norm(payload?.residente),
-    dueno: norm(payload?.dueno),
-    ubicacion: norm(payload?.ubicacion),
-    tiempo: norm(payload?.tiempo),
-    presupuesto: safeNum(payload?.presupuesto),
+    if (error) throw error;
+
+    try {
+      await asegurarAsignacionResidentePrincipalDB({
+        proyectoId: data.id,
+        proyectoNombre: data.nombre,
+        residenteNombre: data.residente,
+      });
+    } catch (syncError) {
+      console.error(
+        "Proyecto actualizado, pero no se pudo sincronizar la asignación del residente principal:",
+        syncError
+      );
+    }
+
+    await Promise.all([
+      cargarProyectos(),
+      cargarProyectoResidentes(),
+      cargarPersonal(),
+      cargarProfiles(),
+    ]);
+
+    return data;
   };
 
-  const { data, error } = await supabase
-    .from("proyectos")
-    .update(proyectoFinal)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  const nombreNuevo = norm(data?.nombre);
-
-  try {
-    await asegurarAsignacionResidentePrincipalDB({
-      proyectoId: data.id,
-      proyectoNombre: data.nombre,
-      residenteNombre: data.residente,
-    });
-  } catch (syncError) {
-    console.error(
-      "Proyecto actualizado, pero no se pudo sincronizar la asignación del residente principal:",
-      syncError
-    );
-  }
-
-  if (nombreAnterior && nombreNuevo && nombreAnterior !== nombreNuevo) {
-    await cargarPersonal();
-  }
-
-  setProyectos((prev) => (prev || []).map((p) => (p.id === id ? data : p)));
-  return data;
-};
-
   const deleteProyecto = async (id) => {
-  const proyectoActual =
-    (proyectos || []).find((p) => p.id === id) || null;
+    const { error } = await supabase
+      .from("proyectos")
+      .delete()
+      .eq("id", id);
 
-  const nombreProyecto = norm(proyectoActual?.nombre);
+    if (error) throw error;
 
-  // Antes de borrar el proyecto, quitamos la asignación
-  // en personal para que no siga apareciendo como proyecto activo.
-  if (nombreProyecto) {
-    await cargarPersonal();
-  }
-
-  const { error } = await supabase
-    .from("proyectos")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-
-  setProyectos((prev) => (prev || []).filter((p) => p.id !== id));
-
-  // Refrescar personal para que desaparezca de inmediato
-  await cargarPersonal();
-};
+    await Promise.all([
+      cargarProyectos(),
+      cargarProyectoResidentes(),
+      cargarPersonal(),
+      cargarProfiles(),
+    ]);
+  };
 
   /* ===========================
      CRUD PERSONAL
   =========================== */
   const addPersonal = async (payload) => {
-  await addPersonalMultiproyectoDB(payload);
-  await cargarPersonal();
-  return true;
-};
+    await addPersonalMultiproyectoDB(payload);
+    await Promise.all([cargarPersonal(), cargarProyectoResidentes(), cargarProfiles()]);
+    return true;
+  };
 
   const updatePersonal = async (id, payload) => {
-  await updatePersonalMultiproyectoDB(id, payload);
-  await cargarPersonal();
-  return true;
-};
+    await updatePersonalMultiproyectoDB(id, payload);
+    await Promise.all([cargarPersonal(), cargarProyectoResidentes(), cargarProfiles()]);
+    return true;
+  };
 
   const toggleEstadoPersonal = async (id, nextEstado) => {
-  await toggleEstadoAsignacionMultiproyectoDB(id, nextEstado);
-  await cargarPersonal();
-  return true;
-};
+    await toggleEstadoAsignacionMultiproyectoDB(id, nextEstado);
+    await Promise.all([cargarPersonal(), cargarProyectoResidentes(), cargarProfiles()]);
+    return true;
+  };
 
   const deletePersonal = async (id) => {
-  await deleteAsignacionMultiproyectoDB(id);
-  await cargarPersonal();
-  return true;
-};
+    await deleteAsignacionMultiproyectoDB(id);
+    await Promise.all([cargarPersonal(), cargarProyectoResidentes(), cargarProfiles()]);
+    return true;
+  };
+
   /* ===========================
      PERSONAL AGRUPADO
   =========================== */
   const agruparPersonal = (lista = []) => {
-  return agruparPersonalMultiproyecto(lista || []);
-};
+    return agruparPersonalMultiproyecto(lista || []);
+  };
 
   const getPersonalAgrupado = () => {
-  return agruparPersonalMultiproyecto(personal || []);
-};
+    return agruparPersonalMultiproyecto(personal || []);
+  };
 
   const getEmpleadoAgrupado = (nombre) => {
-  const nombreKey = norm(nombre);
-  return agruparPersonalMultiproyecto(personal || []).find((e) => e.key === nombreKey) || null;
-};
+    const nombreKey = norm(nombre);
+    return agruparPersonalMultiproyecto(personal || []).find((e) => e.key === nombreKey) || null;
+  };
 
   const getAsignacionesPorEmpleado = (nombre) => {
-  const empleado = getEmpleadoAgrupado(nombre);
-  return empleado?.asignaciones || [];
-};
+    const empleado = getEmpleadoAgrupado(nombre);
+    return empleado?.asignaciones || [];
+  };
 
   /* ===========================
-     Proyectos asignados
+     Residentes por proyecto
   =========================== */
-  const getProyectosAsignados = (nombreResidente) => {
-    const me = norm(nombreResidente);
+  /* ===========================
+   Residentes por proyecto
+=========================== */
+const getResidentAssignmentsFromPersonal = () => {
+  return (personal || []).filter((row) => {
+    const rol = norm(row?.rol);
+    const estado = norm(row?.estado || "ACTIVO");
+    const proyecto = norm(row?.proyecto);
+    const nombre = norm(row?.nombre);
 
-    return (proyectos || [])
-      .filter((p) => {
-        const r1 = norm(p?.residente);
-        const rList = Array.isArray(p?.residentes) ? p.residentes.map(norm) : [];
-        return r1 === me || rList.includes(me);
-      })
-      .map((p) => norm(p?.nombre))
-      .filter(Boolean);
+    if (!nombre) return false;
+    if (!proyecto) return false;
+    if (estado !== "ACTIVO") return false;
+
+    return rol === "RESIDENTE";
+  });
+};
+
+const getResidentesProyecto = (proyectoRef) => {
+  let proyectoId = "";
+  let proyectoLegacy = null;
+
+  if (typeof proyectoRef === "string") {
+    proyectoLegacy =
+      (proyectos || []).find(
+        (p) => norm(p?.nombre) === norm(proyectoRef) || String(p?.id) === String(proyectoRef)
+      ) || null;
+    proyectoId = proyectoLegacy?.id || "";
+  } else if (proyectoRef?.id) {
+    proyectoLegacy = proyectoRef;
+    proyectoId = proyectoRef.id;
+  }
+
+  const residentesPorId = proyectoId
+    ? (proyectoResidentes || []).filter(
+        (r) => String(r?.proyecto_id) === String(proyectoId)
+      )
+    : [];
+
+  const merged = [];
+  const pushUnique = (item) => {
+    const nombreKey = norm(item?.residente_nombre);
+    if (!nombreKey) return;
+
+    const yaExiste = merged.some((row) => norm(row?.residente_nombre) === nombreKey);
+    if (yaExiste) return;
+
+    merged.push(item);
   };
 
-  const puedeIngresarComoResidente = (nombreResidente) => {
-    const list = getProyectosAsignados(nombreResidente);
-    return Array.isArray(list) && list.length > 0;
-  };
+  // 1) Fuente principal actual: proyecto_residentes
+  residentesPorId.forEach((r) => {
+    pushUnique(r);
+  });
+
+  // 2) Fallback legacy desde tabla proyectos
+  if (proyectoLegacy?.residente) {
+    pushUnique({
+      proyecto_id: proyectoLegacy.id,
+      proyecto_nombre: proyectoLegacy.nombre,
+      profile_id: null,
+      residente_nombre: proyectoLegacy.residente,
+      personal_id: null,
+      personal_nombre: null,
+      es_principal: true,
+      activo: true,
+      origen: "LEGACY_PRINCIPAL",
+    });
+  }
+
+  if (Array.isArray(proyectoLegacy?.residentes)) {
+    proyectoLegacy.residentes.forEach((r) => {
+      const rNorm = norm(r);
+      if (!rNorm) return;
+
+      pushUnique({
+        proyecto_id: proyectoLegacy?.id || null,
+        proyecto_nombre: proyectoLegacy?.nombre || "",
+        profile_id: null,
+        residente_nombre: r,
+        personal_id: null,
+        personal_nombre: null,
+        es_principal: false,
+        activo: true,
+        origen: "LEGACY_ADICIONAL",
+      });
+    });
+  }
+
+  // 3) NUEVO: residentes activos desde personal
+  const proyectoNombreRef = norm(proyectoLegacy?.nombre || proyectoRef);
+
+  getResidentAssignmentsFromPersonal()
+    .filter((row) => norm(row?.proyecto) === proyectoNombreRef)
+    .forEach((row) => {
+      pushUnique({
+        proyecto_id: proyectoLegacy?.id || null,
+        proyecto_nombre: proyectoLegacy?.nombre || row?.proyecto || "",
+        profile_id: null,
+        residente_nombre: row?.nombre,
+        personal_id: row?.id || null,
+        personal_nombre: row?.nombre || null,
+        es_principal: false,
+        activo: true,
+        origen: "PERSONAL_ACTIVO",
+      });
+    });
+
+  if (merged.length > 0) {
+    return merged.sort((a, b) => {
+      if (Boolean(a?.es_principal) !== Boolean(b?.es_principal)) {
+        return a?.es_principal ? -1 : 1;
+      }
+      return norm(a?.residente_nombre).localeCompare(norm(b?.residente_nombre));
+    });
+  }
+
+  return [];
+};
+
+const getResidentePrincipalProyecto = (proyectoRef) => {
+  const residentes = getResidentesProyecto(proyectoRef);
+  const principal = residentes.find((r) => Boolean(r?.es_principal));
+
+  if (principal) return principal;
+
+  const proyecto =
+    typeof proyectoRef === "object" && proyectoRef?.id
+      ? proyectoRef
+      : (proyectos || []).find(
+          (p) =>
+            norm(p?.nombre) === norm(proyectoRef) || String(p?.id) === String(proyectoRef)
+        ) || null;
+
+  if (!proyecto) return null;
+
+  return proyecto?.residente
+    ? {
+        proyecto_id: proyecto.id,
+        proyecto_nombre: proyecto.nombre,
+        residente_nombre: proyecto.residente,
+        es_principal: true,
+        activo: true,
+        origen: "LEGACY_FALLBACK",
+      }
+    : null;
+};
+
+/* ===========================
+   Proyectos asignados
+=========================== */
+const getProyectosAsignados = (nombreResidente) => {
+  const me = norm(nombreResidente);
+  if (!me) return [];
+
+  const profile = profilesByNormalizedName.get(me);
+
+  const proyectosPorId = profile
+    ? (proyectoResidentes || [])
+        .filter((r) => String(r?.profile_id) === String(profile?.id))
+        .map((r) => proyectosById.get(String(r?.proyecto_id)))
+        .filter(Boolean)
+        .map((p) => norm(p?.nombre))
+    : [];
+
+  const proyectosLegacy = (proyectos || [])
+    .filter((p) => {
+      const principalLegacy = norm(p?.residente);
+      const residentesLegacy = Array.isArray(p?.residentes)
+        ? p.residentes.map(norm)
+        : [];
+
+      return principalLegacy === me || residentesLegacy.includes(me);
+    })
+    .map((p) => norm(p?.nombre))
+    .filter(Boolean);
+
+  const proyectosDesdePersonal = getResidentAssignmentsFromPersonal()
+    .filter((row) => norm(row?.nombre) === me)
+    .map((row) => norm(row?.proyecto))
+    .filter(Boolean);
+
+  return [...new Set([...proyectosPorId, ...proyectosLegacy, ...proyectosDesdePersonal])];
+};
+
+const puedeIngresarComoResidente = (nombreResidente) => {
+  const list = getProyectosAsignados(nombreResidente);
+  return Array.isArray(list) && list.length > 0;
+};
 
   /* ===========================
      Permisos
@@ -864,12 +1206,10 @@ export const AppProvider = ({ children }) => {
   const registrarDesembolsoCajaChica = async (payload, customActor) => {
     const residenteN = norm(payload?.residente);
 
-    // Si viene residente, usamos el flujo correcto por residente
     if (residenteN) {
       return registrarDesembolsoCajaChicaResidente(payload, customActor);
     }
 
-    // Fallback legacy por proyecto
     const a = customActor || actor;
 
     const proyectoN = norm(payload?.proyecto);
@@ -1278,6 +1618,13 @@ export const AppProvider = ({ children }) => {
         personal,
         setPersonal,
 
+        profiles,
+        setProfiles,
+        catalogoCargos,
+        setCatalogoCargos,
+        proyectoResidentes,
+        setProyectoResidentes,
+
         cajaChicaProyecto,
         setCajaChicaProyecto,
         cajaChicaDesembolsos,
@@ -1288,12 +1635,17 @@ export const AppProvider = ({ children }) => {
         loadingProyectos,
         loadingEgresos,
         loadingPersonal,
+        loadingProfiles,
+        loadingCatalogoCargos,
+        loadingProyectoResidentes,
         loadingCajaChicaProyecto,
         loadingCajaChicaDesembolsos,
         loadingMovimientosCajaChica,
 
         norm,
         getProyectosAsignados,
+        getResidentesProyecto,
+        getResidentePrincipalProyecto,
         puedeIngresarComoResidente,
 
         canEditEgreso,
@@ -1319,6 +1671,13 @@ export const AppProvider = ({ children }) => {
         getPersonalAgrupado,
         getEmpleadoAgrupado,
         getAsignacionesPorEmpleado,
+
+        cargarProfiles,
+        cargarCatalogoCargos,
+        addCatalogoCargo,
+        updateCatalogoCargo,
+        toggleCatalogoCargoActivo,
+        cargarProyectoResidentes,
 
         cargarCajaChicaProyecto,
         cargarCajaChicaDesembolsos,

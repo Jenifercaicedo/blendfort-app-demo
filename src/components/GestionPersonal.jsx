@@ -5,6 +5,7 @@ import PersonalFilters from "../components/PersonalFilters";
 import PersonalTable from "../components/PersonalTable";
 import PersonalFormModal from "../components/PersonalFormModal";
 import PersonalDetailModal from "../components/PersonalDetailModal";
+import CatalogoCargosModal from "../components/CatalogoCargosModal";
 
 import ModalConfirmar from "../components/ModalConfirmar";
 import ModalExito from "../components/ModalExito";
@@ -13,10 +14,16 @@ import Toast from "../components/Toast";
 /* ===========================
    Helpers
 =========================== */
-
 const normalize = (s) =>
   String(s || "")
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+const normUpper = (s) =>
+  String(s || "")
+    .toUpperCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
@@ -25,6 +32,9 @@ const buildDefaultEmpleado = () => ({
   id: null,
   nombre: "",
   cargo: "",
+  cargoCatalogoId: "",
+  codigoCargo: "",
+  tipoPago: "DIARIO",
   proyecto: "",
   tipo: "CAMPO",
   fechaContratacion: "",
@@ -48,6 +58,11 @@ const InfoPill = ({ icon, children, accent = false }) => (
   </div>
 );
 
+const esRolResidente = (value) => {
+  const rol = normUpper(value);
+  return rol === "RESIDENTE";
+};
+
 /* ===========================
    Component
 =========================== */
@@ -58,6 +73,11 @@ const GestionPersonal = ({ onBack }) => {
   const {
     proyectos,
     personal,
+    catalogoCargos,
+    loadingCatalogoCargos,
+    addCatalogoCargo,
+    updateCatalogoCargo,
+    toggleCatalogoCargoActivo,
     addPersonal,
     updatePersonal,
     toggleEstadoPersonal,
@@ -71,6 +91,7 @@ const GestionPersonal = ({ onBack }) => {
   const [filtroEstado, setFiltroEstado] = useState("");
 
   const [showModal, setShowModal] = useState(false);
+  const [showCatalogoCargos, setShowCatalogoCargos] = useState(false);
   const [editandoEmpleado, setEditandoEmpleado] = useState(null);
 
   const [detalleEmpleado, setDetalleEmpleado] = useState(null);
@@ -90,6 +111,10 @@ const GestionPersonal = ({ onBack }) => {
   }, [proyectos]);
 
   const opcionesEstado = useMemo(() => ["ACTIVO", "INACTIVO"], []);
+
+  const totalCargosCatalogo = useMemo(() => {
+    return (catalogoCargos || []).filter((c) => c?.activo !== false).length;
+  }, [catalogoCargos]);
 
   const personalAgrupado = useMemo(() => {
     const grouped =
@@ -127,6 +152,25 @@ const GestionPersonal = ({ onBack }) => {
 
     return base;
   }, [getPersonalAgrupado, filtroProyecto, filtroEstado, queryNombre]);
+
+  const totalResidentesActivos = useMemo(() => {
+    return personalAgrupado.filter((emp) => {
+      const referencia =
+        (emp?.asignaciones || []).find(
+          (a) => String(a?.estado || "ACTIVO").toUpperCase() === "ACTIVO"
+        ) ||
+        emp?.asignaciones?.[0] ||
+        null;
+
+      return esRolResidente(referencia?.rol || emp?.rolPrincipal);
+    }).length;
+  }, [personalAgrupado]);
+
+  const totalAsignacionesActivas = useMemo(() => {
+    return personalAgrupado.reduce((acc, emp) => {
+      return acc + Number(emp?.asignacionesActivas || 0);
+    }, 0);
+  }, [personalAgrupado]);
 
   const hayFiltros = Boolean(queryNombre || filtroProyecto || filtroEstado);
 
@@ -176,6 +220,21 @@ const GestionPersonal = ({ onBack }) => {
     setNuevoEmpleado({
       ...buildDefaultEmpleado(),
       ...asignacion,
+      cargoCatalogoId:
+        asignacion?.cargoCatalogoId ||
+        asignacion?.cargo_catalogo_id ||
+        asignacion?.cargoCatalogo?.id ||
+        "",
+      codigoCargo:
+        asignacion?.codigoCargo ||
+        asignacion?.codigo_cargo ||
+        asignacion?.cargoCatalogo?.codigo ||
+        "",
+      tipoPago:
+        asignacion?.tipoPago ||
+        asignacion?.tipo_pago ||
+        asignacion?.cargoCatalogo?.tipo_pago ||
+        "DIARIO",
       estado: asignacion?.estado || "ACTIVO",
     });
     setEditandoEmpleado(asignacion);
@@ -195,6 +254,10 @@ const GestionPersonal = ({ onBack }) => {
       ...buildDefaultEmpleado(),
       nombre: empleadoAgrupado?.nombre || "",
       cargo: referencia?.cargo || "",
+      cargoCatalogoId:
+        referencia?.cargoCatalogoId || referencia?.cargo_catalogo_id || "",
+      codigoCargo: referencia?.codigoCargo || referencia?.codigo_cargo || "",
+      tipoPago: referencia?.tipoPago || referencia?.tipo_pago || "DIARIO",
       proyecto: "",
       tipo: referencia?.tipo || "CAMPO",
       fechaContratacion: empleadoAgrupado?.fechaContratacion || "",
@@ -221,6 +284,10 @@ const GestionPersonal = ({ onBack }) => {
       ...buildDefaultEmpleado(),
       nombre: asignacion?.nombre || "",
       cargo: asignacion?.cargo || "",
+      cargoCatalogoId:
+        asignacion?.cargoCatalogoId || asignacion?.cargo_catalogo_id || "",
+      codigoCargo: asignacion?.codigoCargo || asignacion?.codigo_cargo || "",
+      tipoPago: asignacion?.tipoPago || asignacion?.tipo_pago || "DIARIO",
       proyecto: "",
       tipo: asignacion?.tipo || "CAMPO",
       fechaContratacion: asignacion?.fechaContratacion || "",
@@ -265,9 +332,21 @@ const GestionPersonal = ({ onBack }) => {
         nombre: String(nuevoEmpleado.nombre || "").toUpperCase(),
         cargo: String(nuevoEmpleado.cargo || "").toUpperCase(),
         proyecto: String(nuevoEmpleado.proyecto || "").toUpperCase(),
-        tipo: nuevoEmpleado.tipo || "CAMPO",
-        rol: nuevoEmpleado.rol || "OPERARIO",
+        cargoCatalogoId: nuevoEmpleado.cargoCatalogoId || null,
+        codigoCargo: String(nuevoEmpleado.codigoCargo || "").toUpperCase(),
+        tipoPago: String(nuevoEmpleado.tipoPago || "DIARIO").toUpperCase(),
+        tipo: String(nuevoEmpleado.tipo || "CAMPO").toUpperCase(),
+        rol: String(nuevoEmpleado.rol || "OPERARIO").toUpperCase(),
         estado: String(nuevoEmpleado.estado || "ACTIVO").toUpperCase(),
+        valorDia: nuevoEmpleado.valorDia === "" ? 0 : Number(nuevoEmpleado.valorDia || 0),
+        salarioMensual:
+          nuevoEmpleado.salarioMensual === ""
+            ? 0
+            : Number(nuevoEmpleado.salarioMensual || 0),
+        valorHoraExtra:
+          nuevoEmpleado.valorHoraExtra === ""
+            ? 0
+            : Number(nuevoEmpleado.valorHoraExtra || 0),
       };
 
       if (existeDuplicado(payload)) {
@@ -279,9 +358,14 @@ const GestionPersonal = ({ onBack }) => {
         return;
       }
 
+      const esResidente = esRolResidente(payload.rol);
+
       if (editandoEmpleado) {
         await updatePersonal(payload.id, payload);
-        setModalExito({ show: true, mensaje: "ASIGNACIÓN ACTUALIZADA" });
+        setModalExito({
+          show: true,
+          mensaje: esResidente ? "ASIGNACIÓN DE RESIDENTE ACTUALIZADA" : "ASIGNACIÓN ACTUALIZADA",
+        });
       } else if (modoAsignacion === "mover" && empleadoOrigenMovimiento?.id) {
         await addPersonal({
           ...payload,
@@ -290,13 +374,22 @@ const GestionPersonal = ({ onBack }) => {
 
         await toggleEstadoPersonal(empleadoOrigenMovimiento.id, "INACTIVO");
 
-        setModalExito({ show: true, mensaje: "EMPLEADO MOVIDO DE PROYECTO" });
+        setModalExito({
+          show: true,
+          mensaje: esResidente ? "RESIDENTE REASIGNADO DE PROYECTO" : "EMPLEADO MOVIDO DE PROYECTO",
+        });
       } else {
         await addPersonal(payload);
         setModalExito({
           show: true,
           mensaje:
-            modoAsignacion === "duplicar" ? "ASIGNACIÓN CREADA" : "EMPLEADO CREADO",
+            modoAsignacion === "duplicar"
+              ? esResidente
+                ? "ACCESO DE RESIDENTE ASIGNADO"
+                : "ASIGNACIÓN CREADA"
+              : esResidente
+              ? "RESIDENTE CREADO"
+              : "EMPLEADO CREADO",
         });
       }
 
@@ -361,6 +454,71 @@ const GestionPersonal = ({ onBack }) => {
     setFiltroEstado("");
   };
 
+  const abrirCatalogoCargos = () => {
+    setShowCatalogoCargos(true);
+  };
+
+  const cerrarCatalogoCargos = () => {
+    setShowCatalogoCargos(false);
+  };
+
+  const crearCargo = async (payload) => {
+    try {
+      await addCatalogoCargo(payload);
+      setToast({
+        show: true,
+        mensaje: "CARGO CREADO",
+        tipo: "exito",
+      });
+    } catch (error) {
+      console.error("Error creando cargo:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO CREAR EL CARGO",
+        tipo: "error",
+      });
+      throw error;
+    }
+  };
+
+  const actualizarCargo = async (id, payload) => {
+    try {
+      await updateCatalogoCargo(id, payload);
+      setToast({
+        show: true,
+        mensaje: "CARGO ACTUALIZADO",
+        tipo: "exito",
+      });
+    } catch (error) {
+      console.error("Error actualizando cargo:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO ACTUALIZAR EL CARGO",
+        tipo: "error",
+      });
+      throw error;
+    }
+  };
+
+  const toggleCargoActivo = async (id, nextActivo) => {
+    try {
+      await toggleCatalogoCargoActivo(id, nextActivo);
+      setToast({
+        show: true,
+        mensaje: nextActivo ? "CARGO ACTIVADO" : "CARGO INACTIVADO",
+        tipo: "exito",
+      });
+    } catch (error) {
+      console.error("Error cambiando estado del cargo:", error);
+      setToast({
+        show: true,
+        mensaje: "NO SE PUDO CAMBIAR EL ESTADO DEL CARGO",
+        tipo: "error",
+      });
+      throw error;
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -379,6 +537,18 @@ const GestionPersonal = ({ onBack }) => {
               {personalAgrupado.length} empleados
             </InfoPill>
 
+            <InfoPill icon="pi pi-user">
+              {totalResidentesActivos} residentes
+            </InfoPill>
+
+            <InfoPill icon="pi pi-sitemap">
+              {totalAsignacionesActivas} asignaciones activas
+            </InfoPill>
+
+            <InfoPill icon="pi pi-briefcase">
+              {totalCargosCatalogo} cargos catálogo
+            </InfoPill>
+
             {filtroProyecto ? (
               <InfoPill icon="pi pi-briefcase">
                 {String(filtroProyecto).toUpperCase()}
@@ -390,6 +560,27 @@ const GestionPersonal = ({ onBack }) => {
                 {String(filtroEstado).toUpperCase()}
               </InfoPill>
             ) : null}
+          </div>
+
+          <div className="mt-4 rounded-[1.2rem] border border-[#FCB017]/20 bg-[#FFF8E8] px-4 py-3.5 md:max-w-[760px]">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FCB017]/15 text-[#C98500]">
+                <i className="pi pi-info-circle text-[14px]" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C98500]">
+                  Flujo de residentes
+                </p>
+
+                <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-600">
+                  El <span className="font-black text-slate-800">residente principal</span> se define en
+                  <span className="font-black text-slate-800"> Proyectos</span>. Desde aquí gestionas
+                  asignaciones adicionales por proyecto, movimientos y acceso multiproyecto sin tocar la
+                  lógica principal de la obra.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -411,6 +602,15 @@ const GestionPersonal = ({ onBack }) => {
             {hayFiltros && (
               <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FCB017]" />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={abrirCatalogoCargos}
+            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-[12px] font-semibold text-slate-700 transition hover:border-[#FCB017] hover:text-[#C98500] active:scale-95 shadow-sm"
+          >
+            <i className="pi pi-briefcase text-[12px]" />
+            <span>Cargos</span>
           </button>
 
           <button
@@ -469,17 +669,29 @@ const GestionPersonal = ({ onBack }) => {
       </div>
 
       <PersonalFormModal
-        show={showModal}
-        onClose={() => {
-          setShowModal(false);
-          resetModoAsignacion();
-        }}
-        onSave={guardarEmpleado}
-        editando={Boolean(editandoEmpleado)}
-        empleado={nuevoEmpleado}
-        setEmpleado={setNuevoEmpleado}
-        opcionesProyectos={opcionesProyectos}
-        nombreInputRef={nombreInputRef}
+  show={showModal}
+  onClose={() => {
+    setShowModal(false);
+    resetModoAsignacion();
+  }}
+  onSave={guardarEmpleado}
+  editando={Boolean(editandoEmpleado)}
+  empleado={nuevoEmpleado}
+  setEmpleado={setNuevoEmpleado}
+  opcionesProyectos={opcionesProyectos}
+  nombreInputRef={nombreInputRef}
+  modoAsignacion={modoAsignacion}
+  empleadoOrigenMovimiento={empleadoOrigenMovimiento}
+/>
+
+      <CatalogoCargosModal
+        show={showCatalogoCargos}
+        onClose={cerrarCatalogoCargos}
+        cargos={catalogoCargos}
+        loading={loadingCatalogoCargos}
+        onCreateCargo={crearCargo}
+        onUpdateCargo={actualizarCargo}
+        onToggleCargoActivo={toggleCargoActivo}
       />
 
       <PersonalDetailModal

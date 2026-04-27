@@ -22,13 +22,29 @@ const ModalEgreso = ({
   const { usuario, nombreUsuario, getProyectosAsignados } = useAppContext();
 
   const esResidente = String(usuario || "").toLowerCase() === "residente";
+  const esAdmin = String(usuario || "").toLowerCase() === "admin";
 
-  const categoriasSinManoObra = useMemo(() => {
-    return (opcionesCategorias || [])
-      .map((c) => norm(c))
-      .filter(Boolean)
-      .filter((c) => c !== "MANO DE OBRA");
-  }, [opcionesCategorias]);
+  const categoriasNormalizadas = useMemo(() => {
+    const base = (opcionesCategorias || []).map((c) => norm(c)).filter(Boolean);
+
+    if (esAdmin && !base.includes("OFICINA")) {
+      base.push("OFICINA");
+    }
+
+    return [...new Set(base)];
+  }, [opcionesCategorias, esAdmin]);
+
+  const categoriasDisponibles = useMemo(() => {
+  if (esResidente) {
+    return categoriasNormalizadas.filter((c) => c !== "MANO DE OBRA");
+  }
+
+  if (esAdmin) {
+    return categoriasNormalizadas.filter((c) => c !== "MANO DE OBRA");
+  }
+
+  return categoriasNormalizadas;
+}, [categoriasNormalizadas, esResidente, esAdmin]);
 
   const proyectosAsignados = useMemo(() => {
     if (!esResidente) return [];
@@ -89,7 +105,6 @@ const ModalEgreso = ({
     >
       <div className="min-h-full flex items-start md:items-center justify-center px-4 py-8 md:px-6 md:py-10">
         <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] animate-in zoom-in-95 duration-300 my-2 md:my-4 max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-5rem)] overflow-y-auto">
-          {/* Header */}
           <div className="relative border-b border-black/5 bg-[linear-gradient(180deg,#FFF8E8_0%,#FFFFFF_100%)] px-5 pb-5 pt-5 md:px-7 md:pb-6 md:pt-6">
             <button
               onClick={onClose}
@@ -133,7 +148,6 @@ const ModalEgreso = ({
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={onSave} className="space-y-6 p-5 md:p-7">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {!esResidente || multiProyectoResidente ? (
@@ -159,17 +173,25 @@ const ModalEgreso = ({
                 </div>
               )}
 
-              <CustomSelect
-                label="Categoría"
-                options={categoriasSinManoObra}
-                value={norm(nuevoEgreso.categoria)}
-                onChange={(val) =>
-                  setNuevoEgreso({ ...nuevoEgreso, categoria: norm(val) })
-                }
-                placeholder={categoriasSinManoObra.length ? "CATEGORÍA..." : "SIN CATEGORÍAS"}
-                allowCustom={false}
-                disabled={!categoriasSinManoObra.length}
-              />
+              <div className="space-y-1">
+                <CustomSelect
+                  label="Categoría"
+                  options={categoriasDisponibles}
+                  value={norm(nuevoEgreso.categoria)}
+                  onChange={(val) =>
+                    setNuevoEgreso({ ...nuevoEgreso, categoria: norm(val) })
+                  }
+                  placeholder={categoriasDisponibles.length ? "CATEGORÍA..." : "SIN CATEGORÍAS"}
+                  allowCustom={false}
+                  disabled={!categoriasDisponibles.length}
+                />
+
+                {esAdmin ? (
+                  <p className="ml-3 text-[11px] font-medium text-slate-500">
+                    Mano de obra se registra desde su módulo, no desde egresos operativos.
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -231,7 +253,6 @@ const ModalEgreso = ({
               </div>
             </div>
 
-            {/* Monto */}
             <div className="rounded-[1.6rem] border border-[#FCB017]/15 bg-[#FFF8E8]/60 px-5 py-5 md:px-6 md:py-6">
               <div className="text-center">
                 <p className="text-[10px] font-semibold text-[#C98500]">
@@ -256,14 +277,13 @@ const ModalEgreso = ({
               </div>
             </div>
 
-            {/* Detalles */}
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="ml-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                   Detalles adicionales
                 </label>
                 <textarea
-                  placeholder="NOTAS RELEVANTES..."
+                  placeholder="NOTAS RELEVANTES."
                   className="h-24 w-full resize-none rounded-[1.4rem] border border-black/5 bg-[#F9F9F6] px-4 py-4 text-[13px] font-black uppercase outline-none transition-all focus:border-slate-300 focus:bg-white"
                   value={String(nuevoEgreso.detalles || "")}
                   onChange={(e) =>
@@ -306,7 +326,6 @@ const ModalEgreso = ({
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
