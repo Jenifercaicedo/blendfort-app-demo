@@ -315,95 +315,108 @@ const GestionPersonal = ({ onBack }) => {
   };
 
   const guardarEmpleado = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      if (!nuevoEmpleado.nombre || !nuevoEmpleado.cargo) {
-        setToast({
-          show: true,
-          mensaje: "NOMBRE Y CARGO SON OBLIGATORIOS",
-          tipo: "error",
-        });
-        return;
-      }
+  try {
+    const nombre = String(nuevoEmpleado.nombre || "").trim();
+    const cargo = String(nuevoEmpleado.cargo || "").trim();
+    const proyecto = String(nuevoEmpleado.proyecto || "").trim();
 
-      const payload = {
-        ...nuevoEmpleado,
-        nombre: String(nuevoEmpleado.nombre || "").toUpperCase(),
-        cargo: String(nuevoEmpleado.cargo || "").toUpperCase(),
-        proyecto: String(nuevoEmpleado.proyecto || "").toUpperCase(),
-        cargoCatalogoId: nuevoEmpleado.cargoCatalogoId || null,
-        codigoCargo: String(nuevoEmpleado.codigoCargo || "").toUpperCase(),
-        tipoPago: String(nuevoEmpleado.tipoPago || "DIARIO").toUpperCase(),
-        tipo: String(nuevoEmpleado.tipo || "CAMPO").toUpperCase(),
-        rol: String(nuevoEmpleado.rol || "OPERARIO").toUpperCase(),
-        estado: String(nuevoEmpleado.estado || "ACTIVO").toUpperCase(),
-        valorDia: nuevoEmpleado.valorDia === "" ? 0 : Number(nuevoEmpleado.valorDia || 0),
-        salarioMensual:
-          nuevoEmpleado.salarioMensual === ""
-            ? 0
-            : Number(nuevoEmpleado.salarioMensual || 0),
-        valorHoraExtra:
-          nuevoEmpleado.valorHoraExtra === ""
-            ? 0
-            : Number(nuevoEmpleado.valorHoraExtra || 0),
-      };
-
-      if (existeDuplicado(payload)) {
-        setToast({
-          show: true,
-          mensaje: "YA EXISTE EN ESE PROYECTO",
-          tipo: "error",
-        });
-        return;
-      }
-
-      const esResidente = esRolResidente(payload.rol);
-
-      if (editandoEmpleado) {
-        await updatePersonal(payload.id, payload);
-        setModalExito({
-          show: true,
-          mensaje: esResidente ? "ASIGNACIÓN DE RESIDENTE ACTUALIZADA" : "ASIGNACIÓN ACTUALIZADA",
-        });
-      } else if (modoAsignacion === "mover" && empleadoOrigenMovimiento?.id) {
-        await addPersonal({
-          ...payload,
-          estado: "ACTIVO",
-        });
-
-        await toggleEstadoPersonal(empleadoOrigenMovimiento.id, "INACTIVO");
-
-        setModalExito({
-          show: true,
-          mensaje: esResidente ? "RESIDENTE REASIGNADO DE PROYECTO" : "EMPLEADO MOVIDO DE PROYECTO",
-        });
-      } else {
-        await addPersonal(payload);
-        setModalExito({
-          show: true,
-          mensaje:
-            modoAsignacion === "duplicar"
-              ? esResidente
-                ? "ACCESO DE RESIDENTE ASIGNADO"
-                : "ASIGNACIÓN CREADA"
-              : esResidente
-              ? "RESIDENTE CREADO"
-              : "EMPLEADO CREADO",
-        });
-      }
-
-      resetModoAsignacion();
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error guardando empleado:", error);
+    if (!nombre || !cargo) {
       setToast({
         show: true,
-        mensaje: "NO SE PUDO GUARDAR EL EMPLEADO",
+        mensaje: "NOMBRE Y CARGO SON OBLIGATORIOS",
         tipo: "error",
       });
+      return;
     }
-  };
+
+    if (!proyecto) {
+      setToast({
+        show: true,
+        mensaje: "EL PROYECTO ES OBLIGATORIO",
+        tipo: "error",
+      });
+      return;
+    }
+
+    const payload = {
+      ...nuevoEmpleado,
+      nombre: nombre.toUpperCase(),
+      cargo: cargo.toUpperCase(),
+      proyecto: proyecto.toUpperCase(),
+      cargoCatalogoId: nuevoEmpleado.cargoCatalogoId || null,
+      codigoCargo: String(nuevoEmpleado.codigoCargo || "").toUpperCase(),
+      tipoPago: String(nuevoEmpleado.tipoPago || "DIARIO").toUpperCase(),
+      tipo: String(nuevoEmpleado.tipo || "CAMPO").toUpperCase(),
+      rol: String(nuevoEmpleado.rol || "OPERARIO").toUpperCase(),
+      estado: String(nuevoEmpleado.estado || "ACTIVO").toUpperCase(),
+      valorDia: nuevoEmpleado.valorDia === "" ? 0 : Number(nuevoEmpleado.valorDia || 0),
+      salarioMensual:
+        nuevoEmpleado.salarioMensual === ""
+          ? 0
+          : Number(nuevoEmpleado.salarioMensual || 0),
+      valorHoraExtra:
+        nuevoEmpleado.valorHoraExtra === ""
+          ? 0
+          : Number(nuevoEmpleado.valorHoraExtra || 0),
+    };
+
+    if (existeDuplicado(payload)) {
+      setToast({
+        show: true,
+        mensaje: "YA EXISTE EN ESE PROYECTO",
+        tipo: "error",
+      });
+      return;
+    }
+
+    const esResidente = esRolResidente(payload.rol);
+
+    if (editandoEmpleado) {
+      await updatePersonal(payload.id, payload);
+      setModalExito({
+        show: true,
+        mensaje: esResidente ? "ASIGNACIÓN DE RESIDENTE ACTUALIZADA" : "ASIGNACIÓN ACTUALIZADA",
+      });
+    } else if (modoAsignacion === "mover" && empleadoOrigenMovimiento?.id) {
+      await addPersonal({
+        ...payload,
+        estado: "ACTIVO",
+      });
+
+      await toggleEstadoPersonal(empleadoOrigenMovimiento.id, "INACTIVO");
+
+      setModalExito({
+        show: true,
+        mensaje: esResidente ? "RESIDENTE REASIGNADO DE PROYECTO" : "EMPLEADO MOVIDO DE PROYECTO",
+      });
+    } else {
+      await addPersonal(payload);
+      setModalExito({
+        show: true,
+        mensaje:
+          modoAsignacion === "duplicar"
+            ? esResidente
+              ? "ACCESO DE RESIDENTE ASIGNADO"
+              : "ASIGNACIÓN CREADA"
+            : esResidente
+            ? "RESIDENTE CREADO"
+            : "EMPLEADO CREADO",
+      });
+    }
+
+    resetModoAsignacion();
+    setShowModal(false);
+  } catch (error) {
+    console.error("Error guardando empleado:", error);
+    setToast({
+      show: true,
+      mensaje: "NO SE PUDO GUARDAR EL EMPLEADO",
+      tipo: "error",
+    });
+  }
+};
 
   const toggleEstadoRapido = async (asignacion) => {
     try {

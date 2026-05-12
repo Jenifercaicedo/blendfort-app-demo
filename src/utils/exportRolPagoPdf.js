@@ -66,13 +66,22 @@ const loadImageMeta = (src) =>
     img.src = src;
   });
 
+const PDF_GRAY_DARK = [31, 41, 55];
+const PDF_GRAY = [107, 114, 128];
+const PDF_GRAY_MEDIUM = [148, 163, 184];
+const PDF_GRAY_LIGHT = [226, 232, 240];
+const PDF_ROW_ALT = [248, 250, 252];
+const PDF_HEAD_BG = [75, 85, 99];
+const PDF_TOP_BAR = [55, 65, 81];
+const PDF_FOOT_BG = [241, 245, 249];
+
 const drawFooter = ({ doc, pageNumber, totalPages, marginX, pageHeight, footerText }) => {
-  doc.setDrawColor(235, 238, 242);
+  doc.setDrawColor(...PDF_GRAY_LIGHT);
   doc.line(marginX, pageHeight - 28, doc.internal.pageSize.getWidth() - marginX, pageHeight - 28);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.setTextColor(120, 126, 137);
+  doc.setTextColor(...PDF_GRAY);
   doc.text(footerText, marginX, pageHeight - 12);
   doc.text(
     `Página ${pageNumber} de ${totalPages}`,
@@ -106,7 +115,7 @@ const drawHeader = ({
   marginX,
   pageWidth,
 }) => {
-  doc.setFillColor(252, 176, 23);
+  doc.setFillColor(...PDF_TOP_BAR);
   doc.rect(0, 0, pageWidth, 16, "F");
 
   let currentY = 28;
@@ -130,14 +139,14 @@ const drawHeader = ({
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(25, 28, 33);
+  doc.setTextColor(...PDF_GRAY_DARK);
   doc.setFontSize(18);
   doc.text(title, marginX, currentY);
 
   currentY += 18;
 
   doc.setFontSize(11);
-  doc.setTextColor(90, 96, 110);
+  doc.setTextColor(...PDF_GRAY);
 
   doc.setFont("helvetica", "bold");
   doc.text(projectText, marginX, currentY);
@@ -250,13 +259,13 @@ export const exportRolPagoPdf = async ({
         font: "helvetica",
         fontSize: 8.5,
         cellPadding: 6,
-        lineColor: [232, 235, 240],
+        lineColor: PDF_GRAY_LIGHT,
         lineWidth: 0.6,
-        textColor: [35, 41, 52],
+        textColor: PDF_GRAY_DARK,
         valign: "middle",
       },
       headStyles: {
-        fillColor: [252, 176, 23],
+        fillColor: PDF_HEAD_BG,
         textColor: [255, 255, 255],
         fontStyle: "bold",
         fontSize: 8.5,
@@ -265,11 +274,11 @@ export const exportRolPagoPdf = async ({
         fillColor: [255, 255, 255],
       },
       alternateRowStyles: {
-        fillColor: [249, 250, 251],
+        fillColor: PDF_ROW_ALT,
       },
       footStyles: {
-        fillColor: [245, 247, 250],
-        textColor: [25, 28, 33],
+        fillColor: PDF_FOOT_BG,
+        textColor: PDF_GRAY_DARK,
         fontStyle: "bold",
       },
       columnStyles: {
@@ -326,9 +335,9 @@ export const exportRolPagoPdf = async ({
           font: "helvetica",
           fontSize: 10,
           cellPadding: 8,
-          lineColor: [220, 224, 229],
+          lineColor: PDF_GRAY_LIGHT,
           lineWidth: 0.8,
-          textColor: [25, 28, 33],
+          textColor: PDF_GRAY_DARK,
           fontStyle: "bold",
         },
         columnStyles: {
@@ -348,12 +357,12 @@ export const exportRolPagoPdf = async ({
       if (signaturesY < pageHeight - 40) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        doc.setTextColor(25, 28, 33);
+        doc.setTextColor(...PDF_GRAY_DARK);
         doc.text("Firmas de control", marginX, signaturesY);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.setTextColor(90, 96, 110);
+        doc.setTextColor(...PDF_GRAY);
 
         doc.text("Elaborado por:", marginX, signaturesY + 32);
         doc.line(marginX + 82, signaturesY + 36, marginX + 240, signaturesY + 36);

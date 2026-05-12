@@ -106,6 +106,12 @@ const PersonalFormModal = ({
     return "Configura el cargo, proyecto y tipo de pago manteniendo la lógica actual.";
   }, [editando, modoAsignacion]);
 
+  const textoAcceso = !esResidente
+    ? "Esta asignación es operativa y no abre acceso al portal residente."
+    : !tieneProyecto
+    ? "Esta asignación dará acceso resident cuando selecciones un proyecto."
+    : `Esta asignación dará acceso resident al proyecto ${norm(empleado?.proyecto)}.`;
+
   if (!show) return null;
 
   const onChangeNumero = (key) => (e) => {
@@ -188,20 +194,6 @@ const PersonalFormModal = ({
       tipoPago: empleado?.tipoPago || "DIARIO",
     });
   };
-
-  const textoAcceso = useMemo(() => {
-    if (!esResidente) {
-      return "Esta asignación es operativa y no abre acceso al portal residente.";
-    }
-
-    if (!tieneProyecto) {
-      return "Esta asignación dará acceso resident cuando selecciones un proyecto.";
-    }
-
-    return `Esta asignación dará acceso resident al proyecto ${norm(
-      empleado?.proyecto
-    )}.`;
-  }, [esResidente, tieneProyecto, empleado?.proyecto]);
 
   return (
     <div

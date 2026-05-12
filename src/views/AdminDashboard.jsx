@@ -808,19 +808,19 @@ const AdminDashboard = () => {
   /* ===========================
      Dashboard data
   =========================== */
-  const egresosDelMes = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
+  const egresosOperativosDelMes = useMemo(() => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
 
-    return (egresos || []).reduce((acc, e) => {
-      const f = e?.fecha ? new Date(e.fecha) : null;
-      if (!f || Number.isNaN(f.getTime())) return acc;
-      if (f.getFullYear() !== y || f.getMonth() !== m) return acc;
-      if (!shouldCountOperationalTotals(e)) return acc;
-      return acc + (Number(e?.valor) || 0);
-    }, 0);
-  }, [egresos]);
+  return (egresos || []).reduce((acc, e) => {
+    const f = e?.fecha ? new Date(e.fecha) : null;
+    if (!f || Number.isNaN(f.getTime())) return acc;
+    if (f.getFullYear() !== y || f.getMonth() !== m) return acc;
+    if (!shouldCountOperationalTotals(e)) return acc;
+    return acc + (Number(e?.valor) || 0);
+  }, 0);
+}, [egresos]);
 
   const manoObraPagadaMes = useMemo(() => {
     const now = new Date();
@@ -918,14 +918,14 @@ const AdminDashboard = () => {
         />
 
         <MetricCard
-          icon="pi pi-wallet"
-          iconWrap="bg-[#FFF2D6] text-[#C98500]"
-          label="Egresos Operativos"
-          value={`$${money(egresosDelMes)}`}
-          hint="Sin mano de obra"
-          onClick={() => irASeccion("informes")}
-          clickable
-        />
+  icon="pi pi-wallet"
+  iconWrap="bg-[#FFF2D6] text-[#C98500]"
+  label="Egresos Operativos"
+  value={`$${money(egresosOperativosDelMes)}`}
+  hint="Mes actual · sin mano de obra"
+  onClick={() => irASeccion("informes")}
+  clickable
+/>
 
         <MetricCard
           icon="pi pi-credit-card"
